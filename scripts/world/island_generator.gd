@@ -1,11 +1,14 @@
 extends VoxelGeneratorScript
 class_name IslandGenerator
 ## Genera la isla a partir de los mapas horneados por tools/island_baker:
-##   height.png (altura, 16 bits), water.png (nivel de ríos/lagos), biome.png (biomas por color).
-## La superficie se decide por bioma + pendiente: roca solo en paredes empinadas, pinos en las
-## laderas, nieve solo en las cimas. Coordenadas de voxel centradas en (0,0).
+##   height.png  -> altura del suelo (16 bits)
+##   water.png   -> nivel de ríos/lagos (16 bits, 0 = sin agua)
+##   surface.png -> bloque de superficie (R), de subsuelo (G) y árbol (B)
+## Todas las decisiones caras (bioma, pendiente, nieve, densidad de árboles) ya vienen hechas
+## en los mapas: aquí solo se consultan, para que la isla se genere rápido.
+## Coordenadas de voxel centradas en (0,0).
 
-# IDs de bloque (el índice debe coincidir con la librería en main.gd).
+# IDs de bloque (el índice debe coincidir con la librería en main.gd y con IslandBaker.cs).
 const AIR := 0
 const GRASS := 1
 const DIRT := 2
@@ -20,48 +23,28 @@ const CORRUPT_SOIL := 10
 const DEAD_WOOD := 11
 const WHEAT := 12
 
-# Biomas (deben coincidir con IslandBaker.cs).
-const B_OCEAN := 0
-const B_BEACH := 1
-const B_MEADOW := 2
-const B_FOREST := 3
-const B_PINE := 4
-const B_ALPINE := 5
-const B_CORRUPT := 6
-const B_VILLAGE := 7
-const B_FARM := 8
-const B_WATER := 9
-var _palette: Array[Color] = [
-	Color8(20, 60, 140), Color8(230, 210, 150), Color8(140, 200, 90), Color8(40, 120, 50),
-	Color8(30, 80, 60), Color8(150, 150, 150), Color8(90, 50, 110), Color8(200, 160, 110),
-	Color8(230, 200, 60), Color8(60, 170, 220),
-]
-
 const MAP_DIR := "res://assets/island/"
 const MAP_HALF := 1024.0      # los mapas cubren [-MAP_HALF, MAP_HALF] voxels en X y Z
 const OCEAN_FLOOR := 4.0
 const SEA_LEVEL := 24         # coincide con el plano de mar en main.gd y con el horneador
-const SNOW_LINE := 175.0
-const TREE_LINE := 150.0
 const DIRT_DEPTH := 3
-const STEEP_SLOPE := 1.1      # voxels de subida por voxel de avance para considerar "pared"
 const TREE_MARGIN := 4        # columnas extra alrededor del chunk para no cortar copas
 const MAX_TREE_HEIGHT := 16
+const MAX_TREE_DENSITY := 0.063  # la densidad del mapa va en milésimas (máx. 63)
 
 var _n := 0
 var _h := PackedFloat32Array()
 var _w := PackedFloat32Array()
-var _b := PackedByteArray()
+var _surface := PackedByteArray()  # RGB por píxel: superficie, subsuelo, árbol
 var _voxels_per_px := 2.0
-var _snow_noise := FastNoiseLite.new()
 
 
 func _init() -> void:
-	_snow_noise.noise_type = FastNoiseLite.TYPE_PERLIN
-	_snow_noise.frequency = 0.03
 	_h = _load_16bit(MAP_DIR + "height.png")
 	_w = _load_16bit(MAP_DIR + "water.png")
-	_b = _load_biomes(MAP_DIR + "biome.png")
+	var surface_img := _load_image(MAP_DIR + "surface.png")
+	if surface_img != null:
+		_surface = surface_img.get_data()
 	if _n > 1:
 		_voxels_per_px = 2.0 * MAP_HALF / float(_n - 1)
 
@@ -94,36 +77,6 @@ func _load_16bit(path: String) -> PackedFloat32Array:
 	for i in count:
 		out[i] = float(data[i * 3] * 256 + data[i * 3 + 1]) / 64.0
 	return out
-
-
-func _load_biomes(path: String) -> PackedByteArray:
-	var out := PackedByteArray()
-	var img := _load_image(path)
-	if img == null:
-		return out
-	var data := img.get_data()
-	var count := img.get_width() * img.get_height()
-	out.resize(count)
-	var lut := {}
-	for i in count:
-		var key: int = (data[i * 3] << 16) | (data[i * 3 + 1] << 8) | data[i * 3 + 2]
-		if not lut.has(key):
-			lut[key] = _nearest_biome(Color8(data[i * 3], data[i * 3 + 1], data[i * 3 + 2]))
-		out[i] = lut[key]
-	return out
-
-
-func _nearest_biome(c: Color) -> int:
-	# Por si el mapa se repinta a mano con colores no exactos.
-	var best := 0
-	var best_d := INF
-	for i in _palette.size():
-		var p: Color = _palette[i]
-		var d: float = (p.r - c.r) ** 2 + (p.g - c.g) ** 2 + (p.b - c.b) ** 2
-		if d < best_d:
-			best_d = d
-			best = i
-	return best
 
 
 # ------------------------------------------------------------------ muestreo
@@ -159,34 +112,24 @@ func _height_at(wx: int, wz: int) -> int:
 	return int(roundf(lerpf(a, b, tz)))
 
 
-func _water_top_at(wx: int, wz: int) -> int:
-	var i := _index(wx, wz)
-	if i < 0 or _w.is_empty():
-		return 0
-	return int(roundf(_w[i]))
-
-
-func _biome_at(wx: int, wz: int) -> int:
-	var i := _index(wx, wz)
-	if i < 0 or _b.is_empty():
-		return B_OCEAN
-	return _b[i]
-
-
-func _slope_at(wx: int, wz: int) -> float:
-	var i := _index(wx, wz)
-	if i < 0 or _h.is_empty():
-		return 0.0
-	var px := i % _n
-	@warning_ignore("integer_division")
-	var pz := i / _n
-	var xl := maxi(px - 1, 0)
-	var xr := mini(px + 1, _n - 1)
-	var zu := maxi(pz - 1, 0)
-	var zd := mini(pz + 1, _n - 1)
-	var sx: float = absf(_h[pz * _n + xr] - _h[pz * _n + xl])
-	var sz: float = absf(_h[zd * _n + px] - _h[zu * _n + px])
-	return maxf(sx, sz) / (2.0 * _voxels_per_px)
+func _chunk_height_range(origin: Vector3i, size: Vector3i) -> Vector2i:
+	# Altura mínima del suelo y máxima (suelo o agua) bajo el bloque, leyendo el mapa en bruto.
+	# Incluye el margen de los árboles vecinos. Mucho más barato que muestrear cada columna.
+	var p0x := floori(_to_px(origin.x - TREE_MARGIN)) - 1
+	var p1x := ceili(_to_px(origin.x + size.x + TREE_MARGIN)) + 1
+	var p0z := floori(_to_px(origin.z - TREE_MARGIN)) - 1
+	var p1z := ceili(_to_px(origin.z + size.z + TREE_MARGIN)) + 1
+	var lo := INF
+	var hi := -INF
+	if _h.is_empty() or p0x < 0 or p0z < 0 or p1x >= _n or p1z >= _n:
+		lo = OCEAN_FLOOR  # toca el borde del mapa: allí es fondo marino
+		hi = OCEAN_FLOOR
+	for pz in range(maxi(p0z, 0), mini(p1z, _n - 1) + 1):
+		for px in range(maxi(p0x, 0), mini(p1x, _n - 1) + 1):
+			var i := pz * _n + px
+			lo = minf(lo, _h[i])
+			hi = maxf(hi, maxf(_h[i], _w[i]))
+	return Vector2i(floori(lo), ceili(hi))
 
 
 # ------------------------------------------------------------------ generación
@@ -195,53 +138,34 @@ func _generate_block(out_buffer: VoxelBuffer, origin_in_voxels: Vector3i, lod: i
 	if lod != 0:
 		return
 	var size: Vector3i = out_buffer.get_size()
-	var columns := size.x * size.z
-	var heights := PackedInt32Array()
-	var water_tops := PackedInt32Array()
-	var tops := PackedInt32Array()
-	var subs := PackedInt32Array()
-	heights.resize(columns)
-	water_tops.resize(columns)
-	tops.resize(columns)
-	subs.resize(columns)
 
-	# --- 1. Datos por columna y salida rápida si el chunk es todo aire.
-	var highest := -1000
+	# --- 1. Salidas rápidas: la mayoría de bloques son aire puro o roca maciza.
+	var span := _chunk_height_range(origin_in_voxels, size)
+	if origin_in_voxels.y > span.y + MAX_TREE_HEIGHT + 4:
+		return  # todo aire (el buffer ya viene vacío)
+	if origin_in_voxels.y + size.y <= span.x - DIRT_DEPTH - 2:
+		out_buffer.fill(STONE, VoxelBuffer.CHANNEL_TYPE)  # todo roca, de una vez
+		return
+
+	# --- 2. Terreno y agua: cada columna se rellena por tramos, no voxel a voxel.
 	for x in size.x:
 		for z in size.z:
 			var wx: int = origin_in_voxels.x + x
 			var wz: int = origin_in_voxels.z + z
-			var c := x * size.z + z
 			var height := _height_at(wx, wz)
-			heights[c] = height
-			water_tops[c] = _water_top_at(wx, wz)
-			var surface := _surface_blocks(wx, wz, height)
-			tops[c] = surface.x
-			subs[c] = surface.y
-			highest = maxi(highest, maxi(height, water_tops[c]))
-	if origin_in_voxels.y > highest + MAX_TREE_HEIGHT + 8:
-		return
-
-	# --- 2. Terreno y agua.
-	for x in size.x:
-		for z in size.z:
-			var c := x * size.z + z
-			var height := heights[c]
-			var water_top := water_tops[c]
-			for y in size.y:
-				var wy: int = origin_in_voxels.y + y
-				var block_id := AIR
-				if wy < height:
-					if wy == height - 1:
-						block_id = tops[c]
-					elif wy >= height - 1 - DIRT_DEPTH:
-						block_id = subs[c]
-					else:
-						block_id = STONE
-				elif wy < water_top:
-					block_id = WATER
-				if block_id != AIR:
-					out_buffer.set_voxel(block_id, x, y, z, VoxelBuffer.CHANNEL_TYPE)
+			var i := _index(wx, wz)
+			var top := SAND
+			var sub := SAND
+			var water_top := 0
+			if i >= 0:
+				top = _surface[i * 3]
+				sub = _surface[i * 3 + 1]
+				water_top = int(roundf(_w[i]))
+			var sub_start := height - 1 - DIRT_DEPTH
+			_fill_run(out_buffer, origin_in_voxels, size, x, z, STONE, origin_in_voxels.y, sub_start)
+			_fill_run(out_buffer, origin_in_voxels, size, x, z, sub, sub_start, height - 1)
+			_fill_run(out_buffer, origin_in_voxels, size, x, z, top, height - 1, height)
+			_fill_run(out_buffer, origin_in_voxels, size, x, z, WATER, height, water_top)
 
 	# --- 3. Árboles (con margen para no cortar copas entre chunks).
 	for lx in range(-TREE_MARGIN, size.x + TREE_MARGIN):
@@ -249,70 +173,36 @@ func _generate_block(out_buffer: VoxelBuffer, origin_in_voxels: Vector3i, lod: i
 			var wx: int = origin_in_voxels.x + lx
 			var wz: int = origin_in_voxels.z + lz
 			var kind := _tree_kind(wx, wz)
-			if kind != 0:
-				_stamp_tree(out_buffer, origin_in_voxels, size, wx, wz, _height_at(wx, wz), kind)
+			if kind == 0:
+				continue
+			var base := _height_at(wx, wz)
+			if base + MAX_TREE_HEIGHT < origin_in_voxels.y or base > origin_in_voxels.y + size.y:
+				continue  # el árbol no toca este bloque
+			_stamp_tree(out_buffer, origin_in_voxels, size, wx, wz, base, kind)
 
 
-func _surface_blocks(wx: int, wz: int, height: int) -> Vector2i:
-	# Devuelve (bloque superior, bloque de subsuelo) según bioma y pendiente.
-	var biome := _biome_at(wx, wz)
-	var steep := _slope_at(wx, wz) > STEEP_SLOPE
-	var snow_line := SNOW_LINE + _snow_noise.get_noise_2d(wx, wz) * 8.0
-	match biome:
-		B_OCEAN:
-			return Vector2i(SAND if height > SEA_LEVEL - 12 else STONE, SAND)
-		B_BEACH:
-			return Vector2i(SAND, SAND)
-		B_WATER:
-			return Vector2i(SAND, DIRT)
-		B_CORRUPT:
-			return Vector2i(STONE, STONE) if steep else Vector2i(CORRUPT_SOIL, DIRT)
-		B_FARM:
-			# Surcos: hileras de trigo separadas por tierra.
-			return Vector2i(WHEAT if (wx >> 2) & 1 == 0 else DIRT, DIRT)
-		B_ALPINE:
-			if height >= snow_line and not steep:
-				return Vector2i(SNOW, STONE)
-			return Vector2i(STONE, STONE)
-		_:
-			if height >= snow_line:
-				return Vector2i(STONE if steep else SNOW, STONE)
-			if steep:
-				return Vector2i(STONE, STONE)
-			return Vector2i(GRASS, DIRT)
+func _fill_run(buffer: VoxelBuffer, origin: Vector3i, size: Vector3i, x: int, z: int, id: int, from_y: int, to_y: int) -> void:
+	# Rellena la columna (x, z) con 'id' entre las alturas [from_y, to_y) del mundo.
+	if id == AIR:
+		return
+	var a := maxi(from_y - origin.y, 0)
+	var b := mini(to_y - origin.y, size.y)
+	if b > a:
+		buffer.fill_area(id, Vector3i(x, a, z), Vector3i(x + 1, b, z + 1), VoxelBuffer.CHANNEL_TYPE)
 
 
 # Tipos de árbol: 0 ninguno, 1 frondoso, 2 pino, 3 muerto.
 func _tree_kind(wx: int, wz: int) -> int:
-	var biome := _biome_at(wx, wz)
-	var density := 0.0
-	var kind := 1
-	match biome:
-		B_FOREST:
-			density = 0.045
-		B_MEADOW:
-			density = 0.005
-		B_VILLAGE:
-			density = 0.002
-		B_PINE:
-			density = 0.035
-			kind = 2
-		B_ALPINE:
-			density = 0.006
-			kind = 2
-		B_CORRUPT:
-			density = 0.012
-			kind = 3
-		_:
-			return 0
-	if _hash01(wx, wz) >= density:
+	var roll := _hash01(wx, wz)
+	if roll >= MAX_TREE_DENSITY:
+		return 0  # descarte barato antes de mirar el mapa
+	var i := _index(wx, wz)
+	if i < 0:
 		return 0
-	var height := _height_at(wx, wz)
-	if height <= SEA_LEVEL + 1 or height >= TREE_LINE + 10:
+	var code: int = _surface[i * 3 + 2]
+	if roll >= float(code & 63) / 1000.0:
 		return 0
-	if _water_top_at(wx, wz) > height or _slope_at(wx, wz) > 0.8:
-		return 0
-	return kind
+	return code >> 6
 
 
 func _stamp_tree(buffer: VoxelBuffer, origin: Vector3i, size: Vector3i, wx: int, wz: int, base: int, kind: int) -> void:
@@ -336,8 +226,7 @@ func _stamp_tree(buffer: VoxelBuffer, origin: Vector3i, size: Vector3i, wx: int,
 				_set_if_air(buffer, origin, size, wx, base + i, wz, WOOD)
 			var top := base + trunk_h + 1
 			for y in range(base + 3, top + 1):
-				var radius := int(roundf(float(top - y) * 0.42))
-				radius = mini(radius, 3)
+				var radius := mini(int(roundf(float(top - y) * 0.42)), 3)
 				for dx in range(-radius, radius + 1):
 					for dz in range(-radius, radius + 1):
 						if dx * dx + dz * dz <= radius * radius + 1:
@@ -368,4 +257,6 @@ func _hash01(x: int, z: int) -> float:
 
 ## Altura del suelo en coordenadas de voxel (para colocar al jugador al aparecer).
 func get_ground_height(wx: int, wz: int) -> int:
-	return maxi(_height_at(wx, wz), _water_top_at(wx, wz))
+	var i := _index(wx, wz)
+	var water_top := int(roundf(_w[i])) if i >= 0 else 0
+	return maxi(_height_at(wx, wz), water_top)

@@ -10,7 +10,7 @@ const VOXEL_SIZE := 0.5
 const SPAWN_VOXEL := Vector2i(-560, 607)
 
 # Región central que debe estar mallada antes de entrar (en voxels, dentro de la distancia de carga).
-const LOAD_AREA := AABB(Vector3(-900, -8, -900), Vector3(1800, 260, 1800))
+const LOAD_AREA := AABB(Vector3(-1024, 0, -1024), Vector3(2048, 256, 2048))
 const MAX_LOAD_SECONDS := 180.0  # tope de seguridad: entrar aunque no haya "terminado"
 
 const BLOCK_NAMES := {
@@ -34,6 +34,10 @@ var _loading_label: Label
 var _loading_overlay: CanvasLayer
 var _elapsed := 0.0
 var _settled_frames := 0
+var _world_is_new := false
+
+const WORLD_DIR := "user://world"
+const AUTOSAVE_SECONDS := 60.0
 
 
 func _ready() -> void:
@@ -41,7 +45,63 @@ func _ready() -> void:
 	_build_environment()
 	_build_hud()
 	_build_loading_overlay()
-	print("[main] Generando la isla completa...")
+	print("[main] %s" % _loading_title())
+
+	var autosave := Timer.new()
+	autosave.wait_time = AUTOSAVE_SECONDS
+	autosave.autostart = true
+	autosave.timeout.connect(_save_world)
+	add_child(autosave)
+
+
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_WM_CLOSE_REQUEST:
+		_save_world()
+
+
+func _save_world() -> void:
+	# Guarda en disco los bloques que el jugador ha cambiado.
+	if _terrain != null and not _loading:
+		_terrain.save_modified_blocks()
+
+
+func _loading_title() -> String:
+	if _world_is_new:
+		return "Creando la isla por primera vez...\n(solo pasa una vez; las siguientes cargas serán rápidas)"
+	return "Cargando la isla..."
+
+
+func _make_world_stream() -> VoxelStreamSQLite:
+	# El mundo se guarda en un archivo. La primera vez se genera y se va guardando; las
+	# siguientes se lee del archivo (mucho más rápido) y conserva lo que el jugador construya.
+	# El nombre lleva una "huella" de los mapas y del generador: si cambian, se crea un mundo nuevo.
+	DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(WORLD_DIR))
+	var file_name := "isla_%s.sqlite" % _world_fingerprint()
+	var path := WORLD_DIR.path_join(file_name)
+	_world_is_new = not FileAccess.file_exists(path)
+	if _world_is_new:
+		_delete_old_worlds(file_name)
+	var stream := VoxelStreamSQLite.new()
+	stream.database_path = ProjectSettings.globalize_path(path)
+	stream.save_generator_output = true
+	return stream
+
+
+func _world_fingerprint() -> String:
+	var text := ""
+	for file in ["height.png", "water.png", "surface.png"]:
+		text += FileAccess.get_md5(IslandGenerator.MAP_DIR + file)
+	text += FileAccess.get_md5("res://scripts/world/island_generator.gd")
+	return text.md5_text().substr(0, 12)
+
+
+func _delete_old_worlds(keep: String) -> void:
+	var dir := DirAccess.open(WORLD_DIR)
+	if dir == null:
+		return
+	for file in dir.get_files():
+		if file.begins_with("isla_") and file != keep:
+			dir.remove(file)
 
 
 func _build_world() -> void:
@@ -69,22 +129,35 @@ func _build_world() -> void:
 	var terrain := VoxelTerrain.new()
 	terrain.mesher = mesher
 	terrain.generator = _generator
+	terrain.stream = _make_world_stream()
 	terrain.generate_collisions = true
 	# Solo se generan voxels dentro de la isla y entre el fondo marino y las cimas:
 	# sin esto, generaría kilómetros de roca subterránea inútil.
-	terrain.bounds = AABB(Vector3(-1100, -8, -1100), Vector3(2200, 344, 2200))
-	terrain.max_view_distance = 1400  # tope del terreno (en voxels); sin esto solo carga un recuadro
+	terrain.bounds = AABB(Vector3(-1024, 0, -1024), Vector3(2048, 256, 2048))
+	# Mallas de 32³ voxels: 8 veces menos objetos de malla y colisión que con 16³
+	# (carga más rápida y menos llamadas de dibujo).
+	terrain.mesh_block_size = 32
+	terrain.max_view_distance = 1600  # tope del terreno (en voxels); sin esto solo carga un recuadro
 	terrain.scale = Vector3.ONE * VOXEL_SIZE  # voxels más pequeños (estilo Cube World)
 	terrain.add_to_group("voxel_terrain")
 	add_child(terrain)
 	_terrain = terrain
 
-	# Observador FIJO en el centro de la isla: fuerza a generar/cargar TODO el mapa a la vez
-	# y lo mantiene cargado aunque el jugador se aleje.
+	# Observador FIJO en el centro de la isla: fuerza a cargar TODO el mapa a la vez y lo
+	# mantiene cargado aunque el jugador se aleje. Solo pide lo visual: las colisiones (caras)
+	# se calculan únicamente cerca del jugador.
 	var loader := VoxelViewer.new()
-	loader.view_distance = 1300  # en voxels; cubre toda la isla
+	loader.view_distance = 1500  # en voxels; llega a las esquinas del mapa (1024·√2 ≈ 1450)
+	loader.requires_collisions = false
 	loader.position = Vector3(0, 40, 0)
 	add_child(loader)
+
+	# Observador en el punto de aparición: prepara el suelo (con colisión) antes de entrar.
+	var spawn_viewer := VoxelViewer.new()
+	spawn_viewer.view_distance = 48
+	var ground := _generator.get_ground_height(SPAWN_VOXEL.x, SPAWN_VOXEL.y)
+	spawn_viewer.position = Vector3(SPAWN_VOXEL.x, ground, SPAWN_VOXEL.y) * VOXEL_SIZE
+	add_child(spawn_viewer)
 
 	_build_sea()
 
@@ -142,7 +215,7 @@ func _build_loading_overlay() -> void:
 	_loading_overlay.add_child(bg)
 
 	_loading_label = Label.new()
-	_loading_label.text = "Generando la isla..."
+	_loading_label.text = _loading_title()
 	_loading_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_loading_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	_loading_label.set_anchors_preset(Control.PRESET_FULL_RECT)
@@ -164,19 +237,27 @@ func _update_loading() -> void:
 	else:
 		_settled_frames = 0
 
-	var meshed := false
-	if _terrain.has_method("is_area_meshed"):
-		meshed = _terrain.is_area_meshed(LOAD_AREA)
+	var meshed := _terrain.is_area_meshed(LOAD_AREA)
+	var spawn_ready := _terrain.is_area_meshed(_spawn_area())
 
-	_loading_label.text = "Generando la isla...\n%.1f s\nBloques pendientes: %s" % [_elapsed, remaining]
+	_loading_label.text = "%s\n\n%.0f s" % [_loading_title(), _elapsed]
+	if int(_elapsed / 5.0) != int((_elapsed - get_process_delta_time()) / 5.0):
+		print("[carga] %.0f s · pendientes=%s · isla=%s · aparición=%s" % [_elapsed, remaining, meshed, spawn_ready])
 
-	# Listo cuando lleva un rato sin trabajo pendiente (o la zona central está mallada),
-	# con un tope de seguridad para no quedarse colgado.
+	# Listo cuando la isla está mallada (o no queda trabajo pendiente) y, sobre todo, cuando el
+	# suelo donde aparece el jugador ya existe: si no, caería a través del terreno.
+	var ready_by_mesh := meshed and _elapsed > 2.0
 	var ready_by_settle := _settled_frames > 60 and _elapsed > 2.0
-	var ready_by_mesh := meshed and _settled_frames > 10 and _elapsed > 2.0
 	var ready_by_timeout := _elapsed > MAX_LOAD_SECONDS
-	if ready_by_settle or ready_by_mesh or ready_by_timeout:
+	if spawn_ready and (ready_by_mesh or ready_by_settle or ready_by_timeout):
 		_finish_loading()
+	elif _elapsed > MAX_LOAD_SECONDS * 1.5:
+		_finish_loading()  # último recurso: entrar igualmente
+
+
+func _spawn_area() -> AABB:
+	var ground := _generator.get_ground_height(SPAWN_VOXEL.x, SPAWN_VOXEL.y)
+	return AABB(Vector3(SPAWN_VOXEL.x - 16, ground - 16, SPAWN_VOXEL.y - 16), Vector3(32, 48, 32))
 
 
 func _finish_loading() -> void:
@@ -186,6 +267,9 @@ func _finish_loading() -> void:
 		_loading_overlay = null
 	_build_player()
 	print("[main] Isla cargada en %.1f s. ¡A jugar!" % _elapsed)
+	# Modo medición: "godot --headless --path . -- --quit-after-load" sale al terminar de cargar.
+	if OS.get_cmdline_user_args().has("--quit-after-load"):
+		get_tree().quit()
 
 
 func _build_environment() -> void:

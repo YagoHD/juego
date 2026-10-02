@@ -14,6 +14,7 @@ const FLY_SPEED_FAST := 60.0
 
 var _flying := false
 var _spawn_point := Vector3.ZERO
+var _waiting_for_ground := true  # no aplicar gravedad hasta que exista suelo con colisión
 
 var _camera: Camera3D
 var _terrain: VoxelTerrain
@@ -97,6 +98,9 @@ func _unhandled_input(event: InputEvent) -> void:
 
 
 func _physics_process(delta: float) -> void:
+	if _waiting_for_ground:
+		_wait_for_ground()
+		return
 	if _flying:
 		_fly(delta)
 		return
@@ -124,8 +128,25 @@ func _physics_process(delta: float) -> void:
 
 	# Red de seguridad: si se cae del mundo, reaparece arriba.
 	if global_position.y < -60.0:
-		global_position = _spawn_point
+		global_position = _spawn_point + Vector3.UP * 2.0
 		velocity = Vector3.ZERO
+		_waiting_for_ground = true
+
+
+func _wait_for_ground() -> void:
+	# Mientras la colisión del terreno se termina de crear, el jugador flota quieto.
+	# En cuanto un rayo hacia abajo encuentra suelo, se coloca encima y empieza la física.
+	var from := global_position + Vector3.UP * 20.0
+	var query := PhysicsRayQueryParameters3D.create(from, global_position + Vector3.DOWN * 60.0)
+	query.exclude = [get_rid()]  # que el rayo no choque con el propio jugador
+	var hit := get_world_3d().direct_space_state.intersect_ray(query)
+	if hit.is_empty():
+		return
+	var ground: Vector3 = hit.position
+	global_position = ground + Vector3.UP * 0.1
+	_spawn_point = global_position
+	velocity = Vector3.ZERO
+	_waiting_for_ground = false
 
 
 func _fly(_delta: float) -> void:

@@ -24,6 +24,13 @@ public static class IslandBaker
     public const byte OCEAN = 0, BEACH = 1, MEADOW = 2, FOREST = 3, PINE = 4, ALPINE = 5,
                       CORRUPT = 6, VILLAGE = 7, FARM = 8, WATER = 9;
 
+    // IDs de bloque (deben coincidir con island_generator.gd y la librería de main.gd).
+    const byte BL_GRASS = 1, BL_DIRT = 2, BL_STONE = 3, BL_SAND = 4, BL_SNOW = 5, BL_CORRUPT_SOIL = 10, BL_WHEAT = 12;
+    // Tipos de árbol.
+    const int TREE_BROAD = 1, TREE_PINE = 2, TREE_DEAD = 3;
+    const float TREE_LINE = 150f;
+    const float STEEP = 1.1f;  // pendiente (voxels de subida por voxel) a partir de la cual es pared
+
     public static readonly int[][] PALETTE = new int[][] {
         new int[] { 20, 60, 140 },   // OCEAN
         new int[] { 230, 210, 150 }, // BEACH
@@ -429,12 +436,74 @@ public static class IslandBaker
         SaveRgb(System.IO.Path.Combine(outDir, "water.png"), waterRgb);
         SaveRgb(System.IO.Path.Combine(outDir, "biome.png"), biomeRgb);
         SaveRgb(System.IO.Path.Combine(outDir, "preview.png"), previewRgb);
+        SaveRgb(System.IO.Path.Combine(outDir, "surface.png"), BuildSurface(H, W, B));
 
         string[] names = { "mar", "playa", "pradera", "bosque", "pinar", "alta montaña", "corrupta", "pueblo", "campos", "río/lago" };
         string summary = String.Format("Altura min {0:F1} max {1:F1} voxels. Lago a {2} voxels.\n", minH, maxH, lakeLevel);
         for (int k = 0; k < names.Length; k++)
             summary += String.Format("  {0}: {1:F1}%\n", names[k], 100.0 * biomeCount[k] / count);
         return summary;
+    }
+
+    // surface.png: R = bloque de la superficie, G = bloque del subsuelo,
+    // B = árbol (tipo * 64 + densidad en milésimas). Así el juego no calcula nada de esto.
+    static byte[] BuildSurface(float[] H, float[] W, byte[] B)
+    {
+        byte[] rgb = new byte[N * N * 3];
+        for (int y = 0; y < N; y++)
+        {
+            for (int x = 0; x < N; x++)
+            {
+                int i = y * N + x;
+                float u = ToDesign(x / (float)(N - 1)), v = ToDesign(y / (float)(N - 1));
+                float h = H[i];
+                byte biome = B[i];
+                int xl = Math.Max(x - 1, 0), xr = Math.Min(x + 1, N - 1);
+                int yu = Math.Max(y - 1, 0), yd = Math.Min(y + 1, N - 1);
+                float slope = Math.Max(Math.Abs(H[y * N + xr] - H[y * N + xl]),
+                                       Math.Abs(H[yd * N + x] - H[yu * N + x])) / (2f * VOXELS_PER_PX);
+                bool steep = slope > STEEP;
+                float snowLine = SNOW + Perlin(u * 60f, v * 60f) * 8f;
+
+                byte top, sub;
+                switch (biome)
+                {
+                    case OCEAN: top = h > SEA - 12f ? BL_SAND : BL_STONE; sub = BL_SAND; break;
+                    case BEACH: top = BL_SAND; sub = BL_SAND; break;
+                    case WATER: top = BL_SAND; sub = BL_DIRT; break;
+                    case CORRUPT:
+                        if (steep) { top = BL_STONE; sub = BL_STONE; } else { top = BL_CORRUPT_SOIL; sub = BL_DIRT; }
+                        break;
+                    case FARM: top = ((x >> 1) & 1) == 0 ? BL_WHEAT : BL_DIRT; sub = BL_DIRT; break;  // surcos
+                    case ALPINE:
+                        if (h >= snowLine && !steep) { top = BL_SNOW; sub = BL_STONE; } else { top = BL_STONE; sub = BL_STONE; }
+                        break;
+                    default:
+                        if (h >= snowLine) { top = steep ? BL_STONE : BL_SNOW; sub = BL_STONE; }
+                        else if (steep) { top = BL_STONE; sub = BL_STONE; }
+                        else { top = BL_GRASS; sub = BL_DIRT; }
+                        break;
+                }
+
+                float density = 0f; int kind = TREE_BROAD;
+                switch (biome)
+                {
+                    case FOREST: density = 0.045f; break;
+                    case MEADOW: density = 0.005f; break;
+                    case VILLAGE: density = 0.002f; break;
+                    case PINE: density = 0.035f; kind = TREE_PINE; break;
+                    case ALPINE: density = 0.006f; kind = TREE_PINE; break;
+                    case CORRUPT: density = 0.012f; kind = TREE_DEAD; break;
+                }
+                if (h <= SEA + 1f || h >= TREE_LINE + 10f || W[i] > h || slope > 0.8f) density = 0f;
+                int tree = density > 0f ? kind * 64 + Math.Min(63, (int)Math.Round(density * 1000f)) : 0;
+
+                rgb[i * 3] = top;
+                rgb[i * 3 + 1] = sub;
+                rgb[i * 3 + 2] = (byte)tree;
+            }
+        }
+        return rgb;
     }
 
     static void Encode16(byte[] rgb, int i, float value)
