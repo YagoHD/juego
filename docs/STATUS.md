@@ -14,12 +14,16 @@
 - [x] `README.md` con pasos de instalación de Godot + godot_voxel.
 - [x] Repositorio Git inicializado.
 
-## Toca ahora (Fase 0 → Fase 1)
-1. **(Usuario)** Instalar Godot 4.3 y la extensión `godot_voxel` en `addons/` (ver `README.md`).
-2. **(Claude)** Fase 1: escena de **test técnico de voxels** en `tests/voxel_test/` —
-   terreno por ruido con `VoxelLodTerrain`, cámara libre, contador de FPS. Objetivo: confirmar que
-   los voxels pequeños rinden bien antes de comprometerse.
-3. **(Claude)** Fase 2: colocar y romper bloques en un terreno pequeño.
+## Fase 1 — SUPERADA ✅
+- Se usa el Godot de Zylann (build con módulo voxel integrado), versión 4.7.2.
+- `tests/voxel_test/` genera terreno suave (Transvoxel) por ruido con cámara libre y FPS.
+- Resultado: **59 FPS** (limitado por V-Sync a 60 Hz) → rendimiento sobrado. VOXEL_SIZE=0.5.
+
+## Toca ahora (Fase 2)
+- Cambiar de meshing **suave (Transvoxel)** a **blocky (cubos)** con `VoxelTerrain` +
+  `VoxelMesherBlocky` + una `VoxelBlockyLibrary` de tipos de bloque.
+- Jugador en primera persona con colisión y raycast.
+- **Colocar y romper bloques** (clic izq. romper, clic der. colocar).
 
 ## Siguiente (según el diseño)
 - Supervivencia (recursos, base, cama, sueño/fatiga).

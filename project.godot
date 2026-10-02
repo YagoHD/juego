@@ -16,7 +16,7 @@ compatibility/default_parent_skeleton_in_mesh_instance_3d=true
 
 config/name="Isla del Naufragio"
 config/description="Beta: isla de voxels pequeños. Tutorial y primer hito."
-run/main_scene="res://tests/voxel_test/voxel_test.tscn"
+run/main_scene="res://scenes/main.tscn"
 config/features=PackedStringArray("4.7")
 config/icon="res://icon.svg"
 
