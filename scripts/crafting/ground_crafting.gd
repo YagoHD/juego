@@ -15,6 +15,8 @@ class_name GroundCrafting
 const WORK_DISTANCE := 2.2   # metros: hasta dónde se puede trabajar una forma
 const HINT_DISTANCE := 6.0   # metros: hasta dónde se ven las piezas que faltan
 
+signal crafted(recipe_id: String)
+
 var player: Player
 var debug_hold := false  # solo capturas: como si se mantuviera R
 var _items: Array[PlacedItem] = []
@@ -183,6 +185,7 @@ func craft(m: Dictionary) -> void:
 				remove(item)
 		ItemDrop.spawn(get_parent(), center + Vector3.UP * 0.3, recipe["result"], int(recipe["count"]))
 		Sfx.play("fabricado", center)
+		crafted.emit(recipe_id)
 	_progress = 0.0
 	_working_on = {}
 	_spawn_dust(center)

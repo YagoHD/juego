@@ -80,6 +80,8 @@
   suelo, romper por material, colocar, recoger, tirar, trabajar, fabricado, aprender, páginas,
   cofre, clics; ambiente: olas cerca del mar, pájaros de día, grillos de noche.
   `tools/test_sounds.gd` comprueba que se generan sin saturar.
+- **Objetivos del tutorial** (`scripts/systems/objectives.gd`): arriba a la derecha, 8 pasos en orden
+  (diario, leerlo, cofres, ropa, cuerda, mochila, desmontar el cofre, ruinas); se guardan.
 - **Menú de pausa** (Esc, `scripts/ui/pause_menu.gd`): pausa el juego; opciones guardadas en
   `user://ajustes.cfg` (`scripts/systems/settings.gd`). Pantalla limpia: arriba solo el reloj;
   F1 muestra los controles, F3 los FPS.

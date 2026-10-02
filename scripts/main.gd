@@ -46,6 +46,7 @@ var _help: Control             # ayuda de controles (F1)
 var _help_on := false
 var _sfx: Sfx
 var _sea_check := 0.0
+var _objectives: Objectives
 var _hotbar: Hotbar
 var _underwater: ColorRect
 var _day_night: DayNight
@@ -234,6 +235,8 @@ func _build_player() -> void:
 	_ground = GroundCrafting.new()
 	add_child(_ground)
 	_ground.player = _player
+	_ground.crafted.connect(func(recipe_id: String) -> void: _objectives.mark("hecho_" + recipe_id))
+	_objectives.player = _player
 	_player.ground = _ground
 	_ground.load_from(_ground_save_path())
 	_player.notice.connect(_show_notice)
@@ -337,6 +340,12 @@ func _build_hud() -> void:
 
 	_hotbar = Hotbar.new()
 	canvas.add_child(_hotbar)
+	_objectives = Objectives.new()
+	add_child(_objectives)
+	_objectives.build_ui(canvas)
+	_objectives.completed.connect(func(text: String) -> void:
+		_show_notice(text)
+		Sfx.play("aprender"))
 
 	_prompt = _make_center_label(canvas, -130.0, 20)
 	_notice = _make_center_label(canvas, -175.0, 22)
@@ -401,6 +410,7 @@ func _process(delta: float) -> void:
 	_hotbar.visible = not reading
 	_hud.visible = not reading
 	_prompt.visible = not reading
+	_objectives.show_panel(not reading and not _help_on)
 	_underwater.visible = _player.is_head_underwater()
 	_prompt.text = _ground.prompt()
 	_notice_time -= delta
@@ -521,6 +531,7 @@ func _save_player() -> void:
 		"equipment": _player.equipment,
 		"recipes": _player.known_recipes,
 		"journal": _player.has_journal,
+		"objectives": _objectives.to_data(),
 		"hour": _day_night.hour,
 		"day": _day_night.day,
 	}
@@ -541,6 +552,8 @@ func _load_player() -> void:
 	if d.get("equipment") is Dictionary:
 		_player.set_equipment(d["equipment"])
 	_player.has_journal = bool(d.get("journal", false))
+	if d.get("objectives") is Dictionary:
+		_objectives.from_data(d["objectives"])
 	if d.get("recipes") is Array:
 		for recipe_id in d["recipes"]:
 			_player.learn(str(recipe_id))
@@ -646,6 +659,7 @@ func _on_block_used(cell: Vector3i, block_id: int) -> void:
 	if block_id != IslandGenerator.CHEST:
 		return
 	Sfx.play("cofre", (Vector3(cell) + Vector3(0.5, 0.5, 0.5)) * VOXEL_SIZE)
+	_objectives.mark("cofre_abierto")
 	var chest := _chests.get_or_create(cell)
 	_screen_sections = _chest_sections.bind(chest)
 	_show_screen(_screen_sections.call())
@@ -753,6 +767,7 @@ func open_journal() -> void:
 	_player.ui_open = true
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 	_journal.open()
+	_objectives.mark("diario_leido")
 
 
 ## Al empezar: si el jugador aún no tiene el diario y no está en el suelo, se deja en la playa,
