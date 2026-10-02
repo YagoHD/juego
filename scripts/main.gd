@@ -81,6 +81,7 @@ func _build_hud() -> void:
 
 	_hud = Label.new()
 	_hud.position = Vector2(12, 8)
+	_hud.mouse_filter = Control.MOUSE_FILTER_IGNORE  # no robar clics del juego
 	_hud.add_theme_color_override("font_color", Color.WHITE)
 	_hud.add_theme_color_override("font_outline_color", Color.BLACK)
 	_hud.add_theme_constant_override("outline_size", 4)
@@ -89,6 +90,7 @@ func _build_hud() -> void:
 	# Punto de mira en el centro.
 	var crosshair := Label.new()
 	crosshair.text = "+"
+	crosshair.mouse_filter = Control.MOUSE_FILTER_IGNORE  # no robar clics del juego
 	crosshair.add_theme_color_override("font_color", Color.WHITE)
 	crosshair.add_theme_color_override("font_outline_color", Color.BLACK)
 	crosshair.add_theme_constant_override("outline_size", 3)
