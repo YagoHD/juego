@@ -3,8 +3,10 @@ class_name Player
 ## Jugador en primera persona: camina, salta, mira con el ratón y rompe/coloca bloques.
 ## Encuentra el VoxelTerrain por el grupo "voxel_terrain".
 
-const SPEED := 6.0
-const JUMP_VELOCITY := 8.0
+const SPEED := 5.2
+const BODY_HEIGHT := 1.5   # altura del personaje en metros (3 bloques de 0,5 m)
+const EYE_HEIGHT := 1.35   # altura de la cámara (los ojos)
+const JUMP_VELOCITY := 7.0  # salto de ~1 m: sube 2 bloques
 const GRAVITY := 24.0
 const SENSITIVITY := 0.0025
 const REACH := 8.0
@@ -30,15 +32,15 @@ func _ready() -> void:
 	# Colisión (cápsula).
 	var shape := CollisionShape3D.new()
 	var capsule := CapsuleShape3D.new()
-	capsule.height = 1.8
-	capsule.radius = 0.4
+	capsule.height = BODY_HEIGHT
+	capsule.radius = 0.35
 	shape.shape = capsule
-	shape.position = Vector3(0, 0.9, 0)
+	shape.position = Vector3(0, BODY_HEIGHT * 0.5, 0)
 	add_child(shape)
 
 	# Cámara a la altura de los ojos.
 	_camera = Camera3D.new()
-	_camera.position = Vector3(0, 1.6, 0)
+	_camera.position = Vector3(0, EYE_HEIGHT, 0)
 	add_child(_camera)
 	_camera.current = true
 
