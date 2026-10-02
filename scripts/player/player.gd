@@ -91,6 +91,9 @@ func _ready() -> void:
 	_held = HeldBlock.new()
 	_camera.add_child(_held)
 
+	# Skin del jugador (formato Minecraft): la usan el cuerpo y el brazo en primera persona.
+	apply_skin(SkinComposer.load_player_skin(), SkinComposer.DEFAULT_OPTIONS["slim"])
+
 	# Observadores del terreno: uno amplio solo para dibujar (la zona detallada) y otro
 	# pequeño solo para las colisiones, que son caras de calcular.
 	var visual_viewer := VoxelViewer.new()
@@ -457,6 +460,14 @@ func get_hotbar_index() -> int:
 	return _hotbar_index
 
 
+## Cambia la skin del jugador (cuerpo y brazo). El futuro editor de personaje la usará.
+func apply_skin(texture: Texture2D, slim: bool) -> void:
+	_avatar.build(texture, slim)
+	_held.set_skin(texture, slim)
+	if _hotbar_index >= 0 and _held != null:
+		_avatar.set_block(get_current_block())
+
+
 func is_third_person() -> bool:
 	return _third_person
 
@@ -485,6 +496,12 @@ func is_on_ground_ready() -> bool:
 	return not _waiting_for_ground
 
 
+## Solo para capturas de prueba: lanza la animación de golpe (sin romper nada).
+func debug_swing() -> void:
+	_held.swing()
+	_avatar.swing()
+
+
 ## Solo para capturas de prueba: coloca cámara y postura sin usar teclado ni ratón.
 func debug_pose(third_person: bool, pitch: float, yaw_degrees: float, up_meters: float) -> void:
 	_third_person = third_person
@@ -495,3 +512,5 @@ func debug_pose(third_person: bool, pitch: float, yaw_degrees: float, up_meters:
 	if up_meters > 0.0:
 		_flying = true
 		global_position += Vector3.UP * up_meters
+	if OS.get_cmdline_user_args().has("--front"):
+		_spring.rotation.y = PI  # cámara delante del personaje, mirándolo de frente

@@ -358,6 +358,9 @@ func _update_capture() -> void:
 		_capture_frames = int(_arg("--wait=", "90"))
 		return
 	_capture_frames -= 1
+	var swing_at := int(_arg("--swing=", "-1"))  # frames antes de la foto en que lanzar un golpe
+	if _capture_frames == swing_at:
+		_player.debug_swing()
 	if _capture_frames == 0:
 		get_viewport().get_texture().get_image().save_png(path)
 		print("[captura] guardada en ", path)
