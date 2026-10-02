@@ -333,7 +333,38 @@ func _edit_block(place: bool) -> void:
 			return  # no colocar un bloque dentro de uno mismo
 		tool.set_voxel(cell, id)
 	else:
-		tool.set_voxel(target["voxel"], IslandGenerator.AIR)
+		var cell: Vector3i = target["voxel"]
+		var broken := tool.get_voxel(cell)
+		tool.set_voxel(cell, IslandGenerator.AIR)
+		var size := _terrain.scale.x
+		_spawn_break_particles(_terrain.to_global(Vector3(cell)) + Vector3.ONE * size * 0.5, broken)
+
+
+func _spawn_break_particles(center: Vector3, block_id: int) -> void:
+	# Trocitos del color del bloque que saltan y caen al romperlo.
+	var particles := CPUParticles3D.new()
+	var chunk := BoxMesh.new()
+	chunk.size = Vector3.ONE * 0.07
+	chunk.material = Blocks.make_material(block_id)
+	particles.mesh = chunk
+	particles.amount = 14
+	particles.lifetime = 0.7
+	particles.one_shot = true
+	particles.explosiveness = 1.0
+	particles.emission_shape = CPUParticles3D.EMISSION_SHAPE_BOX
+	particles.emission_box_extents = Vector3.ONE * 0.18
+	particles.direction = Vector3.UP
+	particles.spread = 75.0
+	particles.initial_velocity_min = 1.2
+	particles.initial_velocity_max = 2.8
+	particles.angular_velocity_min = -360.0
+	particles.angular_velocity_max = 360.0
+	particles.scale_amount_min = 0.6
+	particles.scale_amount_max = 1.3
+	get_parent().add_child(particles)
+	particles.global_position = center
+	particles.emitting = true
+	get_tree().create_timer(particles.lifetime + 0.3).timeout.connect(particles.queue_free)
 
 
 func _overlaps_body(cell: Vector3i) -> bool:
