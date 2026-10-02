@@ -47,6 +47,7 @@ func _build_world() -> void:
 	terrain.mesher = mesher
 	terrain.generator = IslandGenerator.new()
 	terrain.generate_collisions = true
+	terrain.max_view_distance = 1200  # tope del terreno (en voxels); sin esto solo carga un recuadro
 	terrain.scale = Vector3.ONE * VOXEL_SIZE  # voxels más pequeños (estilo Cube World)
 	terrain.add_to_group("voxel_terrain")
 	add_child(terrain)
