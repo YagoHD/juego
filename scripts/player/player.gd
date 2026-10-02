@@ -25,8 +25,8 @@ const STEP_FORWARD := 0.25 # cuánto avanza al subir un escalón (para quedar bi
 const FLY_SPEED := 18.0
 const FLY_SPEED_FAST := 60.0
 const CAMERA_CATCH_UP := 14.0      # rapidez con la que la cámara alcanza al cuerpo tras un escalón
-const THIRD_PERSON_DISTANCE := 3.2 # metros detrás del jugador en tercera persona
-const THIRD_PERSON_SHOULDER := 0.35 # desplazamiento a la derecha (vista "por encima del hombro")
+const THIRD_PERSON_DISTANCE := 2.3 # metros detrás del jugador en tercera persona
+const THIRD_PERSON_SHOULDER := 0.3  # desplazamiento a la derecha (vista "por encima del hombro")
 const SWIM_SPEED := 3.0        # velocidad horizontal en el agua
 const SWIM_UP_SPEED := 3.2     # nadar hacia arriba (Espacio con la cabeza bajo el agua)
 const WATER_GRAVITY := 5.0     # en el agua se hunde despacio...
@@ -284,7 +284,11 @@ func _process(delta: float) -> void:
 	if not _is_orbiting():
 		_orbit = _orbit.lerp(Vector2.ZERO, 1.0 - exp(-6.0 * delta))
 	var base_yaw := (PI if _front_view else 0.0) + _debug_camera_yaw
-	_spring.rotation = Vector3(_orbit.y, base_yaw + _orbit.x, 0.0)
+	# Orientación deseada del brazo de cámara: primero el giro horizontal y luego la inclinación
+	# (orden YXZ, sin balanceo). Como cuelga de la cabeza, que ya está inclinada, se le quita esa
+	# inclinación; si no, al girar la cámara de lado la inclinación se volvería un giro del horizonte.
+	var desired := Basis.from_euler(Vector3(_pitch + _orbit.y, base_yaw + _orbit.x, 0.0))
+	_spring.basis = _head.basis.inverse() * desired
 
 	_avatar.set_look_pitch(_pitch)
 	_update_highlight()

@@ -14,8 +14,10 @@ class_name SkinModel
 const TEXTURE_SIZE := 64
 const PIXEL := 1.4 / 32.0
 const JOINT_ROW := 6          # brazos y piernas se doblan a 6 px de su extremo superior
-const JOINT_OVERLAP := 0.75   # px que el segmento inferior se mete en el superior (sin huecos al doblar)
-const JOINT_INSET := 0.05     # px que el segmento inferior es más estrecho (evita parpadeos al solaparse)
+const JOINT_OVERLAP := 2.0    # px que el segmento inferior se mete en el superior (sin huecos al doblar)
+const JOINT_UNDERLAP := 1.0   # px que el segmento superior baja dentro del inferior
+const HIP_OVERLAP := 2.5      # px que el muslo sube dentro del torso (sin hueco en la cadera)
+const JOINT_INSET := 0.05     # px de estrechamiento de las piezas que se solapan (evita parpadeos)
 
 ## Partes: tamaño (px), origen en la imagen de la capa base y de la exterior, pivote (px, desde
 ## los pies) y esquina mínima de la caja respecto al pivote. "inflate": cuánto sobresale la capa
@@ -69,7 +71,7 @@ static func is_limb(part: String) -> bool:
 ## segmento: filas [rows.x, rows.y) de su textura, contadas desde arriba (0..12). La malla se
 ## coloca respecto a 'origin_px' (el pivote de la parte o el de la articulación).
 static func part_mesh(part: String, slim: bool, overlay: bool, rows := Vector2i(0, -1),
-		origin_px := Vector3.ZERO, extend_top_px := 0.0, inset_px := 0.0) -> ArrayMesh:
+		origin_px := Vector3.ZERO, extend_top_px := 0.0, inset_px := 0.0, extend_bottom_px := 0.0) -> ArrayMesh:
 	var info: Dictionary = PARTS[part]
 	var size := part_size(part, slim)
 	var box_min: Vector3 = info["min"]
@@ -79,7 +81,7 @@ static func part_mesh(part: String, slim: bool, overlay: bool, rows := Vector2i(
 	var row_to := size.y if rows.y < 0 else rows.y
 	var grow: float = info["inflate"] if overlay else 0.0
 	var top_y := box_min.y + size.y  # parte de arriba de la caja completa (en px, desde el pivote)
-	var lo := Vector3(box_min.x - grow + inset_px, top_y - row_to - grow, box_min.z - grow + inset_px)
+	var lo := Vector3(box_min.x - grow + inset_px, top_y - row_to - grow - extend_bottom_px, box_min.z - grow + inset_px)
 	var hi := Vector3(box_min.x + size.x + grow - inset_px, top_y - row_from + grow + extend_top_px,
 		box_min.z + size.z + grow - inset_px)
 	lo = (lo - origin_px) * PIXEL
@@ -192,10 +194,13 @@ static func make_part(part: String, texture: Texture2D, slim: bool, layer: int, 
 	lower.position = joint * PIXEL
 	pivot.add_child(lower)
 	for overlay in [false, true]:
-		pivot.add_child(_mesh_node(part_mesh(part, slim, overlay, Vector2i(0, JOINT_ROW)),
-			material, layer, on_top))
+		# Segmento superior: baja un poco dentro del inferior y, en las piernas, sube dentro del
+		# torso; así al doblar codos, rodillas o caderas no se ven rajas entre las piezas.
+		var hip := HIP_OVERLAP if part.begins_with("leg") else 0.0
+		pivot.add_child(_mesh_node(part_mesh(part, slim, overlay, Vector2i(0, JOINT_ROW),
+			Vector3.ZERO, hip, JOINT_INSET if hip > 0.0 else 0.0, JOINT_UNDERLAP), material, layer, on_top))
 		lower.add_child(_mesh_node(part_mesh(part, slim, overlay, Vector2i(JOINT_ROW, size.y),
-			joint, JOINT_OVERLAP, JOINT_INSET), material, layer, on_top))
+			joint, JOINT_OVERLAP, JOINT_INSET * 2.0), material, layer, on_top))
 	return pivot
 
 

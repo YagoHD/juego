@@ -13,6 +13,7 @@ const LAYER := 1 << 1
 const IDLE_ACTION_DELAY := 15.0
 const ACTIONS := {"estirarse": 2.6, "sentadillas": 2.6, "salto": 1.1, "voltereta": 1.4}  # duración (s)
 const HIP_HEIGHT := 0.7   # centro de giro del cuerpo (para la voltereta)
+const SMOOTHING := 14.0   # rapidez con la que las articulaciones alcanzan su pose (más = más seco)
 
 var _root: Node3D          # "cadera": todo cuelga de aquí; se mueve y gira para las acciones
 var _head: Node3D
@@ -34,6 +35,7 @@ var _action_t := 0.0       # 0..1 a lo largo de la acción
 var _frozen := false       # solo para capturas: congela la acción en un instante
 var _blink_timer := 3.0
 var _rng := RandomNumberGenerator.new()
+var _smoothed := {}        # pose actual (persigue a la pose objetivo con inercia)
 
 
 ## Construye el cuerpo con una skin (textura de 64x64). Se puede volver a llamar para cambiarla.
@@ -157,32 +159,49 @@ func _process(delta: float) -> void:
 	# --- Pose base: andar + reposo (respiración y balanceo) ---
 	# Ángulos en X: positivo = la extremidad va hacia delante (el cuerpo mira a -Z). Rodillas
 	# en negativo (el pie va hacia atrás) y codos en positivo (la mano va hacia delante).
-	var stride := sin(_walk_phase) * 0.75 * _walk_amount
-	var lift_l := maxf(0.0, cos(_walk_phase)) * _walk_amount   # la pierna izquierda avanza
-	var lift_r := maxf(0.0, -cos(_walk_phase)) * _walk_amount  # la derecha avanza
-	var rest := 1.0 - _walk_amount
-	var breath := sin(_time * 2.2) * rest           # ~3 respiraciones cada 8 s
-	var sway := sin(_time * 0.9) * rest             # balanceo lento de lado a lado
+	var walk := _walk_amount
+	var phase := _walk_phase
+	var stride := sin(phase) * 0.7 * walk                     # muslo izquierdo (el derecho, opuesto)
+	var arm_swing := sin(phase - 0.25) * 0.6 * walk           # los brazos van un poco por detrás
+	var lift_l := maxf(0.0, cos(phase)) * walk                # la pierna izquierda avanza (se dobla)
+	var lift_r := maxf(0.0, -cos(phase)) * walk
+	var bounce := (absf(cos(phase)) - 0.5) * 0.035 * walk     # sube y baja dos veces por paso
+	var rest := 1.0 - walk
+	var breath := sin(_time * 2.2) * rest                     # ~3 respiraciones cada 8 s
+	var sway := sin(_time * 0.9) * rest                       # balanceo lento de lado a lado
 	var s := sin(_swing * PI)
 
 	var pose := {
-		"root_y": breath * 0.006 - 0.012 * _walk_amount,
-		"root_rot": Vector3(-0.05 * _walk_amount, 0.0, sway * 0.025),
-		"head": Vector3(clampf(_look_pitch, -0.9, 0.7) + breath * 0.02, sway * 0.05, -sway * 0.02),
+		"root_y": breath * 0.006 + bounce - 0.015 * walk,
+		# Al andar: inclinación hacia delante, giro de caderas con cada paso y vaivén lateral.
+		"root_rot": Vector3(-0.06 * walk, sin(phase) * 0.12 * walk, sway * 0.025 + sin(phase) * 0.03 * walk),
+		# La cabeza compensa el giro de caderas (mira al frente) y sigue hacia dónde se apunta.
+		"head": Vector3(clampf(_look_pitch, -0.9, 0.7) + breath * 0.02,
+			sway * 0.05 - sin(phase) * 0.1 * walk, -sway * 0.02),
 		# Brazo derecho: sostiene el bloque con el codo doblado; al golpear, el brazo sube y el
 		# codo se estira hacia el bloque.
-		"arm_r": Vector3(stride * 0.7 + 0.15 + s * 1.15, s * 0.3, -s * 0.15 + 0.04 * rest + breath * 0.015),
+		"arm_r": Vector3(-arm_swing * 0.6 + 0.15 + s * 1.15, s * 0.3, -s * 0.15 + 0.05 * rest + breath * 0.015 + 0.04 * walk),
 		"elbow_r": 0.75 - s * 0.55,
-		"arm_l": Vector3(-stride * 0.8, 0.0, -0.04 * rest - breath * 0.015),
-		"elbow_l": 0.12 + 0.35 * _walk_amount + 0.25 * maxf(0.0, -stride),
+		# Brazo izquierdo: balanceo natural; el codo se dobla más cuando va hacia delante.
+		"arm_l": Vector3(arm_swing, 0.0, -0.05 * rest - breath * 0.015 - 0.04 * walk),
+		"elbow_l": 0.15 + 0.2 * walk + 0.55 * maxf(0.0, arm_swing),
 		"leg_r": Vector3(-stride, 0.0, 0.0),
-		"knee_r": -1.1 * lift_r - 0.04,
+		"knee_r": -1.15 * lift_r - 0.08 * walk - 0.04,
 		"leg_l": Vector3(stride, 0.0, 0.0),
-		"knee_l": -1.1 * lift_l - 0.04,
+		"knee_l": -1.15 * lift_l - 0.08 * walk - 0.04,
 	}
 	if ACTIONS.has(_action):
 		_blend_action(pose)
-	_apply(pose)
+
+	# Inercia: cada articulación persigue su pose objetivo en vez de saltar a ella; quita la
+	# sensación "robótica" de las fórmulas puras.
+	if _frozen or _smoothed.is_empty():
+		_smoothed = pose
+	else:
+		var k := 1.0 - exp(-SMOOTHING * delta)
+		for key in pose:
+			_smoothed[key] = _mix(_smoothed[key], pose[key], k)
+	_apply(_smoothed)
 
 
 func _apply(pose: Dictionary) -> void:
