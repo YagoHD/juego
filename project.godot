@@ -1,0 +1,22 @@
+; Engine configuration file.
+; Proyecto: Isla del Naufragio (Beta) — mundo de voxels pequeños
+; Ver docs/DESIGN.md para el diseño completo.
+
+config_version=5
+
+[application]
+
+config/name="Isla del Naufragio"
+config/description="Beta: isla de voxels pequeños. Tutorial y primer hito."
+run/main_scene="res://tests/voxel_test/voxel_test.tscn"
+config/features=PackedStringArray("4.3")
+config/icon="res://icon.svg"
+
+[display]
+
+window/size/viewport_width=1280
+window/size/viewport_height=720
+
+[rendering]
+
+renderer/rendering_method="forward_plus"

@@ -1,0 +1,6 @@
+[gd_scene load_steps=2 format=3 uid="uid://b1voxeltest0001"]
+
+[ext_resource type="Script" path="res://tests/voxel_test/voxel_test.gd" id="1_voxeltest"]
+
+[node name="VoxelTest" type="Node3D"]
+script = ExtResource("1_voxeltest")
