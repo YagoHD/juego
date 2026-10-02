@@ -8,6 +8,14 @@ const STEP := 4                # píxeles del mapa por celda (4 px = 8 voxels = 
 const CANOPY_VOXELS := 7.0     # altura del manto de copas sobre el suelo
 const CANOPY_MIN_DENSITY := 20 # densidad de árboles (milésimas) para dibujar copas
 const SINK := 0.3              # se hunde un poco para no asomar entre los voxels cercanos
+const CANOPY_SHADE := 0.22     # cuánto se oscurecen las copas lejanas
+const COLOR_JITTER := 0.12     # variación aleatoria de tono por vértice
+
+
+func _noise01(x: int, z: int) -> float:
+	var h: int = (x * 73856093) ^ (z * 19349663)
+	h = (h ^ (h >> 13)) * 1274126177
+	return float(h & 0xffff) / 65535.0
 
 
 func build(gen: IslandGenerator, block_colors: Dictionary, voxel_size: float, hide_radius: float) -> void:
@@ -48,7 +56,11 @@ func build(gen: IslandGenerator, block_colors: Dictionary, voxel_size: float, hi
 				var tree: int = surface[i * 3 + 2]
 				if (tree & 63) >= CANOPY_MIN_DENSITY:
 					y += CANOPY_VOXELS
-					color = pine if (tree >> 6) == 2 else leaves
+					# Visto de cerca, un bosque es más oscuro que sus hojas por las sombras entre
+					# árboles: se oscurece para que la malla lejana empalme con los voxels.
+					color = (pine if (tree >> 6) == 2 else leaves).darkened(CANOPY_SHADE)
+				# Pequeña variación de tono para que no parezca una superficie de plástico.
+				color = color.darkened(_noise01(gx, gz) * COLOR_JITTER)
 			var world_x := (float(px) * vpp - IslandGenerator.MAP_HALF) * voxel_size
 			var world_z := (float(pz) * vpp - IslandGenerator.MAP_HALF) * voxel_size
 			vertices[gz * side + gx] = Vector3(world_x, y * voxel_size - SINK, world_z)

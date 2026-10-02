@@ -28,36 +28,9 @@ const MAX_LOAD_SECONDS := 60.0  # tope de seguridad: entrar aunque no haya "term
 const WORLD_DIR := "user://world"
 const AUTOSAVE_SECONDS := 60.0
 
-# Colores de los bloques (los usan los cubos y la malla lejana, para que coincidan).
-const BLOCK_COLORS := {
-	IslandGenerator.GRASS: Color(0.37, 0.65, 0.33),
-	IslandGenerator.DIRT: Color(0.55, 0.40, 0.26),
-	IslandGenerator.STONE: Color(0.50, 0.50, 0.52),
-	IslandGenerator.SAND: Color(0.88, 0.80, 0.56),
-	IslandGenerator.SNOW: Color(0.95, 0.96, 0.98),
-	IslandGenerator.WOOD: Color(0.45, 0.30, 0.17),
-	IslandGenerator.LEAVES: Color(0.24, 0.52, 0.22),
-	IslandGenerator.WATER: Color(0.25, 0.62, 0.80, 0.62),
-	IslandGenerator.PINE_LEAVES: Color(0.13, 0.33, 0.20),
-	IslandGenerator.CORRUPT_SOIL: Color(0.30, 0.22, 0.32),
-	IslandGenerator.DEAD_WOOD: Color(0.22, 0.18, 0.17),
-	IslandGenerator.WHEAT: Color(0.90, 0.76, 0.30),
-}
-
-const BLOCK_NAMES := {
-	IslandGenerator.GRASS: "Hierba",
-	IslandGenerator.DIRT: "Tierra",
-	IslandGenerator.STONE: "Piedra",
-	IslandGenerator.SAND: "Arena",
-	IslandGenerator.SNOW: "Nieve",
-	IslandGenerator.WOOD: "Madera",
-	IslandGenerator.LEAVES: "Hoja",
-	IslandGenerator.WATER: "Agua",
-	IslandGenerator.WHEAT: "Trigo",
-}
-
 var _player: Player
 var _hud: Label
+var _hotbar: Hotbar
 var _terrain: VoxelTerrain
 var _generator: IslandGenerator
 var _loading := true
@@ -99,11 +72,11 @@ func _save_world() -> void:
 func _build_world() -> void:
 	var library := VoxelBlockyLibrary.new()
 	library.add_model(VoxelBlockyModelEmpty.new())  # 0 AIR
-	for id in range(1, 13):
+	for id in range(1, Blocks.LAST_ID + 1):
 		if id == IslandGenerator.WATER:
 			library.add_model(_make_water())
 		else:
-			library.add_model(_make_cube(BLOCK_COLORS[id]))
+			library.add_model(_make_cube(Blocks.color_of(id)))
 	library.bake()
 
 	var mesher := VoxelMesherBlocky.new()
@@ -131,7 +104,7 @@ func _build_world() -> void:
 
 func _build_far_terrain() -> void:
 	var far := FarTerrain.new()
-	far.build(_generator, BLOCK_COLORS, VOXEL_SIZE, FAR_HIDE_RADIUS)
+	far.build(_generator, Blocks.COLORS, VOXEL_SIZE, FAR_HIDE_RADIUS)
 	add_child(far)
 
 
@@ -194,7 +167,7 @@ func _make_water() -> VoxelBlockyModelCube:
 	# Agua de ríos y lagos: translúcida, sin caras internas y atravesable.
 	var cube := VoxelBlockyModelCube.new()
 	var material := StandardMaterial3D.new()
-	material.albedo_color = BLOCK_COLORS[IslandGenerator.WATER]
+	material.albedo_color = Blocks.color_of(IslandGenerator.WATER)
 	material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 	material.roughness = 0.08
 	cube.set_material_override(0, material)
@@ -316,15 +289,23 @@ func _build_hud() -> void:
 	_hud.add_theme_constant_override("outline_size", 4)
 	canvas.add_child(_hud)
 
-	# Punto de mira en el centro.
+	# Punto de mira, centrado de verdad (la etiqueta se centra sobre el centro de la pantalla).
 	var crosshair := Label.new()
 	crosshair.text = "+"
 	crosshair.mouse_filter = Control.MOUSE_FILTER_IGNORE  # no robar clics del juego
+	crosshair.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	crosshair.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	crosshair.add_theme_font_size_override("font_size", 22)
 	crosshair.add_theme_color_override("font_color", Color.WHITE)
 	crosshair.add_theme_color_override("font_outline_color", Color.BLACK)
 	crosshair.add_theme_constant_override("outline_size", 3)
 	crosshair.set_anchors_preset(Control.PRESET_CENTER)
+	crosshair.position = Vector2(-15, -17)
+	crosshair.size = Vector2(30, 30)
 	canvas.add_child(crosshair)
+
+	_hotbar = Hotbar.new()
+	canvas.add_child(_hotbar)
 
 
 func _process(_delta: float) -> void:
@@ -333,6 +314,39 @@ func _process(_delta: float) -> void:
 		return
 	if _hud == null or _player == null:
 		return
-	var block_name: String = BLOCK_NAMES.get(_player.get_current_block(), "?")
-	_hud.text = "FPS: %d\nBloque: %s  (1 hierba · 2 tierra · 3 piedra · 4 arena · 5 nieve · 6 madera · 7 hoja · 8 agua · 9 trigo)\nClic izq. romper · Clic der. colocar · WASD mover · Espacio saltar · F volar · Esc ratón" \
-		% [Engine.get_frames_per_second(), block_name]
+	_hotbar.select(_player.get_hotbar_index())
+	_hud.text = "FPS: %d\nClic izq. romper · Clic der. colocar · 1-9 / rueda: bloque\nWASD mover · Espacio saltar · F volar · V cámara · Esc ratón" \
+		% Engine.get_frames_per_second()
+	_update_capture()
+
+
+# ------------------------------------------------------------------ capturas (para pruebas)
+
+# Modo captura: arranca, coloca la cámara, guarda una imagen y sale. Sirve para revisar el
+# aspecto del juego sin tener que jugar. Ejemplo:
+#   godot --path . -- --capture=C:/tmp/foto.png --tp --pitch=-0.3 --yaw=40 --up=30
+var _capture_frames := -1
+
+func _update_capture() -> void:
+	var path := _arg("--capture=")
+	if path == "":
+		return
+	if _capture_frames < 0:
+		if not _player.is_on_ground_ready():
+			return
+		_player.debug_pose(OS.get_cmdline_user_args().has("--tp"), float(_arg("--pitch=", "0")),
+			float(_arg("--yaw=", "0")), float(_arg("--up=", "0")))
+		_capture_frames = int(_arg("--wait=", "90"))
+		return
+	_capture_frames -= 1
+	if _capture_frames == 0:
+		get_viewport().get_texture().get_image().save_png(path)
+		print("[captura] guardada en ", path)
+		get_tree().quit()
+
+
+func _arg(prefix: String, default := "") -> String:
+	for a in OS.get_cmdline_user_args():
+		if a.begins_with(prefix):
+			return a.substr(prefix.length())
+	return default
