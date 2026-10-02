@@ -15,6 +15,7 @@ param(
     [string]$Give = "", # objetos para la foto: "stone:12,dirt:30"
     [string]$Drop = "", # soltar un objeto delante (p. ej. "wood")
     [switch]$Inventory, # abrir la pantalla de inventario
+    [string]$Wear = "", # ropa puesta: "shirt,pants,belt,backpack"
     [int]$Wait = 90,
     [string]$Godot = "$env:USERPROFILE\Desktop\godot.windows.editor.x86_64.exe"
 )
@@ -30,6 +31,7 @@ if ($PSBoundParameters.ContainsKey("Yaw")) { $gameArgs += "--yaw=$Yaw" }
 if ($Give -ne "") { $gameArgs += "--give=$Give" }
 if ($Drop -ne "") { $gameArgs += "--drop=$Drop" }
 if ($Inventory) { $gameArgs += "--inventory" }
+if ($Wear -ne "") { $gameArgs += "--wear=$Wear" }
 if ($At -ne "") { $gameArgs += "--at=$At" }
 $p = Start-Process -FilePath $Godot -ArgumentList $gameArgs -RedirectStandardOutput "$env:TEMP\capture_out.txt" -RedirectStandardError "$env:TEMP\capture_err.txt" -PassThru
 if (-not $p.WaitForExit(180000)) { $p.Kill(); Write-Output "TIMEOUT" }

@@ -53,6 +53,11 @@
 - **Correr** con doble W. **Texturas** de 16x16 en todos los bloques (atlas, repintables).
 - **Ciclo de día y noche** de 24 min (sol, luna, estrellas, nubes 3D, niebla y luz por hora).
 - **Inventario**: objetos al romper, recogida automática, pantalla (E), modo creativo (C).
+  Empieza pequeño: 3 huecos de barra + 9 de inventario. Camiseta, pantalón y cinturón dan
+  +2 de barra cada uno (bolsillos); la mochila +18 de inventario. Se ponen en el panel
+  "Equipo" del inventario y se ven en el personaje (skin pintada + mochila 3D). De momento la
+  ropa y la mochila están en los cofres del naufragio. Objetos no-bloque (cuerda, ropa) se ven
+  con grosor en la mano y en el suelo (`scripts/items/item_mesh.gd`).
 - **Cofres** (clic derecho) y **naufragio** en la playa con botín (`scripts/world/structures.gd`).
 
 ## Siguiente (propuestas, a decidir con el usuario)
@@ -61,8 +66,8 @@
    definidas en datos que el generador "estampa", o construirlas en el juego y guardarlas.
 2. **Cama y sueño** (el ciclo de día y noche ya existe): dormir salta la noche, fatiga, sueños.
 3. **Agua jugable**: nadar, cascadas, que el agua colocada fluya.
-4. **Fabricación** (troncos -> tablones, tablones -> cofre...) y objetos que no son bloques
-   (cuerda, comida). El inventario y los objetos ya existen.
+4. **Fabricación**: PENDIENTE DE DISEÑAR con Yago (no copiar la de Minecraft). Ya existen
+   la cuerda y la tela como materiales.
 5. Pulido: sonidos de pasos/romper/colocar, texturas en los bloques, partículas al romper.
 
 ## Herramientas

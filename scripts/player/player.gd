@@ -2,6 +2,8 @@ extends CharacterBody3D
 class_name Player
 
 signal creative_changed(enabled: bool)
+## Cambia cuántos huecos hay (al ponerse o quitarse ropa o la mochila, o al cambiar de modo).
+signal inventory_layout_changed
 ## Clic derecho sobre un bloque que se usa (un cofre...) en vez de colocar encima.
 signal block_used(cell: Vector3i, block_id: int)
 signal block_broken(cell: Vector3i, block_id: int)
@@ -72,6 +74,10 @@ var _hotbar_index := 0
 var inventory := Inventory.new(36)
 var creative_inventory := Inventory.new(36)
 var creative := false
+## Ropa y mochila puestas: id del objeto o "" (dan bolsillos e inventario, ver hotbar_size).
+var equipment := {"shirt": "", "pants": "", "belt": "", "backpack": ""}
+const BASE_HOTBAR := 3    # huecos de la barra sin ropa con bolsillos
+const BASE_STORAGE := 9   # huecos de inventario sin mochila
 ## true mientras hay una pantalla abierta (inventario, cofre...): no se mueve ni mira.
 var ui_open := false
 var _captured := true
@@ -124,7 +130,7 @@ func _ready() -> void:
 	_camera.add_child(_held)
 
 	# Skin del jugador (formato Minecraft): la usan el cuerpo y el brazo en primera persona.
-	apply_skin(SkinComposer.load_player_skin(), SkinComposer.DEFAULT_OPTIONS["slim"])
+	update_appearance()
 
 	# Observadores del terreno: uno amplio solo para dibujar (la zona detallada) y otro
 	# pequeño solo para las colisiones, que son caras de calcular.
@@ -226,7 +232,8 @@ func _unhandled_input(event: InputEvent) -> void:
 				_sprinting = true
 			_last_w_press = now
 		if key.keycode >= KEY_1 and key.keycode <= KEY_9:
-			_select_slot(key.keycode - KEY_1)
+			if key.keycode - KEY_1 < hotbar_size():
+				_select_slot(key.keycode - KEY_1)
 		elif key.keycode == KEY_C:
 			set_creative(not creative)
 		elif key.keycode == KEY_F:
@@ -279,15 +286,16 @@ func _set_captured(captured: bool) -> void:
 
 
 func _select_slot(index: int) -> void:
-	_hotbar_index = posmod(index, Hotbar.SLOTS)
+	_hotbar_index = posmod(index, hotbar_size())
 	_refresh_held()
 
 
 ## Actualiza el bloque de la mano (primera y tercera persona) con el hueco seleccionado.
 func _refresh_held() -> void:
-	var id := get_current_block()
-	_held.set_block(id)
-	_avatar.set_block(id)
+	var stack := active_inventory().get_slot(_hotbar_index)
+	var id: String = "" if stack.is_empty() else stack["id"]
+	_held.set_item(id)
+	_avatar.set_item(id)
 
 
 func _apply_camera_mode() -> void:
@@ -615,14 +623,15 @@ func active_inventory() -> Inventory:
 	return creative_inventory if creative else inventory
 
 
-## Mete objetos recogidos en el inventario. Devuelve los que no cupieron.
+## Mete objetos recogidos en el inventario (solo en los huecos desbloqueados).
+## Devuelve los que no cupieron.
 func pick_up(id: String, count: int) -> int:
-	return inventory.add(id, count)
+	return inventory.add(id, count, unlocked_slots())
 
 
 ## ¿Cabe al menos uno de estos objetos? (para que no vuelen hacia él si va lleno)
 func can_pick_up(id: String) -> bool:
-	for i in inventory.size():
+	for i in unlocked_slots():
 		var s := inventory.get_slot(i)
 		if s.is_empty() or (s["id"] == id and int(s["count"]) < ItemDB.max_stack(id)):
 			return true
@@ -632,7 +641,8 @@ func can_pick_up(id: String) -> bool:
 func set_creative(enabled: bool) -> void:
 	creative = enabled
 	creative_changed.emit(enabled)
-	_refresh_held()
+	_select_slot(_hotbar_index)
+	inventory_layout_changed.emit()
 
 
 func _fill_creative_inventory() -> void:
@@ -640,18 +650,104 @@ func _fill_creative_inventory() -> void:
 	for block in Blocks.HOTBAR:
 		creative_inventory.set_slot(slot, {"id": ItemDB.item_of_block(block), "count": 1})
 		slot += 1
-	for id in ItemDB.BLOCK_ITEMS:
+	for id in ItemDB.BLOCK_ITEMS.keys() + ItemDB.OTHER_ITEMS.keys():
 		if slot < creative_inventory.size() and creative_inventory.count_of(id) == 0:
 			creative_inventory.set_slot(slot, {"id": id, "count": 1})
 			slot += 1
 
+
+# ------------------------------------------------------------------ ropa y bolsillos
+
+## Huecos de la barra disponibles: 3 de base + los bolsillos de la ropa puesta (máx. 9).
+func hotbar_size() -> int:
+	if creative:
+		return Hotbar.SLOTS
+	var size := BASE_HOTBAR
+	for slot in equipment:
+		size += ItemDB.pockets(equipment[slot])
+	return mini(size, Hotbar.SLOTS)
+
+
+## Huecos de inventario disponibles: 9 de base + los de la mochila (máx. 27).
+func storage_size() -> int:
+	if creative:
+		return inventory.size() - Hotbar.SLOTS
+	var size := BASE_STORAGE
+	for slot in equipment:
+		size += ItemDB.storage(equipment[slot])
+	return mini(size, inventory.size() - Hotbar.SLOTS)
+
+
+## Índices de los huecos que se pueden usar (barra 0-8 e inventario 9-35, según la ropa).
+func unlocked_slots() -> Array:
+	return range(0, hotbar_size()) + range(Hotbar.SLOTS, Hotbar.SLOTS + storage_size())
+
+
+## Ponerse una prenda (o la mochila). Devuelve false si no es para ese hueco o ya hay otra.
+func equip(slot: String, id: String) -> bool:
+	if ItemDB.wear_slot(id) != slot or equipment.get(slot, "x") != "":
+		return false
+	equipment[slot] = id
+	_on_equipment_changed()
+	return true
+
+
+## ¿Se puede quitar? Solo si los huecos que deja de dar (bolsillos o mochila) están vacíos.
+func can_unequip(slot: String) -> bool:
+	var id: String = equipment.get(slot, "")
+	if id == "":
+		return false
+	var before := unlocked_slots()
+	equipment[slot] = ""
+	var after := unlocked_slots()
+	equipment[slot] = id
+	for i in before:
+		if not after.has(i) and not inventory.is_empty_slot(i):
+			return false
+	return true
+
+
+## Quitarse una prenda: devuelve su id ("" si no se puede).
+func unequip(slot: String) -> String:
+	if not can_unequip(slot):
+		return ""
+	var id: String = equipment[slot]
+	equipment[slot] = ""
+	_on_equipment_changed()
+	return id
+
+
+## Para cargar la partida: pone el equipo guardado (ignora lo que no encaje en su hueco).
+func set_equipment(data: Dictionary) -> void:
+	for slot in equipment:
+		var id := str(data.get(slot, ""))
+		equipment[slot] = id if ItemDB.wear_slot(id) == slot else ""
+	_on_equipment_changed()
+
+
+func _on_equipment_changed() -> void:
+	_select_slot(_hotbar_index)
+	update_appearance()
+	inventory_layout_changed.emit()
+
+
+## Pinta la skin según la ropa que lleva (salvo que haya una skin propia en user://skins) y
+## muestra u oculta la mochila.
+func update_appearance() -> void:
+	var options := SkinComposer.DEFAULT_OPTIONS.duplicate()
+	options["shirt_style"] = "camiseta" if equipment["shirt"] != "" else "rota"
+	options["pants_style"] = "largo" if equipment["pants"] != "" else "corto"
+	options["belt"] = equipment["belt"] != ""
+	options["straps"] = equipment["backpack"] != ""
+	apply_skin(SkinComposer.load_player_skin(options), options["slim"])
+	_avatar.set_backpack(equipment["backpack"] != "")
 
 ## Cambia la skin del jugador (cuerpo y brazo). El futuro editor de personaje la usará.
 func apply_skin(texture: Texture2D, slim: bool) -> void:
 	_avatar.build(texture, slim)
 	_held.set_skin(texture, slim)
 	if _hotbar_index >= 0 and _held != null:
-		_avatar.set_block(get_current_block())
+		_refresh_held()
 
 
 func is_third_person() -> bool:

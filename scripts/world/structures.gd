@@ -96,8 +96,9 @@ static func _build_shipwreck(gen: IslandGenerator) -> void:
 	var hull_chest := Vector3i((ship_basis * chest_local + origin).floor())
 	_put(hull_chest, IslandGenerator.CHEST)
 	_chest_loot[hull_chest] = [
-		{"id": "planks", "count": 24}, {"id": "cloth", "count": 8}, {"id": "wood", "count": 6},
-		{"id": "wheat", "count": 5},
+		{"id": "planks", "count": 24}, {"id": "cloth", "count": 8}, {"id": "rope", "count": 4},
+		{"id": "wood", "count": 6},
+		{"id": "wheat", "count": 5}, {"id": "backpack", "count": 1}, {"id": "shirt", "count": 1},
 	]
 
 	# En la playa: el mástil caído hacia tierra, con la vela tirada al lado.
@@ -131,7 +132,8 @@ static func _build_shipwreck(gen: IslandGenerator) -> void:
 	var beach_chest := Vector3i(int(buried.x), bh - 1, int(buried.y))
 	_put(beach_chest, IslandGenerator.CHEST)
 	_chest_loot[beach_chest] = [
-		{"id": "planks", "count": 10}, {"id": "cloth", "count": 3}, {"id": "chest", "count": 1},
+		{"id": "planks", "count": 10}, {"id": "cloth", "count": 3}, {"id": "rope", "count": 2},
+		{"id": "chest", "count": 1}, {"id": "pants", "count": 1}, {"id": "belt", "count": 1},
 	]
 
 	# El jugador aparece en la playa, unos metros tierra adentro, mirando al barco.

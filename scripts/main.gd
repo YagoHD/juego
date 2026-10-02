@@ -39,6 +39,7 @@ var _hotbar: Hotbar
 var _underwater: ColorRect
 var _day_night: DayNight
 var _inventory_screen: InventoryScreen
+var _screen_sections := Callable()  # rehace las secciones de la pantalla abierta
 var _chests := ChestStorage.new()
 var _world_id := ""  # huella del mundo (nombre de sus archivos de guardado)
 var _terrain: VoxelTerrain
@@ -226,8 +227,8 @@ func _build_player() -> void:
 	_chests.load_from(_chests_save_path())
 	_player.block_used.connect(_on_block_used)
 	_player.block_broken.connect(_on_block_broken)
-	_hotbar.bind(_player.active_inventory(), _player.creative)
-	_player.creative_changed.connect(func(on: bool) -> void: _hotbar.bind(_player.active_inventory(), on))
+	_rebind_hotbar()
+	_player.inventory_layout_changed.connect(_on_layout_changed)
 
 
 # ------------------------------------------------------------------ pantalla de carga
@@ -329,6 +330,7 @@ func _build_hud() -> void:
 	_inventory_screen = InventoryScreen.new()
 	ui_layer.add_child(_inventory_screen)
 	_inventory_screen.closed.connect(_on_screen_closed)
+	_inventory_screen.overflow.connect(_drop_in_front)
 
 	# Tinte azul cuando la cabeza está bajo el agua.
 	_underwater = ColorRect.new()
@@ -376,12 +378,16 @@ func _update_capture() -> void:
 			_player.global_position = Vector3(vx, ground + 2, vz) * VOXEL_SIZE
 		_player.debug_pose(OS.get_cmdline_user_args().has("--tp"), float(_arg("--pitch=", "0")),
 			float(_arg("--yaw=", str(rad_to_deg(_player.rotation.y)))), float(_arg("--up=", "0")) + (0.01 if at != "" else 0.0))
+		var wear := _arg("--wear=")  # ropa para la foto: "shirt,pants,belt,backpack"
+		if wear != "":
+			for id in wear.split(","):
+				_player.equip(ItemDB.wear_slot(id), id)
 		var give := _arg("--give=")  # objetos para la foto: "stone:12,dirt:30"
 		if give != "":
 			_player.inventory.clear()
 			for entry in give.split(","):
 				var pair := entry.split(":")
-				_player.inventory.add(pair[0], int(pair[1]))
+				_player.pick_up(pair[0], int(pair[1]))
 		if _arg("--drop=") != "":  # soltar un objeto delante del jugador para verlo en el suelo
 			var forward := -_player.global_basis.z
 			ItemDrop.spawn(self, _player.global_position + forward * 1.6 + Vector3.UP, _arg("--drop="), 1)
@@ -428,6 +434,7 @@ func _save_player() -> void:
 	var data := {
 		"inventory": _player.inventory.to_data(),
 		"creative": _player.creative,
+		"equipment": _player.equipment,
 		"hour": _day_night.hour,
 		"day": _day_night.day,
 	}
@@ -445,6 +452,8 @@ func _load_player() -> void:
 	var d: Dictionary = data
 	if d.get("inventory") is Array:
 		_player.inventory.from_data(d["inventory"])
+	if d.get("equipment") is Dictionary:
+		_player.set_equipment(d["equipment"])
 	_player.set_creative(bool(d.get("creative", false)))
 	_day_night.day = int(d.get("day", 1))
 	_day_night.set_hour(float(d.get("hour", DayNight.START_HOUR)))
@@ -467,22 +476,53 @@ func _input(event: InputEvent) -> void:
 
 
 func open_inventory() -> void:
-	var inv := _player.active_inventory()
 	var title := "Inventario (creativo: bloques infinitos)" if _player.creative else "Inventario"
-	var sections: Array[Dictionary] = [
-		{"title": title, "inventory": inv, "slots": range(9, inv.size()), "columns": 9},
-		{"title": "Barra", "inventory": inv, "slots": range(0, 9), "columns": 9},
-	]
-	_show_screen(sections)
+	_screen_sections = _player_sections.bind(title)
+	var side: Control = null
+	if not _player.creative:  # equipo (en creativo no hace falta)
+		side = EquipmentPanel.new(_player, _inventory_screen)
+	_show_screen(_screen_sections.call(), side)
 
 
-func _show_screen(sections: Array[Dictionary]) -> void:
+## Huecos del jugador que se ven en pantalla: solo los disponibles según su ropa y mochila.
+func _player_sections(title: String) -> Array[Dictionary]:
+	var inv := _player.active_inventory()
+	var storage := {"title": title, "inventory": inv, "columns": 9,
+		"slots": range(Hotbar.SLOTS, Hotbar.SLOTS + _player.storage_size())}
+	if not _player.creative and _player.equipment["backpack"] == "":
+		storage["hint"] = "Sin mochila solo cabe esto. Busca una en el naufragio."
+	var bar := {"title": "Barra", "inventory": inv, "columns": 9, "slots": range(0, _player.hotbar_size())}
+	if not _player.creative and _player.hotbar_size() < Hotbar.SLOTS:
+		bar["hint"] = "La ropa con bolsillos da más huecos a mano."
+	var out: Array[Dictionary] = [storage, bar]
+	return out
+
+
+func _show_screen(sections: Array[Dictionary], side: Control = null) -> void:
 	_player.ui_open = true
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
-	_inventory_screen.open(sections)
+	_inventory_screen.open(sections, side)
+
+
+func _rebind_hotbar() -> void:
+	_hotbar.bind(_player.active_inventory(), _player.creative, _player.hotbar_size())
+
+
+## Al cambiar de ropa o de modo: la barra y la pantalla abierta muestran los huecos nuevos.
+func _on_layout_changed() -> void:
+	_rebind_hotbar()
+	if _inventory_screen.visible and _screen_sections.is_valid():
+		_inventory_screen.set_sections(_screen_sections.call())
+
+
+## Tira al suelo, delante del jugador, lo que no cabe.
+func _drop_in_front(id: String, count: int) -> void:
+	var forward := -_player.global_basis.z
+	ItemDrop.spawn(self, _player.global_position + forward * 1.2 + Vector3.UP * 1.2, id, count)
 
 
 func _on_screen_closed() -> void:
+	_screen_sections = Callable()
 	_player.ui_open = false
 	_player._set_captured(true)
 
@@ -497,13 +537,16 @@ func _on_block_used(cell: Vector3i, block_id: int) -> void:
 	if block_id != IslandGenerator.CHEST:
 		return
 	var chest := _chests.get_or_create(cell)
-	var inv := _player.active_inventory()
-	var sections: Array[Dictionary] = [
+	_screen_sections = _chest_sections.bind(chest)
+	_show_screen(_screen_sections.call())
+
+
+func _chest_sections(chest: Inventory) -> Array[Dictionary]:
+	var out: Array[Dictionary] = [
 		{"title": "Cofre", "inventory": chest, "slots": range(0, chest.size()), "columns": 9},
-		{"title": "Inventario", "inventory": inv, "slots": range(9, inv.size()), "columns": 9},
-		{"title": "Barra", "inventory": inv, "slots": range(0, 9), "columns": 9},
 	]
-	_show_screen(sections)
+	out.append_array(_player_sections("Inventario"))
+	return out
 
 
 func _on_block_broken(cell: Vector3i, block_id: int) -> void:

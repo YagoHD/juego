@@ -5,9 +5,11 @@ class_name InventoryScreen
 ##   - clic izquierdo: coger el montón entero / soltarlo, juntarlo con otro igual o intercambiar;
 ##   - clic derecho: coger la mitad / soltar de uno en uno;
 ##   - Mayúsculas + clic: enviar el montón a la otra sección.
-## Cada sección es {"title": String, "inventory": Inventory, "slots": Array[int], "columns": int}.
+## Cada sección es {"title": String, "inventory": Inventory, "slots": Array[int], "columns": int}
+## y, opcional, "hint": String (nota bajo el título).
 
 signal closed
+signal overflow(id: String, count: int)  # lo que no cupo al cerrar: se tira al suelo
 
 const SLOT := 48
 const GAP := 4
@@ -18,6 +20,8 @@ var _cursor := {}                          # montón cogido con el ratón ({} si
 var _cursor_from := {}                     # {"inventory": Inventory, "index": int} de dónde se cogió
 var _cursor_view: Control
 var _box: VBoxContainer
+var _row: HBoxContainer
+var _side: Control                        # panel opcional a la izquierda (equipo y fabricación)
 
 
 func _ready() -> void:
@@ -44,9 +48,12 @@ func _ready() -> void:
 	style.set_border_width_all(2)
 	panel.add_theme_stylebox_override("panel", style)
 	center.add_child(panel)
+	_row = HBoxContainer.new()
+	_row.add_theme_constant_override("separation", 18)
+	panel.add_child(_row)
 	_box = VBoxContainer.new()
 	_box.add_theme_constant_override("separation", 10)
-	panel.add_child(_box)
+	_row.add_child(_box)
 
 	_cursor_view = _make_slot_visual(null)
 	_cursor_view.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -54,8 +61,24 @@ func _ready() -> void:
 	add_child(_cursor_view)
 
 
-## Abre la pantalla con estas secciones.
-func open(sections: Array[Dictionary]) -> void:
+## Abre la pantalla con estas secciones y, si se da, un panel a la izquierda.
+func open(sections: Array[Dictionary], side: Control = null) -> void:
+	if _side != null:
+		_side.queue_free()
+	_side = side
+	if _side != null:
+		_row.add_child(_side)
+		_row.move_child(_side, 0)
+	set_sections(sections)
+	visible = true
+
+
+## Cambia los huecos que se ven sin cerrar la pantalla (p. ej. al ponerse la mochila).
+func set_sections(sections: Array[Dictionary]) -> void:
+	for section in _sections:
+		var old: Inventory = section["inventory"]
+		if old.changed.is_connected(_refresh):
+			old.changed.disconnect(_refresh)
 	_sections = sections
 	for child in _box.get_children():
 		child.queue_free()
@@ -66,6 +89,12 @@ func open(sections: Array[Dictionary]) -> void:
 		title.text = section["title"]
 		title.add_theme_font_size_override("font_size", 18)
 		_box.add_child(title)
+		if section.has("hint"):  # nota pequeña bajo el título
+			var hint := Label.new()
+			hint.text = section["hint"]
+			hint.add_theme_font_size_override("font_size", 12)
+			hint.add_theme_color_override("font_color", Color(0.75, 0.7, 0.62))
+			_box.add_child(hint)
 		var grid := GridContainer.new()
 		grid.columns = section["columns"]
 		grid.add_theme_constant_override("h_separation", GAP)
@@ -79,7 +108,6 @@ func open(sections: Array[Dictionary]) -> void:
 		var inv: Inventory = section["inventory"]
 		if not inv.changed.is_connected(_refresh):
 			inv.changed.connect(_refresh)
-	visible = true
 	_refresh()
 
 
@@ -91,6 +119,9 @@ func close() -> void:
 		var inv: Inventory = section["inventory"]
 		if inv.changed.is_connected(_refresh):
 			inv.changed.disconnect(_refresh)
+	if _side != null:
+		_side.queue_free()
+		_side = null
 	visible = false
 	closed.emit()
 
@@ -162,8 +193,8 @@ func _quick_move(section: int, index: int) -> void:
 	var slot := inv.get_slot(index)
 	if slot.is_empty():
 		return
-	# Destino: el otro inventario que haya en pantalla (cofre <-> jugador), con todos sus huecos;
-	# si solo está el del jugador, entre la barra y la mochila.
+	# Destino: el otro inventario que haya en pantalla (cofre <-> jugador); si solo está el del
+	# jugador, las otras secciones (barra <-> inventario).
 	var target: Inventory = null
 	var target_slots: Array = []
 	for other in _sections:
@@ -172,7 +203,9 @@ func _quick_move(section: int, index: int) -> void:
 			target_slots.append_array(other["slots"])
 	if target == null:
 		target = inv
-		target_slots = range(9, inv.size()) if index < 9 else range(0, 9)
+		for other in _sections:
+			if other != _sections[section]:
+				target_slots.append_array(other["slots"])
 	var left := _add_to_slots(target, target_slots, slot["id"], int(slot["count"]))
 	inv.set_slot(index, {} if left == 0 else {"id": slot["id"], "count": left})
 
@@ -208,11 +241,13 @@ func _return_cursor() -> void:
 			inv.set_slot(index, _cursor)
 			_cursor = {}
 			return
-		var left := inv.add(_cursor["id"], int(_cursor["count"]))
+		var left := _add_to_slots(inv, slots_of(inv), _cursor["id"], int(_cursor["count"]))
 		_cursor = {} if left == 0 else {"id": _cursor["id"], "count": left}
 	if not _cursor.is_empty() and not _sections.is_empty():
 		var first: Inventory = _sections[_sections.size() - 1]["inventory"]
-		first.add(_cursor["id"], int(_cursor["count"]))
+		var rest := _add_to_slots(first, slots_of(first), _cursor["id"], int(_cursor["count"]))
+		if rest > 0:
+			overflow.emit(_cursor["id"], rest)
 	_cursor = {}
 
 
@@ -273,3 +308,29 @@ func _gui_input(event: InputEvent) -> void:
 	# aquí simplemente se ignora para no perderlo.
 	if event is InputEventMouseButton:
 		accept_event()
+
+
+# ------------------------------------------------------------------ para el panel lateral
+
+## Montón que lleva el ratón ({} si nada).
+func cursor_stack() -> Dictionary:
+	return _cursor
+
+
+func set_cursor_stack(stack: Dictionary, from_inventory: Inventory = null, from_index := -1) -> void:
+	_cursor = stack.duplicate()
+	_cursor_from = {} if from_inventory == null else {"inventory": from_inventory, "index": from_index}
+	_refresh()
+
+
+func refresh() -> void:
+	_refresh()
+
+
+## Huecos de este inventario que se ven en pantalla (los que se pueden usar).
+func slots_of(inv: Inventory) -> Array:
+	var out := []
+	for section in _sections:
+		if section["inventory"] == inv:
+			out.append_array(section["slots"])
+	return out

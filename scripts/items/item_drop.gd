@@ -19,6 +19,7 @@ var _velocity := Vector3.ZERO
 var _age := 0.0
 var _resting := false
 var _visual: MeshInstance3D
+var _base_y := 0.0
 
 
 ## Crea un objeto en el suelo en 'pos' con un pequeño salto en dirección aleatoria.
@@ -36,10 +37,10 @@ static func spawn(parent: Node, pos: Vector3, id: String, amount: int) -> ItemDr
 func _ready() -> void:
 	add_to_group("item_drops")
 	_visual = MeshInstance3D.new()
-	var block := ItemDB.block_of(item_id)
-	_visual.mesh = BlockTextures.make_block_mesh(block, SIZE)
-	_visual.material_override = BlockTextures.make_material(block == IslandGenerator.WATER)
-	_visual.position.y = SIZE * 0.5
+	_visual.mesh = ItemMesh.make(item_id, SIZE if ItemDB.block_of(item_id) >= 0 else SIZE * 1.6)
+	_visual.material_override = ItemMesh.make_material(item_id)
+	_base_y = -_visual.mesh.get_aabb().position.y  # apoyado en el suelo
+	_visual.position.y = _base_y
 	add_child(_visual)
 
 
@@ -84,7 +85,7 @@ func _physics_process(delta: float) -> void:
 
 func _spin(delta: float) -> void:
 	_visual.rotation.y += delta * 1.6
-	_visual.position.y = SIZE * 0.5 + 0.06 + sin(_age * 2.5) * 0.05
+	_visual.position.y = _base_y + 0.06 + sin(_age * 2.5) * 0.05
 
 
 func _ray(from: Vector3, motion: Vector3) -> Dictionary:

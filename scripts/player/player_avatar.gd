@@ -26,6 +26,8 @@ var _leg_left: Node3D
 var _leg_right: Node3D
 var _held: MeshInstance3D
 var _lids: Node3D          # párpados (visibles un instante al parpadear)
+var _backpack: Node3D      # mochila a la espalda (visible si la lleva puesta)
+var _has_backpack := false
 
 var _time := 0.0
 var _walk_phase := 0.0
@@ -67,6 +69,7 @@ func build(texture: Texture2D, slim: bool) -> void:
 	_arm_right.get_node("lower").add_child(_held)
 
 	_build_lids(texture)
+	_build_backpack()
 
 
 func _add_part(part: Node3D) -> Node3D:
@@ -98,13 +101,45 @@ func _build_lids(texture: Texture2D) -> void:
 		_lids.add_child(lid)
 
 
-func set_block(id: int) -> void:
+## Muestra u oculta la mochila a la espalda.
+func set_backpack(visible_now: bool) -> void:
+	_has_backpack = visible_now
+	if _backpack != null:
+		_backpack.visible = visible_now
+
+
+func _build_backpack() -> void:
+	# Bolsa de 6x8x3 píxeles de skin pegada a la espalda, con solapa y bolsillo.
+	_backpack = Node3D.new()
+	_backpack.position = Vector3(0, 12.0, 3.4) * SkinModel.PIXEL - Vector3(0, HIP_HEIGHT, 0) + Vector3(0, 6.0, 0) * SkinModel.PIXEL
+	_root.add_child(_backpack)
+	_add_backpack_box(Vector3(0, 0, 0), Vector3(6, 8, 3), Color(0.5, 0.36, 0.2))
+	_add_backpack_box(Vector3(0, 2.6, 0.2), Vector3(6.3, 2.8, 3.3), Color(0.58, 0.43, 0.25))   # solapa
+	_add_backpack_box(Vector3(0, -1.8, 1.7), Vector3(4, 3, 0.8), Color(0.44, 0.31, 0.17))     # bolsillo
+	_backpack.visible = _has_backpack
+
+
+func _add_backpack_box(pos_px: Vector3, size_px: Vector3, color: Color) -> void:
+	var part := MeshInstance3D.new()
+	var box := BoxMesh.new()
+	box.size = size_px * SkinModel.PIXEL
+	part.mesh = box
+	part.position = pos_px * SkinModel.PIXEL
+	var material := StandardMaterial3D.new()
+	material.albedo_color = color
+	material.roughness = 0.95
+	part.material_override = material
+	part.layers = LAYER
+	_backpack.add_child(part)
+
+
+func set_item(id: String) -> void:
 	if _held != null:
-		_held.visible = id >= 0  # id < 0 = mano vacía
-		if id < 0:
+		_held.visible = id != ""  # "" = mano vacía
+		if id == "":
 			return
-		_held.mesh = BlockTextures.make_block_mesh(id, 0.15 * K)
-		_held.material_override = BlockTextures.make_material(id == IslandGenerator.WATER)
+		_held.mesh = ItemMesh.make(id, 0.15 * K)
+		_held.material_override = ItemMesh.make_material(id)
 
 
 ## Hacia dónde mira (arriba/abajo), en radianes.

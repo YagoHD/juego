@@ -13,11 +13,21 @@ const DEFAULT_OPTIONS := {
 	"hair_style": "corto",      # "corto", "largo", "rapado"
 	"eyes": Color8(58, 108, 168),
 	"shirt": Color8(60, 96, 150),
-	"sleeves": "cortas",        # "cortas", "largas", "sin"
+	"shirt_style": "camiseta",  # "camiseta" (con bolsillos) o "rota" (la del naufragio)
+	"sleeves": "cortas",        # "cortas", "largas", "sin" (solo con la camiseta)
 	"pants": Color8(72, 60, 48),
+	"pants_style": "largo",     # "largo" (con bolsillos) o "corto" (raído, del naufragio)
+	"belt": true,               # cinturón con hebilla
+	"straps": false,            # correas de la mochila
 	"shoes": Color8(42, 33, 28),
+	"barefoot": true,           # descalzo (el náufrago no tiene zapatos)
 	"slim": false,              # brazos estrechos (3 px) en vez de normales (4 px)
 }
+
+const RAG := Color8(196, 182, 156)       # camiseta del naufragio, desteñida
+const BELT := Color8(70, 44, 26)
+const BUCKLE := Color8(222, 182, 82)
+const STRAP := Color8(96, 66, 38)
 
 
 ## Skin del jugador: la pintada a mano si existe; si no, la compuesta con las opciones.
@@ -45,17 +55,22 @@ static func compose(options: Dictionary) -> Image:
 		_paint(img, part, slim, false, skin)
 
 	# 2. Ropa.
-	var shirt: Color = o["shirt"]
-	_paint(img, "body", slim, false, shirt)
-	_paint_rows(img, "body", slim, false, Color(o["pants"]).darkened(0.25), 11, 12)  # cinturón
-	var sleeve_rows := {"cortas": 4, "largas": 10, "sin": 0}
-	var rows: int = sleeve_rows.get(o["sleeves"], 4)
-	for arm in ["arm_right", "arm_left"]:
-		if rows > 0:
-			_paint_rows(img, arm, slim, false, shirt, 0, rows, true)
+	_paint_shirt(img, o, slim)
+	_paint_pants(img, o, slim)
+	if o["belt"]:
+		_paint_rows(img, "body", slim, false, BELT, 11, 12)
+		var front: Rect2i = _rects("body", slim, false)["front"]
+		img.fill_rect(Rect2i(front.position.x + 3, front.position.y + 11, 2, 1), BUCKLE)
+	if o["straps"]:
+		var front: Rect2i = _rects("body", slim, false)["front"]
+		for x in [1, 6]:  # dos correas que bajan por el pecho
+			img.fill_rect(Rect2i(front.position.x + x, front.position.y, 1, 9), STRAP)
+		img.fill_rect(Rect2i(front.position.x + 1, front.position.y + 5, 6, 1), STRAP)
 	for leg in ["leg_right", "leg_left"]:
-		_paint_rows(img, leg, slim, false, o["pants"], 0, 9, true)
-		_paint_rows(img, leg, slim, false, o["shoes"], 9, 12, false, true)
+		if o["barefoot"]:
+			_paint_rows(img, leg, slim, false, skin.darkened(0.08), 11, 12, false, true)  # pies
+		else:
+			_paint_rows(img, leg, slim, false, o["shoes"], 9, 12, false, true)
 
 	# 3. Cara y pelo.
 	_paint_face(img, o)
@@ -64,6 +79,56 @@ static func compose(options: Dictionary) -> Image:
 	# 4. Un poco de textura: variación de tono píxel a píxel (como pintado a mano).
 	_add_grain(img)
 	return img
+
+
+static func _paint_shirt(img: Image, o: Dictionary, slim: bool) -> void:
+	if o["shirt_style"] == "rota":
+		# Camiseta de tirantes desteñida, con el bajo deshilachado y algún agujero.
+		_paint(img, "body", slim, false, RAG)
+		var rects := _rects("body", slim, false)
+		for face in ["front", "back", "right", "left"]:
+			var r: Rect2i = rects[face]
+			for x in r.size.x:
+				if (x * 7 + r.position.x) % 3 == 0:
+					img.set_pixel(r.position.x + x, r.position.y + r.size.y - 1, o["skin"])  # flecos
+		var f: Rect2i = rects["front"]
+		img.set_pixel(f.position.x + 5, f.position.y + 4, o["skin"])  # agujeros
+		img.set_pixel(f.position.x + 2, f.position.y + 8, o["skin"])
+		var b: Rect2i = rects["back"]
+		img.set_pixel(b.position.x + 3, b.position.y + 6, o["skin"])
+		return
+	var shirt: Color = o["shirt"]
+	_paint(img, "body", slim, false, shirt)
+	var front: Rect2i = _rects("body", slim, false)["front"]
+	for x in [1, 5]:  # bolsillos del pecho
+		img.fill_rect(Rect2i(front.position.x + x, front.position.y + 3, 2, 2), shirt.darkened(0.2))
+	var sleeve_rows := {"cortas": 4, "largas": 10, "sin": 0}
+	var rows: int = sleeve_rows.get(o["sleeves"], 4)
+	for arm in ["arm_right", "arm_left"]:
+		if rows > 0:
+			_paint_rows(img, arm, slim, false, shirt, 0, rows, true)
+
+
+static func _paint_pants(img: Image, o: Dictionary, slim: bool) -> void:
+	var pants: Color = o["pants"]
+	if o["pants_style"] == "corto":
+		# Pantalón corto raído: hasta las rodillas, desteñido y con el borde roto.
+		var worn := pants.lightened(0.18)
+		for leg in ["leg_right", "leg_left"]:
+			_paint_rows(img, leg, slim, false, worn, 0, 5, true)
+			var rects := _rects(leg, slim, false)
+			for face in ["front", "back", "right", "left"]:
+				var r: Rect2i = rects[face]
+				for x in r.size.x:
+					if (x + r.position.x) % 2 == 0:
+						img.set_pixel(r.position.x + x, r.position.y + 5, worn)
+		_paint_rows(img, "body", slim, false, worn, 11, 12)
+		return
+	for leg in ["leg_right", "leg_left"]:
+		_paint_rows(img, leg, slim, false, pants, 0, 11, true)
+		var front: Rect2i = _rects(leg, slim, false)["front"]
+		img.fill_rect(Rect2i(front.position.x + 1, front.position.y + 1, 2, 2), pants.darkened(0.25))  # bolsillo
+	_paint_rows(img, "body", slim, false, pants, 11, 12)
 
 
 # ------------------------------------------------------------------ pintar por partes

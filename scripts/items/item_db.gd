@@ -43,16 +43,28 @@ const DROPS := {
 	IslandGenerator.CLOTH: "cloth",
 }
 
+## Objetos que no son bloques. "wear": hueco de equipo donde se lleva; "pockets": huecos de
+## barra que añade; "storage": huecos de inventario que añade.
+const OTHER_ITEMS := {
+	"rope": {"name": "Cuerda", "stack": 64},
+	"shirt": {"name": "Camiseta", "stack": 1, "wear": "shirt", "pockets": 2},
+	"pants": {"name": "Pantalón", "stack": 1, "wear": "pants", "pockets": 2},
+	"belt": {"name": "Cinturón", "stack": 1, "wear": "belt", "pockets": 2},
+	"backpack": {"name": "Mochila", "stack": 1, "wear": "backpack", "storage": 18},
+}
+
 static var _icons := {}
 
 
 static func exists(id: String) -> bool:
-	return BLOCK_ITEMS.has(id)
+	return BLOCK_ITEMS.has(id) or OTHER_ITEMS.has(id)
 
 
 static func display_name(id: String) -> String:
 	if BLOCK_ITEMS.has(id):
 		return Blocks.name_of(BLOCK_ITEMS[id])
+	if OTHER_ITEMS.has(id):
+		return OTHER_ITEMS[id]["name"]
 	return id
 
 
@@ -61,8 +73,25 @@ static func block_of(id: String) -> int:
 	return BLOCK_ITEMS.get(id, -1)
 
 
-static func max_stack(_id: String) -> int:
+static func max_stack(id: String) -> int:
+	if OTHER_ITEMS.has(id):
+		return OTHER_ITEMS[id]["stack"]
 	return MAX_STACK
+
+
+## Hueco de equipo donde se lleva ("shirt", "pants", "belt", "backpack"), o "" si no se lleva.
+static func wear_slot(id: String) -> String:
+	return OTHER_ITEMS.get(id, {}).get("wear", "")
+
+
+## Huecos de barra (bolsillos) que añade al llevarlo puesto.
+static func pockets(id: String) -> int:
+	return OTHER_ITEMS.get(id, {}).get("pockets", 0)
+
+
+## Huecos de inventario que añade al llevarlo puesto (la mochila).
+static func storage(id: String) -> int:
+	return OTHER_ITEMS.get(id, {}).get("storage", 0)
 
 
 ## Objeto que se obtiene al romper un bloque ("" si no suelta nada).
@@ -78,12 +107,17 @@ static func item_of_block(block_id: int) -> String:
 	return ""
 
 
-## Icono del objeto: la cara de arriba de su bloque.
+## Icono del objeto: la cara de arriba de su bloque, o un dibujo propio si no es un bloque.
 static func icon(id: String) -> Texture2D:
 	if _icons.has(id):
 		return _icons[id]
-	var region := AtlasTexture.new()
-	region.atlas = BlockTextures.atlas()
-	region.region = BlockTextures.icon_region(block_of(id))
-	_icons[id] = region
-	return region
+	var tex: Texture2D
+	if BLOCK_ITEMS.has(id):
+		var region := AtlasTexture.new()
+		region.atlas = BlockTextures.atlas()
+		region.region = BlockTextures.icon_region(block_of(id))
+		tex = region
+	else:
+		tex = ImageTexture.create_from_image(ItemPainter.paint(id))
+	_icons[id] = tex
+	return tex

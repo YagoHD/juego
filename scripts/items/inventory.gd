@@ -32,11 +32,13 @@ func is_empty_slot(index: int) -> bool:
 
 
 ## Añade objetos: primero completa montones del mismo tipo y luego usa huecos vacíos (en orden,
-## así la barra se llena primero). Devuelve cuántos NO cupieron.
-func add(id: String, count: int) -> int:
+## así la barra se llena primero). Solo usa los huecos de "allowed" (vacío = todos).
+## Devuelve cuántos NO cupieron.
+func add(id: String, count: int, allowed: Array = []) -> int:
+	var slots: Array = allowed if not allowed.is_empty() else range(_slots.size())
 	var left := count
 	var limit := ItemDB.max_stack(id)
-	for i in _slots.size():
+	for i in slots:
 		if left == 0:
 			break
 		var s := _slots[i]
@@ -44,7 +46,7 @@ func add(id: String, count: int) -> int:
 			var put := mini(left, limit - int(s["count"]))
 			s["count"] = int(s["count"]) + put
 			left -= put
-	for i in _slots.size():
+	for i in slots:
 		if left == 0:
 			break
 		if _slots[i].is_empty():

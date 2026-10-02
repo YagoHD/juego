@@ -19,7 +19,7 @@ const ELBOW_REST := 0.35  # codo un poco doblado (radianes)
 var _arm: Node3D
 var _forearm: Node3D       # segmento del codo hacia la mano
 var _block_mesh: MeshInstance3D
-var _block_id := -1
+var _item_id := ""
 var _swing := 0.0   # 1 al empezar un golpe, baja a 0
 var _equip := 0.0   # 1 al cambiar de bloque (el brazo viene desde abajo), baja a 0
 var _bob_phase := 0.0
@@ -47,18 +47,18 @@ func set_skin(texture: Texture2D, slim: bool) -> void:
 	_block_mesh.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	_forearm = _arm.get_node("lower") as Node3D
 	_forearm.add_child(_block_mesh)
-	if _block_id != -1:
-		_show_block(_block_id)
+	if _item_id != "":
+		_show_item(_item_id)
 
 
-func _show_block(id: int) -> void:
-	# Cubo con las texturas del bloque, dibujado siempre por encima del mundo y del brazo.
-	# id < 0 = mano vacía.
-	_block_mesh.visible = id >= 0
-	if id < 0:
+func _show_item(id: String) -> void:
+	# El objeto (cubo o dibujo con grosor), dibujado siempre por encima del mundo y del brazo.
+	# "" = mano vacía.
+	_block_mesh.visible = id != ""
+	if id == "":
 		return
-	_block_mesh.mesh = BlockTextures.make_block_mesh(id, BLOCK_SIZE)
-	var material := BlockTextures.make_material(id == IslandGenerator.WATER)
+	_block_mesh.mesh = ItemMesh.make(id, BLOCK_SIZE)
+	var material := ItemMesh.make_material(id)
 	material.no_depth_test = true
 	material.render_priority = 11
 	# Sin sombras: el cuerpo del propio personaje proyectaba la suya sobre el bloque y lo volvía
@@ -67,13 +67,13 @@ func _show_block(id: int) -> void:
 	_block_mesh.material_override = material
 
 
-func set_block(id: int) -> void:
-	if id == _block_id:
+func set_item(id: String) -> void:
+	if id == _item_id:
 		return
-	var first_time := _block_id == -1
-	_block_id = id
+	var first_time := _item_id == ""
+	_item_id = id
 	if _block_mesh != null:
-		_show_block(id)
+		_show_item(id)
 	if not first_time:
 		_equip = 1.0
 
