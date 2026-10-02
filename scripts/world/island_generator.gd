@@ -32,6 +32,7 @@ const TREE_MARGIN := 3         # columnas extra alrededor del chunk para no cort
 var _continent := FastNoiseLite.new()
 var _hills := FastNoiseLite.new()
 var _detail := FastNoiseLite.new()
+var _mountain := FastNoiseLite.new()  # crestas/riscos del macizo (ridged)
 
 func _init() -> void:
 	_continent.noise_type = FastNoiseLite.TYPE_SIMPLEX
@@ -46,6 +47,11 @@ func _init() -> void:
 
 	_detail.noise_type = FastNoiseLite.TYPE_PERLIN
 	_detail.frequency = 0.035
+
+	_mountain.noise_type = FastNoiseLite.TYPE_SIMPLEX
+	_mountain.frequency = 0.016
+	_mountain.fractal_type = FastNoiseLite.FRACTAL_RIDGED
+	_mountain.fractal_octaves = 4
 
 func _get_used_channels_mask() -> int:
 	return 1 << VoxelBuffer.CHANNEL_TYPE
@@ -65,10 +71,14 @@ func _height_at(wx: int, wz: int) -> int:
 	height += hills * 16.0 * land_amount
 	height += _detail.get_noise_2d(wx, wz) * 2.5 * land_amount
 
+	# Macizo escarpado (no un cono): la forma base decae con la distancia, pero el ruido
+	# "ridged" añade crestas y riscos, y un poco de erosión rompe la silueta.
 	var mdist: float = (Vector2(wx, wz) - MOUNTAIN_CENTER).length()
-	var mcont: float = clampf(1.0 - mdist / MOUNTAIN_RADIUS, 0.0, 1.0)
-	mcont = pow(mcont, 2.2)
-	height += mcont * MOUNTAIN_HEIGHT
+	var mbase: float = clampf(1.0 - mdist / MOUNTAIN_RADIUS, 0.0, 1.0)
+	mbase = smoothstep(0.0, 1.0, mbase)
+	var ridge: float = clampf(_mountain.get_noise_2d(wx, wz) * 0.5 + 0.5, 0.0, 1.0)
+	var massif: float = mbase * (0.3 + 1.1 * ridge)
+	height += massif * MOUNTAIN_HEIGHT
 
 	return int(roundf(height))
 
@@ -84,16 +94,31 @@ func _generate_block(out_buffer: VoxelBuffer, origin_in_voxels: Vector3i, lod: i
 			var wz: int = origin_in_voxels.z + z
 			var height: int = _height_at(wx, wz)
 			var is_beach: bool = height <= SEA_LEVEL + 1
-			var is_peak: bool = height >= SNOW_LINE
+			var is_snow: bool = height >= SNOW_LINE
+			var is_rock: bool = height >= SNOW_LINE - 18  # roca pelada alta bajo la nieve
 			for y in size.y:
 				var wy: int = origin_in_voxels.y + y
 				if wy >= height:
 					continue
 				var block_id: int = STONE
 				if wy == height - 1:
-					block_id = SAND if is_beach else (SNOW if is_peak else GRASS)
+					# Capa superior.
+					if is_beach:
+						block_id = SAND
+					elif is_snow:
+						block_id = SNOW
+					elif is_rock:
+						block_id = STONE
+					else:
+						block_id = GRASS
 				elif wy >= height - 1 - DIRT_DEPTH:
-					block_id = SAND if is_beach else (STONE if is_peak else DIRT)
+					# Subsuelo.
+					if is_beach:
+						block_id = SAND
+					elif is_rock:
+						block_id = STONE
+					else:
+						block_id = DIRT
 				out_buffer.set_voxel(block_id, x, y, z, VoxelBuffer.CHANNEL_TYPE)
 
 	# --- Árboles (incluye margen para no cortar copas entre chunks) ---
@@ -108,8 +133,8 @@ func _generate_block(out_buffer: VoxelBuffer, origin_in_voxels: Vector3i, lod: i
 func _tree_base(wx: int, wz: int) -> int:
 	# Devuelve la altura de la base del árbol, o -1 si no hay árbol aquí.
 	var height: int = _height_at(wx, wz)
-	if height <= SEA_LEVEL + 1 or height >= SNOW_LINE - 2:
-		return -1  # ni en la playa ni en la nieve
+	if height <= SEA_LEVEL + 1 or height >= SNOW_LINE - 18:
+		return -1  # ni en la playa ni en la roca/nieve alta
 	if _hash01(wx, wz) < TREE_DENSITY:
 		return height
 	return -1
