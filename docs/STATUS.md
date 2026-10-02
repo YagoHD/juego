@@ -59,6 +59,13 @@
   ropa y la mochila están en los cofres del naufragio. Objetos no-bloque (cuerda, ropa) se ven
   con grosor en la mano y en el suelo (`scripts/items/item_mesh.gd`).
 - **Cofres** (clic derecho) y **naufragio** en la playa con botín (`scripts/world/structures.gd`).
+- **Fabricar en el suelo** (`scripts/crafting/`): G deja un objeto en el punto exacto donde se
+  apunta (sin anclarse). Una cuadrícula invisible de 0,25 m lee la FORMA que hacen (vale girada o
+  reflejada); si es una receta conocida brilla y "Mantén R" la trabaja (animación agachado).
+  Recetas en `GroundRecipes.RECIPES`: cuerda (3 hojas en línea, se sabe de inicio), cinturón
+  (3 cuerdas; nota en el cofre de la playa), mochila improvisada +9 (2 cuerdas + 6 telas; nota
+  en el cofre del barco). Las aprendidas se dibujan en el cuaderno del inventario.
+- **Q** tira objetos (Ctrl+Q el montón).
 
 ## Variante del mapa y naufragio (2026-10-02)
 - Se compactaron ligeramente los campos de pradera y bosque al oeste y sur; la montaña, la
@@ -74,6 +81,8 @@
   versión anterior quedó guardada en `docs/texturas-originales.zip`.
 - Segunda variante más compacta: la tierra ocupa un 57,4 % del mapa horneado, frente al 64,0 %
   de la versión anterior a la compactación; se mantienen el pico, el lago y el pinar de montaña.
+  (DESHECHA: dejaba la zona de inicio bajo el nivel del mar y el jugador aparecía "buceando";
+  se volvió al mapa anterior, conservando texturas, objetos, ruinas y detalles del barco.)
 - Bloques nuevos: piedra musgosa (usada en los restos de las ruinas del noroeste) y madera de
   deriva (usada entre los restos del naufragio). Ambos se pueden recoger y colocar.
 - Objetos nuevos: manojo de trigo, manojo de palitos, cuchillo de piedra y bayas silvestres.
@@ -88,8 +97,8 @@
    definidas en datos que el generador "estampa", o construirlas en el juego y guardarlas.
 2. **Cama y sueño** (el ciclo de día y noche ya existe): dormir salta la noche, fatiga, sueños.
 3. **Agua jugable**: nadar, cascadas, que el agua colocada fluya.
-4. **Fabricación**: PENDIENTE DE DISEÑAR con Yago (no copiar la de Minecraft). Ya existen
-   la cuerda y la tela como materiales.
+4. **Fabricación**: más recetas y la mesa de trabajo (mismo sistema, encima de la mesa, formas
+   más grandes). Ideas: desmontar objetos para aprender cómo se hacen, fuego, forja por etapas.
 5. Pulido: sonidos de pasos/romper/colocar, texturas en los bloques, partículas al romper.
 
 ## Herramientas

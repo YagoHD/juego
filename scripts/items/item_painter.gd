@@ -18,6 +18,8 @@ static func paint(id: String) -> Image:
 		"pants": _pants(img)
 		"belt": _belt(img)
 		"backpack": _backpack(img)
+		"rough_backpack": _rough_backpack(img)
+		"note_belt", "note_backpack": _note(img)
 		_: img.fill(Color.MAGENTA)
 	_outline(img)
 	return img
@@ -179,3 +181,28 @@ static func _backpack(img: Image) -> void:
 	_rect(img, 6, 0, 9, 1, c.darkened(0.3))      # asa
 	_line(img, Vector2i(4, 7), Vector2i(5, 12), c.lightened(0.08))  # tirante
 	_line(img, Vector2i(11, 7), Vector2i(10, 12), c.darkened(0.22))
+
+
+static func _rough_backpack(img: Image) -> void:
+	# Saco de tela de vela, cerrado con cuerda y con un remiendo.
+	var c := Color(0.82, 0.77, 0.65)
+	_rect(img, 3, 4, 12, 14, c)
+	_rect(img, 4, 3, 11, 3, c)
+	_rect(img, 3, 5, 12, 5, Color(0.72, 0.56, 0.36))   # cuerda que lo cierra
+	_rect(img, 6, 1, 6, 4, Color(0.72, 0.56, 0.36))    # asa de cuerda
+	_rect(img, 9, 1, 9, 4, Color(0.72, 0.56, 0.36))
+	_rect(img, 6, 1, 9, 1, Color(0.72, 0.56, 0.36))
+	_rect(img, 8, 9, 11, 12, Color(0.68, 0.64, 0.55))  # remiendo
+	_rect(img, 4, 13, 12, 14, c.darkened(0.15))
+
+
+static func _note(img: Image) -> void:
+	# Papel doblado con renglones y un dibujo.
+	var paper := Color(0.93, 0.88, 0.74)
+	_rect(img, 3, 2, 12, 14, paper)
+	_rect(img, 11, 2, 12, 3, paper.darkened(0.2))     # esquina doblada
+	var ink := Color(0.35, 0.3, 0.28)
+	for y in [5, 7, 9]:
+		_rect(img, 5, y, 10, y, ink)
+	_rect(img, 5, 11, 6, 12, Color(0.6, 0.38, 0.22))  # dibujito
+	_rect(img, 8, 11, 9, 12, Color(0.6, 0.38, 0.22))

@@ -26,7 +26,7 @@ static func _flat(id: String, size: float) -> Mesh:
 	var px := size / n
 	var half := n * 0.5
 	# Los objetos de mano deben tener volumen visible; la ropa sigue siendo una pieza fina.
-	var depth := px * (0.8 if id in ["shirt", "pants", "belt", "cloth"] else 2.6)
+	var depth := px * (0.8 if id in ["shirt", "pants", "belt", "cloth", "note_belt", "note_backpack"] else 2.6)
 	var st := SurfaceTool.new()
 	st.begin(Mesh.PRIMITIVE_TRIANGLES)
 	for y in n:

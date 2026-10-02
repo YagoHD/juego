@@ -17,6 +17,7 @@ var count := 1
 
 var _velocity := Vector3.ZERO
 var _age := 0.0
+var pickup_delay := PICKUP_DELAY  # al tirarlo con Q es mayor, para que no vuelva enseguida
 var _resting := false
 var _visual: MeshInstance3D
 var _base_y := 0.0
@@ -51,7 +52,7 @@ func _physics_process(delta: float) -> void:
 		return
 
 	var player := get_tree().get_first_node_in_group("player") as Player
-	if player != null and _age > PICKUP_DELAY:
+	if player != null and _age > pickup_delay:
 		var target := player.global_position + Vector3.UP * 0.6
 		var to_player := target - global_position
 		if to_player.length() < PICKUP_RADIUS:
@@ -113,3 +114,11 @@ func _merge_nearby() -> void:
 				and count + drop.count <= ItemDB.max_stack(item_id):
 			count += drop.count
 			drop.queue_free()
+
+
+## Lanzar un objeto (tecla Q): sale disparado hacia donde se mira y tarda en poder recogerse.
+static func throw(parent: Node, pos: Vector3, direction: Vector3, id: String, amount: int) -> ItemDrop:
+	var drop := spawn(parent, pos, id, amount)
+	drop._velocity = direction * 4.5 + Vector3.UP * 1.5
+	drop.pickup_delay = 2.0
+	return drop

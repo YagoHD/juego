@@ -7,6 +7,9 @@ signal inventory_layout_changed
 ## Clic derecho sobre un bloque que se usa (un cofre...) en vez de colocar encima.
 signal block_used(cell: Vector3i, block_id: int)
 signal block_broken(cell: Vector3i, block_id: int)
+## Mensaje corto para el jugador ("Has aprendido...").
+signal notice(text: String)
+signal recipe_learned(recipe_id: String)
 ## Jugador: camina, salta, vuela, mira con el ratón y rompe/coloca bloques.
 ## Cámara en primera o tercera persona (tecla V). Encuentra el VoxelTerrain por el grupo
 ## "voxel_terrain".
@@ -78,6 +81,12 @@ var creative := false
 var equipment := {"shirt": "", "pants": "", "belt": "", "backpack": ""}
 const BASE_HOTBAR := 3    # huecos de la barra sin ropa con bolsillos
 const BASE_STORAGE := 9   # huecos de inventario sin mochila
+## Recetas de fabricar en el suelo que conoce (se dibujan en el cuaderno).
+var known_recipes: Array = GroundRecipes.KNOWN_AT_START.duplicate()
+var ground: GroundCrafting   # objetos dejados en el suelo (lo pone main.gd)
+var _working := false        # agachado fabricando
+var _work_swing := 0.0
+var _crouch := 0.0           # 0..1: cuánto baja la vista al agacharse
 ## true mientras hay una pantalla abierta (inventario, cofre...): no se mueve ni mira.
 var ui_open := false
 var _captured := true
@@ -234,6 +243,10 @@ func _unhandled_input(event: InputEvent) -> void:
 		if key.keycode >= KEY_1 and key.keycode <= KEY_9:
 			if key.keycode - KEY_1 < hotbar_size():
 				_select_slot(key.keycode - KEY_1)
+		elif key.keycode == KEY_Q:
+			_throw_held(key.ctrl_pressed)
+		elif key.keycode == KEY_G:
+			_place_on_ground(_target())
 		elif key.keycode == KEY_C:
 			set_creative(not creative)
 		elif key.keycode == KEY_F:
@@ -374,7 +387,15 @@ func _process(delta: float) -> void:
 	else:
 		_camera_lag = _camera_lag.lerp(Vector3.ZERO, 1.0 - exp(-CAMERA_CATCH_UP * delta))
 	# El desfase está en coordenadas del mundo; la cabeza es hija del jugador (que gira).
+	# Al trabajar en el suelo se agacha: la vista baja y la mano trabaja a golpecitos.
+	_crouch = move_toward(_crouch, 1.0 if _working else 0.0, delta * 4.0)
+	if _working:
+		_work_swing -= delta
+		if _work_swing <= 0.0:
+			_held.swing()
+			_work_swing = 0.4
 	_head.position = Vector3(0, EYE_HEIGHT, 0) + global_basis.inverse() * _camera_lag
+	_head.position.y -= _crouch * BODY_HEIGHT * 0.35
 
 	# Transición suave entre primera y tercera persona.
 	var target_length := _camera_distance if _third_person else 0.0
@@ -476,8 +497,12 @@ func _target() -> Dictionary:
 	if hit_point.distance_to(_head.global_position) > REACH:
 		return {}  # demasiado lejos de los ojos del personaje
 	var hit_normal: Vector3 = result.normal
+	if result.collider is PlacedItem:
+		return {"item": result.collider, "point": hit_point, "normal": hit_normal}
 	var half_voxel: float = _terrain.scale.x * 0.5
 	return {
+		"point": hit_point,
+		"normal": hit_normal,
 		"voxel": _world_to_voxel(hit_point - hit_normal * half_voxel),  # hacia dentro: el bloque
 		"place": _world_to_voxel(hit_point + hit_normal * half_voxel),  # hacia fuera: el hueco
 	}
@@ -486,8 +511,16 @@ func _target() -> Dictionary:
 func _edit_block(place: bool) -> void:
 	_held.swing()
 	_avatar.swing()
+	if place and _read_note():
+		return
 	var target := _target()
 	if target.is_empty():
+		return
+	if target.has("item"):
+		if place:
+			_place_on_ground(target)  # otro objeto al lado del que se apunta
+		else:
+			_pick_up_placed(target["item"])
 		return
 	var tool := _terrain.get_voxel_tool()
 	tool.channel = VoxelBuffer.CHANNEL_TYPE
@@ -500,7 +533,8 @@ func _edit_block(place: bool) -> void:
 		var cell: Vector3i = target["place"]
 		var id := get_current_block()
 		if id < 0:
-			return  # mano vacía (o el objeto no es un bloque)
+			_place_on_ground(target)  # un objeto que no es bloque se deja en el suelo
+			return
 		if id != IslandGenerator.WATER and _overlaps_body(cell):
 			return  # no colocar un bloque dentro de uno mismo
 		tool.set_voxel(cell, id)
@@ -740,7 +774,7 @@ func update_appearance() -> void:
 	options["belt"] = equipment["belt"] != ""
 	options["straps"] = equipment["backpack"] != ""
 	apply_skin(SkinComposer.load_player_skin(options), options["slim"])
-	_avatar.set_backpack(equipment["backpack"] != "")
+	_avatar.set_backpack(equipment["backpack"])
 
 ## Cambia la skin del jugador (cuerpo y brazo). El futuro editor de personaje la usará.
 func apply_skin(texture: Texture2D, slim: bool) -> void:
@@ -823,3 +857,95 @@ func _pay_step_debt(delta: float) -> void:
 	velocity.x *= keep
 	velocity.z *= keep
 	_step_debt -= pay
+
+
+# ------------------------------------------------------------------ objetos en el suelo y recetas
+
+## Deja en el suelo uno del objeto de la mano, donde se apunta (sobre la cara de arriba de un
+## bloque, o junto a otro objeto ya dejado). Queda en ese punto exacto, girado al azar.
+func _place_on_ground(target: Dictionary) -> bool:
+	if ground == null or target.is_empty():
+		return false
+	var stack := active_inventory().get_slot(_hotbar_index)
+	if stack.is_empty():
+		return false
+	var point: Vector3 = target["point"]
+	var support: Vector3i
+	if target.has("item"):
+		var other: PlacedItem = target["item"]
+		point.y = other.global_position.y
+		support = other.support
+	else:
+		var normal: Vector3 = target["normal"]
+		if normal.y < 0.7:
+			return false  # solo sobre superficies horizontales
+		support = target["voxel"]
+	ground.place(point, stack["id"], rotation.y + randf_range(-0.6, 0.6), support)
+	if not creative:
+		inventory.take(_hotbar_index, 1)
+	return true
+
+
+func _pick_up_placed(item: PlacedItem) -> void:
+	if not creative and not can_pick_up(item.item_id):
+		notice.emit("No te cabe")
+		return
+	var id := ground.remove(item)
+	if not creative:
+		pick_up(id, 1)
+
+
+## Con una nota en la mano, clic derecho la lee y se aprende lo que enseña.
+func _read_note() -> bool:
+	var stack := active_inventory().get_slot(_hotbar_index)
+	if stack.is_empty() or ItemDB.teaches(stack["id"]) == "":
+		return false
+	var recipe_id := ItemDB.teaches(stack["id"])
+	if learn(recipe_id):
+		var result: String = GroundRecipes.RECIPES[recipe_id]["result"]
+		notice.emit("Has aprendido a hacer: %s. Está dibujado en tu cuaderno (E)." % ItemDB.display_name(result))
+		if not creative:
+			inventory.take(_hotbar_index, 1)
+	else:
+		notice.emit("Ya sabías hacer esto.")
+	return true
+
+
+## Aprende una receta. Devuelve false si ya la sabía.
+func learn(recipe_id: String) -> bool:
+	if known_recipes.has(recipe_id) or not GroundRecipes.RECIPES.has(recipe_id):
+		return false
+	known_recipes.append(recipe_id)
+	recipe_learned.emit(recipe_id)
+	if ground != null:
+		ground.refresh()
+	return true
+
+
+## Agacharse a trabajar (lo pide GroundCrafting mientras se mantiene R junto a una receta).
+func set_working(on: bool) -> void:
+	if on == _working:
+		return
+	_working = on
+	_work_swing = 0.0
+	_avatar.set_working(on)
+
+
+## Solo capturas: postura de trabajar agachado (sin necesidad de una receta delante).
+func debug_work_pose() -> void:
+	_working = true
+	_avatar.set_working(true)
+
+
+## Q: tira uno del objeto de la mano (Ctrl + Q: el montón entero), como en Minecraft.
+func _throw_held(whole_stack: bool) -> void:
+	var stack := active_inventory().get_slot(_hotbar_index)
+	if stack.is_empty():
+		return
+	var amount := int(stack["count"]) if whole_stack else 1
+	if not creative:
+		inventory.take(_hotbar_index, amount)
+	var look := -_camera.global_basis.z
+	ItemDrop.throw(get_parent(), _head.global_position + look * 0.4 - Vector3.UP * 0.25, look, stack["id"], amount)
+	_held.swing()
+	_avatar.swing()

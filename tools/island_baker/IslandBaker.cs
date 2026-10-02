@@ -201,15 +201,13 @@ public static class IslandBaker
                 float wv = v + 0.06f * Fbm(u * 3.5f + 5.2f, v * 3.5f + 1.3f, 4) + 0.02f * Fbm(u * 11f, v * 11f + 3f, 3);
 
                 float F = 0f;
-                // Compactamos un poco las llanuras del centro y del oeste. La reducción
-                // deja intactos el macizo oriental, la meseta corrupta, las ruinas y el pueblo.
-                F += Blob(wu, wv, 0.50f, 0.58f, 0.34f, 0.28f);  // praderas y bosque centrales
-                F += Blob(wu, wv, 0.30f, 0.42f, 0.18f, 0.19f);  // bosque del oeste
+                F += Blob(wu, wv, 0.50f, 0.58f, 0.40f, 0.33f);  // cuerpo principal
+                F += Blob(wu, wv, 0.30f, 0.42f, 0.22f, 0.22f);  // oeste-centro
                 F += Blob(wu, wv, 0.74f, 0.48f, 0.23f, 0.28f);  // macizo del este
                 F += Blob(wu, wv, 0.63f, 0.22f, 0.30f, 0.15f);  // norte (zona corrupta)
                 F += Blob(wu, wv, 0.27f, 0.22f, 0.14f, 0.10f);  // colina de las ruinas
-                F += Blob(wu, wv, 0.42f, 0.80f, 0.23f, 0.12f);  // sur
-                F += Blob(wu, wv, 0.15f, 0.68f, 0.085f, 0.13f);  // lóbulo oeste
+                F += Blob(wu, wv, 0.42f, 0.80f, 0.27f, 0.14f);  // sur
+                F += Blob(wu, wv, 0.15f, 0.68f, 0.11f, 0.17f);  // lóbulo oeste
                 F += Blob(wu, wv, 0.13f, 0.86f, 0.06f, 0.06f);  // cabo suroeste
                 // Islotes.
                 F += 0.9f * Blob(wu, wv, 0.07f, 0.30f, 0.025f, 0.022f);

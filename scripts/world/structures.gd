@@ -144,7 +144,7 @@ static func _build_shipwreck(gen: IslandGenerator) -> void:
 		{"id": "planks", "count": 24}, {"id": "cloth", "count": 8}, {"id": "rope", "count": 4},
 		{"id": "wood", "count": 6}, {"id": "sticks", "count": 4},
 		{"id": "stone_knife", "count": 1},
-		{"id": "wheat", "count": 5}, {"id": "backpack", "count": 1}, {"id": "shirt", "count": 1},
+		{"id": "wheat", "count": 5}, {"id": "note_backpack", "count": 1}, {"id": "shirt", "count": 1},
 	]
 
 	# En la playa: el mástil caído hacia tierra, con la vela tirada al lado.
@@ -183,7 +183,7 @@ static func _build_shipwreck(gen: IslandGenerator) -> void:
 	_put(beach_chest, IslandGenerator.CHEST)
 	_chest_loot[beach_chest] = [
 		{"id": "planks", "count": 10}, {"id": "cloth", "count": 3}, {"id": "rope", "count": 2},
-		{"id": "chest", "count": 1}, {"id": "pants", "count": 1}, {"id": "belt", "count": 1},
+		{"id": "chest", "count": 1}, {"id": "pants", "count": 1}, {"id": "note_belt", "count": 1},
 		{"id": "berries", "count": 6},
 	]
 

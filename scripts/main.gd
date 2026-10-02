@@ -35,6 +35,10 @@ const AUTOSAVE_SECONDS := 60.0
 
 var _player: Player
 var _hud: Label
+var _ground: GroundCrafting     # objetos dejados en el suelo para fabricar
+var _prompt: Label             # "Mantén R: Coser..." junto a una receta
+var _notice: Label             # mensajes cortos ("Has aprendido...")
+var _notice_time := 0.0
 var _hotbar: Hotbar
 var _underwater: ColorRect
 var _day_night: DayNight
@@ -78,6 +82,7 @@ func _save_world() -> void:
 		_terrain.save_modified_blocks()
 		_save_player()
 		_chests.save_to(_chests_save_path())
+		_ground.save_to(_ground_save_path())
 
 
 # ------------------------------------------------------------------ mundo
@@ -216,6 +221,12 @@ func _build_player() -> void:
 	_player.rotation.y = Structures.spawn_yaw()  # mirando al barco naufragado
 	_load_player()
 	_chests.load_from(_chests_save_path())
+	_ground = GroundCrafting.new()
+	add_child(_ground)
+	_ground.player = _player
+	_player.ground = _ground
+	_ground.load_from(_ground_save_path())
+	_player.notice.connect(_show_notice)
 	_player.block_used.connect(_on_block_used)
 	_player.block_broken.connect(_on_block_broken)
 	_rebind_hotbar()
@@ -314,6 +325,10 @@ func _build_hud() -> void:
 	_hotbar = Hotbar.new()
 	canvas.add_child(_hotbar)
 
+	_prompt = _make_center_label(canvas, -130.0, 20)
+	_notice = _make_center_label(canvas, -175.0, 22)
+	_notice.add_theme_color_override("font_color", Color(1.0, 0.9, 0.6))
+
 	# Pantalla de inventario (y de cofres), por encima del HUD.
 	var ui_layer := CanvasLayer.new()
 	ui_layer.layer = 10
@@ -333,7 +348,7 @@ func _build_hud() -> void:
 	canvas.move_child(_underwater, 0)  # por debajo del HUD y la barra
 
 
-func _process(_delta: float) -> void:
+func _process(delta: float) -> void:
 	if _loading:
 		_update_loading()
 		return
@@ -341,7 +356,10 @@ func _process(_delta: float) -> void:
 		return
 	_hotbar.select(_player.get_hotbar_index())
 	_underwater.visible = _player.is_head_underwater()
-	_hud.text = "%s · FPS: %d\nClic izq. romper · Clic der. colocar · 1-9 / rueda: bloque\nWASD mover (W+W correr) · Espacio saltar · F volar · V cámara (mantener V + ratón: distancia) · Alt girar cámara · T (mantener) acelerar el tiempo · Esc ratón" \
+	_prompt.text = _ground.prompt()
+	_notice_time -= delta
+	_notice.modulate.a = clampf(_notice_time, 0.0, 1.0)
+	_hud.text = "%s · FPS: %d\nClic izq. romper · Clic der. colocar · Q tirar · G dejar en el suelo · R (mantener) fabricar · 1-9 / rueda: objeto\nWASD mover (W+W correr) · Espacio saltar · F volar · V cámara (mantener V + ratón: distancia) · Alt girar cámara · T (mantener) acelerar el tiempo · Esc ratón" \
 		% [_day_night.get_clock_text(), Engine.get_frames_per_second()]
 	_update_capture()
 
@@ -379,6 +397,11 @@ func _update_capture() -> void:
 			for entry in give.split(","):
 				var pair := entry.split(":")
 				_player.pick_up(pair[0], int(pair[1]))
+		var shape := _arg("--shape=")  # receta dibujada en el suelo delante del jugador
+		if shape != "":
+			_debug_lay_shape(shape)
+		if OS.get_cmdline_user_args().has("--working"):
+			_player.debug_work_pose()
 		if _arg("--drop=") != "":  # soltar un objeto delante del jugador para verlo en el suelo
 			var forward := -_player.global_basis.z
 			ItemDrop.spawn(self, _player.global_position + forward * 1.6 + Vector3.UP, _arg("--drop="), 1)
@@ -426,6 +449,7 @@ func _save_player() -> void:
 		"inventory": _player.inventory.to_data(),
 		"creative": _player.creative,
 		"equipment": _player.equipment,
+		"recipes": _player.known_recipes,
 		"hour": _day_night.hour,
 		"day": _day_night.day,
 	}
@@ -445,6 +469,9 @@ func _load_player() -> void:
 		_player.inventory.from_data(d["inventory"])
 	if d.get("equipment") is Dictionary:
 		_player.set_equipment(d["equipment"])
+	if d.get("recipes") is Array:
+		for recipe_id in d["recipes"]:
+			_player.learn(str(recipe_id))
 	_player.set_creative(bool(d.get("creative", false)))
 	_day_night.day = int(d.get("day", 1))
 	_day_night.set_hour(float(d.get("hour", DayNight.START_HOUR)))
@@ -541,6 +568,7 @@ func _chest_sections(chest: Inventory) -> Array[Dictionary]:
 
 
 func _on_block_broken(cell: Vector3i, block_id: int) -> void:
+	_ground.on_block_removed(cell)  # lo dejado encima cae
 	if block_id != IslandGenerator.CHEST:
 		return
 	# Al romper un cofre, su contenido cae al suelo.
@@ -567,3 +595,54 @@ func _clear_test_world() -> void:
 		return
 	for file in dir.get_files():
 		dir.remove(file)
+
+
+# ------------------------------------------------------------------ fabricar en el suelo
+
+func _ground_save_path() -> String:
+	return _world_dir().path_join("jugador_%s_suelo.json" % _world_id)
+
+
+## Etiqueta centrada a lo ancho, a 'from_bottom' píxeles del borde de abajo.
+func _make_center_label(canvas: CanvasLayer, from_bottom: float, font_size: int) -> Label:
+	var label := Label.new()
+	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	label.set_anchors_preset(Control.PRESET_CENTER_BOTTOM)
+	label.offset_left = -500.0
+	label.offset_right = 500.0
+	label.offset_top = from_bottom
+	label.offset_bottom = from_bottom + 30.0
+	label.add_theme_font_size_override("font_size", font_size)
+	label.add_theme_color_override("font_outline_color", Color.BLACK)
+	label.add_theme_constant_override("outline_size", 5)
+	canvas.add_child(label)
+	return label
+
+
+func _show_notice(text: String) -> void:
+	_notice.text = text
+	_notice_time = 4.0
+
+
+## Solo capturas: aprende la receta y deja su forma en el suelo, delante del jugador.
+func _debug_lay_shape(recipe_id: String) -> void:
+	_player.learn(recipe_id)
+	# Ejes del mundo más parecidos a "delante" y "derecha" (la cuadrícula invisible va alineada
+	# con el mundo), y el origen en el centro de una celda.
+	var f := -_player.global_basis.z
+	var forward := Vector3(signf(f.x), 0, 0) if absf(f.x) > absf(f.z) else Vector3(0, 0, signf(f.z))
+	var right := forward.cross(Vector3.UP)
+	var origin := _player.global_position + forward * 1.1 - right * 0.3
+	origin = (origin / GroundRecipes.CELL).floor() * GroundRecipes.CELL + Vector3(0.5, 0, 0.5) * GroundRecipes.CELL
+	var space := get_world_3d().direct_space_state
+	var cells := GroundRecipes.cells_of(recipe_id)
+	for c: Vector2i in cells:
+		var p := origin + right * (c.x * GroundRecipes.CELL) + forward * (c.y * GroundRecipes.CELL) \
+			+ Vector3(randf_range(-0.08, 0.08), 0, randf_range(-0.08, 0.08))  # sueltos, sin anclar
+		var hit := space.intersect_ray(PhysicsRayQueryParameters3D.create(p + Vector3.UP * 2.0, p + Vector3.DOWN * 4.0))
+		if hit.is_empty():
+			continue
+		var point: Vector3 = hit.position
+		var support := Vector3i((point / VOXEL_SIZE - Vector3(0, 0.5, 0)).floor())
+		_ground.place(point, cells[c], randf() * TAU, support)

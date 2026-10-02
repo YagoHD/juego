@@ -3,7 +3,7 @@ class_name EquipmentPanel
 ## Panel izquierdo del inventario (E): lo que lleva puesto el jugador (camiseta, pantalón,
 ## cinturón y mochila). Clic con una prenda cogida para ponérsela; clic en una puesta para
 ## quitársela (solo si sus bolsillos o la mochila están vacíos).
-## (La fabricación aún está por diseñar: de momento la ropa se encuentra en el naufragio.)
+## Debajo, el cuaderno: las formas de fabricar en el suelo que el personaje ha aprendido.
 
 const SLOT := InventoryScreen.SLOT
 const EQUIP_SLOTS := [
@@ -17,6 +17,7 @@ var _player: Player
 var _screen: InventoryScreen
 var _equip_views := {}        # hueco -> Panel
 var _message: Label
+var _notebook: VBoxContainer
 
 
 func _init(player: Player, screen: InventoryScreen) -> void:
@@ -57,11 +58,23 @@ func _init(player: Player, screen: InventoryScreen) -> void:
 	_message.custom_minimum_size = Vector2(150, 0)
 	add_child(_message)
 
+	var notebook_title := Label.new()
+	notebook_title.text = "Cuaderno"
+	notebook_title.add_theme_font_size_override("font_size", 18)
+	add_child(notebook_title)
+	_notebook = VBoxContainer.new()
+	_notebook.add_theme_constant_override("separation", 8)
+	add_child(_notebook)
+	_fill_notebook()
+	_player.recipe_learned.connect(_on_recipe_learned)
+
 	_player.inventory_layout_changed.connect(_refresh)
 	_refresh()
 
 
 func _exit_tree() -> void:
+	if _player.recipe_learned.is_connected(_on_recipe_learned):
+		_player.recipe_learned.disconnect(_on_recipe_learned)
 	if _player.inventory_layout_changed.is_connected(_refresh):
 		_player.inventory_layout_changed.disconnect(_refresh)
 
@@ -108,3 +121,48 @@ func _refresh() -> void:
 		else:
 			icon.texture = ItemDB.icon(worn)
 			icon.modulate = Color.WHITE
+
+
+# ------------------------------------------------------------------ cuaderno
+
+func _on_recipe_learned(_recipe_id: String) -> void:
+	_fill_notebook()
+
+
+## Una página por receta conocida: la forma dibujada con los iconos y qué hacer con ella.
+func _fill_notebook() -> void:
+	for child in _notebook.get_children():
+		child.queue_free()
+	for recipe_id in _player.known_recipes:
+		if not GroundRecipes.RECIPES.has(recipe_id):
+			continue
+		var recipe: Dictionary = GroundRecipes.RECIPES[recipe_id]
+		var page := HBoxContainer.new()
+		page.add_theme_constant_override("separation", 8)
+		_notebook.add_child(page)
+		var rows: Array = recipe["shape"]
+		var grid := GridContainer.new()
+		grid.columns = (rows[0] as String).length()
+		grid.add_theme_constant_override("h_separation", 1)
+		grid.add_theme_constant_override("v_separation", 1)
+		page.add_child(grid)
+		for line: String in rows:
+			for letter in line:
+				var cell := TextureRect.new()
+				cell.custom_minimum_size = Vector2(18, 18)
+				cell.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+				cell.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+				if letter != ".":
+					cell.texture = ItemDB.icon(recipe["key"][letter])
+				grid.add_child(cell)
+		var text := Label.new()
+		text.text = "%s\n→ %s" % [recipe["action"], ItemDB.display_name(recipe["result"])]
+		text.add_theme_font_size_override("font_size", 12)
+		text.add_theme_color_override("font_color", Color(0.85, 0.8, 0.72))
+		text.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		page.add_child(text)
+	var hint := Label.new()
+	hint.text = "Deja los objetos en el suelo (G)\ncon esa forma y mantén R."
+	hint.add_theme_font_size_override("font_size", 11)
+	hint.add_theme_color_override("font_color", Color(0.65, 0.6, 0.55))
+	_notebook.add_child(hint)

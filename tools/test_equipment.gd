@@ -49,6 +49,15 @@ func _run(p: Player) -> void:
 	_check("Ningún objeto en huecos bloqueados", used == 12 and p.inventory.is_empty_slot(3) and p.inventory.is_empty_slot(18))
 	var mesh := ItemMesh.make("rope", 0.3)
 	_check("Malla de la cuerda en la mano", mesh != null and mesh.get_aabb().size.x > 0.2)
+	p.inventory.clear()
+	p.inventory.set_slot(0, {"id": "stone", "count": 5})
+	p._hotbar_index = 0
+	p._throw_held(false)
+	var thrown := get_nodes_in_group("item_drops")
+	_check("Q tira una piedra y tarda en volver", p.inventory.count_of("stone") == 4 and thrown.size() == 1
+		and (thrown[0] as ItemDrop).pickup_delay >= 2.0)
+	p._throw_held(true)
+	_check("Ctrl+Q tira el montón entero", p.inventory.count_of("stone") == 0)
 	print("RESULTADO: ", "TODO OK" if _fails == 0 else "%d FALLOS" % _fails)
 	quit()
 

@@ -58,7 +58,11 @@ const OTHER_ITEMS := {
 	"shirt": {"name": "Camiseta", "stack": 1, "wear": "shirt", "pockets": 2},
 	"pants": {"name": "Pantalón", "stack": 1, "wear": "pants", "pockets": 2},
 	"belt": {"name": "Cinturón", "stack": 1, "wear": "belt", "pockets": 2},
-	"backpack": {"name": "Mochila", "stack": 1, "wear": "backpack", "storage": 18},
+	"backpack": {"name": "Mochila de marinero", "stack": 1, "wear": "backpack", "storage": 18},
+	"rough_backpack": {"name": "Mochila improvisada", "stack": 1, "wear": "backpack", "storage": 9},
+	# Notas: al leerlas (clic derecho) se aprende la receta "teaches".
+	"note_belt": {"name": "Nota: cinturón", "stack": 1, "teaches": "belt"},
+	"note_backpack": {"name": "Nota: mochila", "stack": 1, "teaches": "rough_backpack"},
 }
 
 static var _icons := {}
@@ -100,6 +104,11 @@ static func pockets(id: String) -> int:
 ## Huecos de inventario que añade al llevarlo puesto (la mochila).
 static func storage(id: String) -> int:
 	return OTHER_ITEMS.get(id, {}).get("storage", 0)
+
+
+## Receta que enseña al leerlo (las notas), o "".
+static func teaches(id: String) -> String:
+	return OTHER_ITEMS.get(id, {}).get("teaches", "")
 
 
 ## Objeto que se obtiene al romper un bloque ("" si no suelta nada).

@@ -27,7 +27,9 @@ var _leg_right: Node3D
 var _held: MeshInstance3D
 var _lids: Node3D          # párpados (visibles un instante al parpadear)
 var _backpack: Node3D      # mochila a la espalda (visible si la lleva puesta)
-var _has_backpack := false
+var _backpack_kind := ""     # id de la mochila que lleva ("" = ninguna)
+var _working := false
+var _work := 0.0             # 0..1: mezcla de la postura de trabajar agachado
 
 var _time := 0.0
 var _walk_phase := 0.0
@@ -101,22 +103,30 @@ func _build_lids(texture: Texture2D) -> void:
 		_lids.add_child(lid)
 
 
-## Muestra u oculta la mochila a la espalda.
-func set_backpack(visible_now: bool) -> void:
-	_has_backpack = visible_now
-	if _backpack != null:
-		_backpack.visible = visible_now
+## Mochila a la espalda: el id del objeto ("backpack", "rough_backpack") o "" para ninguna.
+func set_backpack(kind: String) -> void:
+	_backpack_kind = kind
+	if _root != null:
+		_build_backpack()
 
 
 func _build_backpack() -> void:
-	# Bolsa de 6x8x3 píxeles de skin pegada a la espalda, con solapa y bolsillo.
+	# Bolsa de 6x8x3 píxeles de skin pegada a la espalda, con solapa y bolsillo. La improvisada
+	# es de tela de vela remendada y atada con cuerda.
+	if is_instance_valid(_backpack):
+		_backpack.queue_free()
 	_backpack = Node3D.new()
 	_backpack.position = Vector3(0, 12.0, 3.4) * SkinModel.PIXEL - Vector3(0, HIP_HEIGHT, 0) + Vector3(0, 6.0, 0) * SkinModel.PIXEL
 	_root.add_child(_backpack)
-	_add_backpack_box(Vector3(0, 0, 0), Vector3(6, 8, 3), Color(0.5, 0.36, 0.2))
-	_add_backpack_box(Vector3(0, 2.6, 0.2), Vector3(6.3, 2.8, 3.3), Color(0.58, 0.43, 0.25))   # solapa
-	_add_backpack_box(Vector3(0, -1.8, 1.7), Vector3(4, 3, 0.8), Color(0.44, 0.31, 0.17))     # bolsillo
-	_backpack.visible = _has_backpack
+	if _backpack_kind == "rough_backpack":
+		_add_backpack_box(Vector3(0, -0.5, 0), Vector3(5.5, 7, 2.6), Color(0.8, 0.75, 0.63))
+		_add_backpack_box(Vector3(0, 2.4, 0), Vector3(5.8, 0.7, 2.9), Color(0.72, 0.58, 0.38))   # cuerda que la cierra
+		_add_backpack_box(Vector3(1.2, -2.0, 1.3), Vector3(2.2, 2.2, 0.3), Color(0.68, 0.64, 0.55))  # remiendo
+	else:
+		_add_backpack_box(Vector3(0, 0, 0), Vector3(6, 8, 3), Color(0.5, 0.36, 0.2))
+		_add_backpack_box(Vector3(0, 2.6, 0.2), Vector3(6.3, 2.8, 3.3), Color(0.58, 0.43, 0.25))   # solapa
+		_add_backpack_box(Vector3(0, -1.8, 1.7), Vector3(4, 3, 0.8), Color(0.44, 0.31, 0.17))     # bolsillo
+	_backpack.visible = _backpack_kind != ""
 
 
 func _add_backpack_box(pos_px: Vector3, size_px: Vector3, color: Color) -> void:
@@ -160,6 +170,13 @@ func update_walk(speed01: float, on_floor: bool, delta: float) -> void:
 	_run = lerpf(_run, run_target, 1.0 - exp(-8.0 * delta))
 	_walk_phase += delta * 9.0 * _walk_amount * (1.0 + 0.4 * _run)
 	if speed01 > 0.05 or not on_floor:
+		_cancel_idle()
+
+
+## Agacharse a trabajar con las manos (fabricar en el suelo).
+func set_working(on: bool) -> void:
+	_working = on
+	if on:
 		_cancel_idle()
 
 
@@ -237,6 +254,9 @@ func _process(delta: float) -> void:
 	}
 	if ACTIONS.has(_action):
 		_blend_action(pose)
+	_work = move_toward(_work, 1.0 if _working else 0.0, delta * 4.0)
+	if _work > 0.0:
+		_work_pose(pose, _work)
 
 	# Inercia: cada articulación persigue su pose objetivo en vez de saltar a ella; quita la
 	# sensación "robótica" de las fórmulas puras.
@@ -277,6 +297,26 @@ func _update_blink(delta: float) -> void:
 
 
 # ------------------------------------------------------------------ acciones de reposo largo
+
+## En cuclillas, inclinado hacia delante, con las manos trabajando en el suelo por turnos.
+func _work_pose(pose: Dictionary, w: float) -> void:
+	var a := sin(_time * 8.0)
+	var target := {
+		"root_y": -0.27 * K,
+		"root_rot": Vector3(-0.5, 0.0, 0.0),
+		"head": Vector3(-0.45, 0.0, 0.0),
+		"leg_r": Vector3(1.4, 0.0, 0.1),
+		"leg_l": Vector3(1.4, 0.0, -0.1),
+		"knee_r": -1.75,
+		"knee_l": -1.75,
+		"arm_r": Vector3(1.0 + 0.3 * a, 0.0, 0.12),
+		"elbow_r": 0.55 - 0.35 * a,
+		"arm_l": Vector3(1.0 - 0.3 * a, 0.0, -0.12),
+		"elbow_l": 0.55 + 0.35 * a,
+	}
+	for key in target:
+		pose[key] = _mix(pose[key], target[key], w)
+
 
 func _blend_action(pose: Dictionary) -> void:
 	var t := clampf(_action_t, 0.0, 1.0)
