@@ -24,6 +24,7 @@ const BLOCK_ITEMS := {
 	"cloth": IslandGenerator.CLOTH,
 	"mossy_stone": IslandGenerator.MOSSY_STONE,
 	"driftwood": IslandGenerator.DRIFTWOOD,
+	"workbench": IslandGenerator.WORKBENCH,
 }
 
 ## Qué objeto suelta cada bloque al romperlo ("" = nada). La hierba suelta tierra, como en
@@ -45,6 +46,7 @@ const DROPS := {
 	IslandGenerator.CLOTH: "cloth",
 	IslandGenerator.MOSSY_STONE: "mossy_stone",
 	IslandGenerator.DRIFTWOOD: "driftwood",
+	IslandGenerator.WORKBENCH: "workbench",
 }
 
 ## Objetos que no son bloques. "wear": hueco de equipo donde se lleva; "pockets": huecos de
@@ -55,6 +57,7 @@ const OTHER_ITEMS := {
 	"sticks": {"name": "Manojo de palitos", "stack": 32},
 	"stone_knife": {"name": "Cuchillo de piedra", "stack": 1},
 	"stone_axe": {"name": "Hacha de piedra", "stack": 1},
+	"stone_pick": {"name": "Pico de piedra", "stack": 1},
 	# Se lee con J; al recogerlo no ocupa hueco (va siempre con el personaje).
 	"captain_journal": {"name": "Diario del capitán", "stack": 1},
 	"berries": {"name": "Bayas silvestres", "stack": 24},
@@ -66,6 +69,7 @@ const OTHER_ITEMS := {
 	# Notas: al leerlas (clic derecho) se aprende la receta "teaches".
 	"note_belt": {"name": "Nota: cinturón", "stack": 1, "teaches": "belt"},
 	"note_backpack": {"name": "Nota: mochila", "stack": 1, "teaches": "rough_backpack"},
+	"note_pick": {"name": "Nota: pico", "stack": 1, "teaches": "stone_pick"},
 }
 
 static var _icons := {}
@@ -116,9 +120,13 @@ static func teaches(id: String) -> String:
 
 ## Cuántas veces más rápido rompe este bloque con este objeto en la mano (1 = como a mano).
 static func tool_speed(item_id: String, block_id: int) -> float:
-	var woody := [IslandGenerator.WOOD, IslandGenerator.DEAD_WOOD, IslandGenerator.DRIFTWOOD, IslandGenerator.PLANKS, IslandGenerator.CHEST]
+	var woody := [IslandGenerator.WOOD, IslandGenerator.DEAD_WOOD, IslandGenerator.DRIFTWOOD, IslandGenerator.PLANKS, IslandGenerator.CHEST, IslandGenerator.WORKBENCH]
+	var rocky := [IslandGenerator.STONE, IslandGenerator.MOSSY_STONE]
 	var soft := [IslandGenerator.LEAVES, IslandGenerator.PINE_LEAVES, IslandGenerator.CLOTH, IslandGenerator.WHEAT]
 	match item_id:
+		"stone_pick":
+			if rocky.has(block_id):
+				return 3.0
 		"stone_axe":
 			if woody.has(block_id):
 				return 4.0

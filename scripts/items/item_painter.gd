@@ -21,7 +21,8 @@ static func paint(id: String) -> Image:
 		"belt": _belt(img)
 		"backpack": _backpack(img)
 		"rough_backpack": _rough_backpack(img)
-		"note_belt", "note_backpack": _note(img)
+		"note_belt", "note_backpack", "note_pick": _note(img)
+		"stone_pick": _stone_pick(img)
 		_: img.fill(Color.MAGENTA)
 	_outline(img)
 	return img
@@ -232,3 +233,17 @@ static func _journal(img: Image) -> void:
 	_rect(img, 6, 8, 9, 8, leather.lightened(0.18))
 	_rect(img, 11, 7, 13, 8, Color(0.82, 0.66, 0.3))       # cierre
 	_rect(img, 4, 11, 6, 12, Color(0.3, 0.32, 0.36, 1.0))  # mancha de agua
+
+
+static func _stone_pick(img: Image) -> void:
+	# Mango en diagonal y cabeza de piedra curvada en T.
+	var wood := Color(0.55, 0.38, 0.2)
+	_line(img, Vector2i(3, 14), Vector2i(10, 5), wood)
+	_line(img, Vector2i(4, 14), Vector2i(11, 5), wood.darkened(0.2))
+	var stone := Color(0.55, 0.56, 0.58)
+	_line(img, Vector2i(4, 4), Vector2i(8, 2), stone)
+	_line(img, Vector2i(8, 2), Vector2i(12, 3), stone)
+	_line(img, Vector2i(12, 3), Vector2i(14, 7), stone)
+	_line(img, Vector2i(4, 5), Vector2i(8, 3), stone.darkened(0.15))
+	_line(img, Vector2i(12, 4), Vector2i(13, 8), stone.darkened(0.15))
+	_rect(img, 9, 5, 10, 6, Color(0.78, 0.65, 0.42))  # atadura

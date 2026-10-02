@@ -5,6 +5,7 @@ class_name GroundRecipes
 ## celdas de CELL metros: un objeto cuenta en la celda donde cae, esté en el punto que esté de
 ## ella. La forma vale girada o reflejada (no tumbada: lo de arriba va arriba).
 ##   "tools": letras que son herramientas (no se gastan al fabricar).
+##   "surface": "workbench": solo sale encima de mesas de trabajo.
 ##   "dismantle": el objeto, dejado solo en el suelo, se puede desmontar; devuelve sus
 ##                materiales y el personaje aprende a hacerlo.
 ## Las recetas no se ven en ninguna lista: el personaje las aprende (notas, desmontar...) y
@@ -46,12 +47,26 @@ const RECIPES := {
 		"result": "stone_axe", "count": 1, "action": "Atar", "time": 2.5,
 		"layers": [["SSR"], ["..P"]], "key": {"S": "sticks", "R": "rope", "P": "stone"}, "dismantle": true,
 	},
+	"workbench": {
+		"result": "workbench", "count": 1, "action": "Montar", "time": 3.0,
+		"layers": [["WW"], ["PP"]], "key": {"W": "wood", "P": "planks"},
+	},
+	# Sobre la mesa de trabajo ("surface"): formas que en el suelo no salen.
+	"sailor_backpack": {
+		"result": "backpack", "count": 1, "action": "Coser", "time": 4.0, "surface": "workbench",
+		"layers": [["BT", "TT"], ["RR", ".."]], "key": {"B": "rough_backpack", "T": "cloth", "R": "rope"},
+		"dismantle": true,
+	},
+	"stone_pick": {
+		"result": "stone_pick", "count": 1, "action": "Atar", "time": 3.0, "surface": "workbench",
+		"layers": [["SR", "S."], ["PP", ".."]], "key": {"S": "sticks", "R": "rope", "P": "stone"},
+	},
 }
 
 ## Lo que el personaje sabe hacer desde el principio (nada: lo básico viene en el diario).
 const KNOWN_AT_START := []
 ## Lo que se puede leer en el diario del capitán (está empapado: solo se salva lo básico).
-const JOURNAL_RECIPES := ["rope", "planks", "sticks"]
+const JOURNAL_RECIPES := ["rope", "planks", "sticks", "workbench"]
 
 
 ## Celdas de la forma: {Vector3i(columna, capa, fila): id del objeto}.
@@ -100,11 +115,16 @@ static func matches(group: Dictionary, recipe_id: String) -> bool:
 
 
 ## La receta que forma este grupo, entre las conocidas ("" si ninguna).
-static func find(group: Dictionary, known: Array) -> String:
+## Las de mesa de trabajo solo valen si el grupo está encima de mesas (on_workbench).
+static func find(group: Dictionary, known: Array, on_workbench := false) -> String:
 	for recipe_id in known:
-		if RECIPES.has(recipe_id) and matches(group, recipe_id):
+		if RECIPES.has(recipe_id) and allowed_on(recipe_id, on_workbench) and matches(group, recipe_id):
 			return recipe_id
 	return ""
+
+
+static func allowed_on(recipe_id: String, on_workbench: bool) -> bool:
+	return on_workbench or RECIPES[recipe_id].get("surface", "") != "workbench"
 
 
 ## Si el grupo es un trozo de la receta (todo lo puesto encaja), las celdas que faltan

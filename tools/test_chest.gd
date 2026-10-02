@@ -30,7 +30,10 @@ func _process(_delta: float) -> bool:
 	tool.channel = VoxelBuffer.CHANNEL_TYPE
 	match _step:
 		0:
-			var cells: Array = Structures._chest_loot.keys()
+			var cells: Array = []  # solo los del naufragio (el de las ruinas queda lejos, sin cargar)
+			for c: Vector3i in Structures._chest_loot.keys():
+				if Vector2(c.x, c.z).distance_to(Vector2(Structures.ship_voxel())) < 120.0:
+					cells.append(c)
 			var found := 0
 			for c in cells:
 				if tool.get_voxel(c) == IslandGenerator.CHEST:

@@ -15,7 +15,7 @@ const STEPS := [
 	["Haz cuerda: 3 hojas en línea en el suelo (G) y mantén R", "_made_rope"],
 	["Lee la nota de la mochila (clic derecho) y fabrícala", "_has_backpack"],
 	["Desmonta el cofre (déjalo solo en el suelo y mantén R) para aprender a hacerlo", "_knows_chest"],
-	["Explora la isla: busca las ruinas del noroeste (mira el mapa del diario)", "_near_ruins"],
+	["Explora la isla: busca las ruinas del noroeste (mira el mapa del diario); dicen que hay un cofre", "_near_ruins"],
 ]
 
 var player: Player

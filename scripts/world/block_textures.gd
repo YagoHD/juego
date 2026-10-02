@@ -31,6 +31,7 @@ const FACES := {
 	IslandGenerator.CLOTH: ["cloth", "cloth", "cloth"],
 	IslandGenerator.MOSSY_STONE: ["mossy_stone", "mossy_stone", "mossy_stone"],
 	IslandGenerator.DRIFTWOOD: ["driftwood", "driftwood", "driftwood"],
+	IslandGenerator.WORKBENCH: ["workbench_top", "workbench_side", "planks"],
 }
 
 static var _atlas: ImageTexture

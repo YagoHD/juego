@@ -68,6 +68,10 @@
   Mayús + clic recoge el montón entero. Recetas en `GroundRecipes.RECIPES`: cuerda, tablones,
   palitos (las tres en el diario), cinturón y mochila improvisada (notas en los cofres), cofre
   (cubo 2x2x2 de tablones), cuchillo y hacha de piedra (se aprenden desmontando).
+- **Mesa de trabajo** (bloque, receta en el diario: 2 troncos con 2 tablones encima). Encima se
+  colocan objetos igual que en el suelo; recetas con `"surface": "workbench"` solo salen ahí:
+  mochila de marinero (+18, se aprende desmontando la de las ruinas) y pico de piedra (piedra x3;
+  nota en el cofre de las ruinas). Cofre nuevo en las ruinas del noroeste.
 - **Diario del capitán** (`scripts/ui/journal.gd`, tecla J): aparece en la playa al empezar;
   libro de dos páginas, papel con manchas de agua, texto corrido (la página del mineral),
   mapa sepia con naufragio, ruinas y "tú", recetas del capitán y "Mis notas" a lápiz con lo

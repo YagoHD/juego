@@ -92,6 +92,15 @@ static func _build_ruins(gen: IslandGenerator) -> void:
 					continue
 				_put(Vector3i(x, ground + y, z), IslandGenerator.MOSSY_STONE)
 
+	# Un cofre entre los muros: lo que dejó alguien que vivió aquí antes (mochila de marinero para
+	# desmontar y aprenderla, nota del pico y materiales).
+	var ruin_chest := Vector3i(int(center.x), gen.get_ground_height(int(center.x), int(center.y)), int(center.y))
+	_put(ruin_chest, IslandGenerator.CHEST)
+	_chest_loot[ruin_chest] = [
+		{"id": "backpack", "count": 1}, {"id": "note_pick", "count": 1}, {"id": "stone", "count": 6},
+		{"id": "sticks", "count": 6}, {"id": "rope", "count": 3}, {"id": "berries", "count": 8},
+	]
+
 	# Piedras caídas y cubiertas de musgo junto a la base de los muros.
 	for i in 20:
 		var x := int(center.x + (_hash(i, 5, 83) - 0.5) * 24.0)

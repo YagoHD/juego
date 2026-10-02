@@ -103,7 +103,7 @@ func _run() -> void:
 	_p.global_position = Vector3(5.3, 0, 1.5)
 	hint = _g.prompt()
 	_check("Si falta una pieza, dice cuál ('%s') y la muestra en transparente" % hint,
-		hint.contains("faltan 1 Cuerda") and _g._ghosts.get_child_count() == 1)
+		hint.contains("falta 1 Cuerda") and _g._ghosts.get_child_count() == 1)
 	_put("rope", 22, 7)
 	_check("Al ponerla, vale", _recipes() == ["rough_backpack"])
 
@@ -155,6 +155,28 @@ func _run() -> void:
 	_put("rope", 51, 50)
 	_g.stack_on(stick, "stone", 0.0)
 	_check("Palito + piedra encima + cuerda al lado = cuchillo", _recipes() == ["stone_knife"])
+	_clear()
+	# Mesa de trabajo: 2 troncos y 2 tablones encima.
+	_p.learn("workbench")
+	var w1 := _put("wood", 60, 60)
+	var w2 := _put("wood", 61, 60)
+	_g.stack_on(w1, "planks", 0.0)
+	_g.stack_on(w2, "planks", 0.0)
+	_check("2 troncos con 2 tablones encima = mesa de trabajo", _recipes() == ["workbench"])
+	_clear()
+	# Pico: solo encima de la mesa.
+	_p.learn("stone_pick")
+	var s1 := _put("sticks", 70, 70)
+	var s2 := _put("sticks", 70, 71)
+	var r1 := _put("rope", 71, 70)
+	_g.stack_on(s1, "stone", 0.0)
+	_g.stack_on(r1, "stone", 0.0)
+	_check("La forma del pico en el suelo = nada", _recipes().is_empty())
+	_g.block_at = func(_c: Vector3i) -> int: return IslandGenerator.WORKBENCH
+	_check("La misma forma encima de la mesa = pico", _recipes() == ["stone_pick"])
+	_g.block_at = Callable()
+	_clear()
+	_check("Con el pico, la piedra se rompe 3 veces más rápido", ItemDB.tool_speed("stone_pick", IslandGenerator.STONE) == 3.0)
 	_check("Cosas que se pueden coser o fabricar tienen dibujo", ItemDB.icon("stone_axe") != null)
 	print("RESULTADO: ", "TODO OK" if _fails == 0 else "%d FALLOS" % _fails)
 	quit()

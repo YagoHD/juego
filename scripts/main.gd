@@ -481,6 +481,8 @@ func _update_capture() -> void:
 			for entry in give.split(","):
 				var pair := entry.split(":")
 				_player.pick_up(pair[0], int(pair[1]))
+		if OS.get_cmdline_user_args().has("--bench"):
+			_debug_bench()
 		var shape := _arg("--shape=")  # receta dibujada en el suelo delante del jugador
 		if shape != "":
 			_debug_lay_shape(shape)
@@ -823,3 +825,24 @@ func _update_ambience(delta: float) -> void:
 			sea += 1
 	var height_above := _player.global_position.y / VOXEL_SIZE - IslandGenerator.SEA_LEVEL
 	_sfx.sea_amount = (sea / 12.0) * clampf(1.0 - height_above / 30.0, 0.0, 1.0) * 1.6
+
+
+## Solo capturas: dos mesas de trabajo delante del jugador, con el pico a medio montar encima.
+func _debug_bench() -> void:
+	var f := -_player.global_basis.z
+	var forward := Vector3i(int(signf(f.x)), 0, 0) if absf(f.x) > absf(f.z) else Vector3i(0, 0, int(signf(f.z)))
+	var right := Vector3i(Vector3(forward).cross(Vector3.UP))
+	var feet := Vector3i((_player.global_position / VOXEL_SIZE).floor())
+	var tool := _terrain.get_voxel_tool()
+	tool.channel = VoxelBuffer.CHANNEL_TYPE
+	var cells := [feet + forward * 3, feet + forward * 3 + right]
+	for c: Vector3i in cells:
+		tool.set_voxel(c, IslandGenerator.WORKBENCH)
+		tool.set_voxel(c + Vector3i.UP, IslandGenerator.AIR)
+	_player.learn("stone_pick")
+	var top := (Vector3(cells[0]) + Vector3(0.25, 1.0, 0.25)) * VOXEL_SIZE
+	var cell := GroundRecipes.CELL
+	var a := _ground.place(top, "sticks", 0.3, cells[0])
+	_ground.place(top + Vector3(0, 0, cell), "sticks", -0.2, cells[0])
+	_ground.place(top + Vector3(cell, 0, 0), "rope", 0.5, cells[0])
+	_ground.stack_on(a, "stone", 0.1)

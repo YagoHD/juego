@@ -343,6 +343,8 @@ func _page_recipe(box: VBoxContainer, page: Dictionary) -> void:
 		title += " (salen %d)" % int(recipe["count"])
 	box.add_child(_label(title, 22, ink))
 	box.add_child(_label("%s (mantener R)" % recipe["action"], 15, ink))
+	if recipe.get("surface", "") == "workbench":
+		box.add_child(_label("Sobre la mesa de trabajo (una o varias juntas).", 14, ink))
 	var layers: Array = recipe["layers"]
 	var drawing := HBoxContainer.new()
 	drawing.add_theme_constant_override("separation", 22)

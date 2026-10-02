@@ -32,6 +32,8 @@ static func paint(name: String) -> Image:
 		"chest_top": _chest(img, salt, false)
 		"chest_side": _chest(img, salt, true)
 		"cloth": _cloth(img, salt)
+		"workbench_top": _workbench_top(img, salt)
+		"workbench_side": _workbench_side(img, salt)
 		_: img.fill(Color.MAGENTA)
 	return img
 
@@ -378,3 +380,46 @@ static func _cloth(img: Image, salt: int) -> void:
 			var weave := 0.04 if (x + y) % 2 == 0 else -0.04  # trama de la lona
 			var dirt := (_smooth(x, y, 4, salt) - 0.5) * 0.18
 			img.set_pixel(x, y, _shade(base, weave + dirt + (_rand(x, y, salt) - 0.5) * 0.05))
+
+
+static func _workbench_top(img: Image, salt: int) -> void:
+	# Tablero grueso y gastado, con marco oscuro y marcas de cortes y de herramientas.
+	var wood := Blocks.color_of(IslandGenerator.WORKBENCH)
+	_planks(img, salt, wood.lightened(0.05))
+	var frame := wood.darkened(0.35)
+	for i in S:
+		img.set_pixel(i, 0, frame)
+		img.set_pixel(i, S - 1, frame)
+		img.set_pixel(0, i, frame)
+		img.set_pixel(S - 1, i, frame)
+	for k in 5:  # cortes de cuchillo
+		var x := 3 + int(_rand(k, 1, salt) * 9.0)
+		var y := 3 + int(_rand(k, 2, salt) * 9.0)
+		img.set_pixel(x, y, wood.darkened(0.3))
+		img.set_pixel(x + 1, y + 1, wood.darkened(0.3))
+	# Una piedra de afilar y una cuerda enrollada en una esquina.
+	for y in range(2, 5):
+		for x in range(10, 14):
+			img.set_pixel(x, y, Color(0.5, 0.5, 0.52).darkened(0.1 * (y - 2)))
+	img.set_pixel(3, 12, Color(0.8, 0.66, 0.42))
+	img.set_pixel(4, 12, Color(0.72, 0.58, 0.36))
+	img.set_pixel(3, 13, Color(0.72, 0.58, 0.36))
+	img.set_pixel(4, 13, Color(0.8, 0.66, 0.42))
+
+
+static func _workbench_side(img: Image, salt: int) -> void:
+	# Tablero arriba y dos patas, con un travesaño; entre las patas, sombra.
+	var wood := Blocks.color_of(IslandGenerator.WORKBENCH)
+	var shadow := Color(0.16, 0.12, 0.09)
+	for y in S:
+		for x in S:
+			var c := shadow
+			var top := y < 4
+			var leg := (x < 3 or x > 12) and y >= 4
+			var rail := y >= 9 and y <= 10
+			if top or leg or rail:
+				var g := (_rand(x, y, salt) - 0.5) * 0.08
+				c = _shade(wood if not top else wood.lightened(0.05), g)
+				if top and y == 3:
+					c = wood.darkened(0.3)
+			img.set_pixel(x, y, c)

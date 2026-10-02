@@ -19,6 +19,8 @@ signal crafted(recipe_id: String)
 
 var player: Player
 var debug_hold := false  # solo capturas: como si se mantuviera R
+## Solo pruebas: qué bloque hay en una celda (si no, se mira el terreno del jugador).
+var block_at := Callable()
 var _items: Array[PlacedItem] = []
 ## {"recipe", "items", "center", "dismantle": bool} formas completas (o para desmontar).
 var _matches: Array[Dictionary] = []
@@ -136,7 +138,8 @@ func prompt() -> String:
 		var lack: Dictionary = p["missing"]
 		for id in lack:
 			parts.append("%d %s" % [lack[id], ItemDB.display_name(id)])
-		return "%s: faltan %s" % [ItemDB.display_name(GroundRecipes.RECIPES[p["recipe"]]["result"]), ", ".join(parts)]
+		var verb := "falta" if lack.size() == 1 and int(lack.values()[0]) == 1 else "faltan"
+		return "%s: %s %s" % [ItemDB.display_name(GroundRecipes.RECIPES[p["recipe"]]["result"]), verb, ", ".join(parts)]
 	return ""
 
 
@@ -269,7 +272,8 @@ func _find_matches() -> void:
 			center += it.global_position
 		center /= members.size()
 
-		var recipe := GroundRecipes.find(group, known)
+		var bench := _on_workbench(members)
+		var recipe := GroundRecipes.find(group, known, bench)
 		var dismantle := false
 		if recipe == "" and members.size() == 1:
 			recipe = _dismantle_recipe(members[0].item_id)
@@ -282,7 +286,23 @@ func _find_matches() -> void:
 		if recipe != "":
 			_matches.append({"recipe": recipe, "items": members, "center": center, "dismantle": dismantle})
 		elif members.size() >= 2 and not group.values().has(""):
-			_add_partial(group, members, center, known)
+			_add_partial(group, members, center, known, bench)
+
+
+## ¿Está todo el grupo encima de mesas de trabajo?
+func _on_workbench(members: Array[PlacedItem]) -> bool:
+	for it in members:
+		if _block_at(it.support) != IslandGenerator.WORKBENCH:
+			return false
+	return true
+
+
+func _block_at(cell: Vector3i) -> int:
+	if block_at.is_valid():
+		return int(block_at.call(cell))
+	if player == null or player._tool == null:
+		return IslandGenerator.AIR
+	return player._tool.get_voxel(cell)
 
 
 ## Receta de desmontar este objeto ("" si no se puede).
@@ -296,11 +316,11 @@ func _dismantle_recipe(id: String) -> String:
 
 ## Si el grupo es un trozo de una receta conocida: lo apunta y pone las piezas que faltan en
 ## transparente, en su sitio.
-func _add_partial(group: Dictionary, members: Array[PlacedItem], center: Vector3, known: Array) -> void:
+func _add_partial(group: Dictionary, members: Array[PlacedItem], center: Vector3, known: Array, bench: bool) -> void:
 	var best_recipe := ""
 	var best := {}
 	for recipe_id in known:
-		if not GroundRecipes.RECIPES.has(recipe_id):
+		if not GroundRecipes.RECIPES.has(recipe_id) or not GroundRecipes.allowed_on(recipe_id, bench):
 			continue
 		var lack := GroundRecipes.missing(group, recipe_id)
 		if not lack.is_empty() and (best.is_empty() or lack.size() < best.size()):
@@ -317,7 +337,11 @@ func _add_partial(group: Dictionary, members: Array[PlacedItem], center: Vector3
 	var base: PlacedItem = members[0]
 	for cell: Vector3i in best:
 		var id: String = best[cell]
-		var pos := Vector3((cell.x + 0.5) * GroundRecipes.CELL, base.base_y + cell.y * 0.18, (cell.z + 0.5) * GroundRecipes.CELL)
+		var y := base.base_y + cell.y * 0.18
+		for it in members:  # encima de un objeto puesto: justo sobre él (los planos son finos)
+			if it.column == Vector2i(cell.x, cell.z) and it.level == cell.y - 1:
+				y = it.global_position.y + it.height()
+		var pos := Vector3((cell.x + 0.5) * GroundRecipes.CELL, y, (cell.z + 0.5) * GroundRecipes.CELL)
 		_ghosts.add_child(_make_ghost(id, pos))
 
 
