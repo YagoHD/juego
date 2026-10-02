@@ -4,13 +4,14 @@ class_name Player
 ## Encuentra el VoxelTerrain por el grupo "voxel_terrain".
 
 const SPEED := 5.2
-const BODY_HEIGHT := 1.5   # altura del personaje en metros (3 bloques de 0,5 m)
-const EYE_HEIGHT := 1.35   # altura de la cámara (los ojos)
+const BODY_HEIGHT := 1.4   # altura del personaje en metros (~2,8 bloques de 0,5 m)
+const EYE_HEIGHT := 1.25   # altura de la cámara (los ojos)
 const JUMP_VELOCITY := 7.0  # salto de ~1 m: sube 2 bloques
 const GRAVITY := 24.0
 const SENSITIVITY := 0.0025
 const REACH := 8.0
-const STEP_HEIGHT := 0.55  # sube solo escalones de hasta ~1 bloque (0.5 m); para 2+ hay que saltar
+const STEP_HEIGHT := 0.55  # sube solo escalones de hasta 1 bloque (0,5 m); para 2+ hay que saltar
+const STEP_FORWARD := 0.25 # cuánto avanza al subir un escalón (para quedar bien encima)
 const FLY_SPEED := 18.0
 const FLY_SPEED_FAST := 60.0
 
@@ -33,7 +34,7 @@ func _ready() -> void:
 	var shape := CollisionShape3D.new()
 	var capsule := CapsuleShape3D.new()
 	capsule.height = BODY_HEIGHT
-	capsule.radius = 0.35
+	capsule.radius = 0.32
 	shape.shape = capsule
 	shape.position = Vector3(0, BODY_HEIGHT * 0.5, 0)
 	add_child(shape)
@@ -134,10 +135,13 @@ func _physics_process(delta: float) -> void:
 	if Input.is_key_pressed(KEY_SPACE) and is_on_floor():
 		velocity.y = JUMP_VELOCITY
 
+	# La dirección deseada se guarda ANTES de mover: al chocar con la pared, move_and_slide
+	# anula la velocidad hacia ella y ya no sabríamos hacia dónde quería ir el jugador.
+	var desired := Vector3(velocity.x, 0.0, velocity.z)
 	var was_on_floor := is_on_floor()
 	move_and_slide()
-	if was_on_floor:
-		_try_step_up(delta)
+	if was_on_floor and desired.length() > 0.1:
+		_try_step_up(desired.normalized())
 
 	# Red de seguridad: si se cae del mundo, reaparece arriba.
 	if global_position.y < -60.0:
@@ -177,20 +181,20 @@ func _fly(_delta: float) -> void:
 	move_and_slide()
 
 
-func _try_step_up(delta: float) -> void:
+func _try_step_up(dir: Vector3) -> void:
 	# Si vamos contra una pared baja de ≤1 bloque, nos subimos solos.
-	var horizontal := Vector3(velocity.x, 0.0, velocity.z)
-	if horizontal.length() < 0.05:
-		return
-	var motion := horizontal * delta
-	if not test_move(global_transform, motion):
+	var probe := dir * STEP_FORWARD
+	if not test_move(global_transform, probe):
 		return  # nada bloqueando al frente
-	var lifted := Transform3D(global_transform.basis, global_transform.origin + Vector3.UP * STEP_HEIGHT)
-	if test_move(lifted, motion):
-		return  # la pared es más alta que un escalón: no trepar
-	# Hay hueco un escalón más arriba: subimos, avanzamos y bajamos hasta el suelo.
-	global_position += Vector3.UP * STEP_HEIGHT
-	move_and_collide(motion)
+	if test_move(global_transform, Vector3.UP * STEP_HEIGHT):
+		return  # hay techo encima: no cabe
+	var lifted := global_transform.translated(Vector3.UP * STEP_HEIGHT)
+	if test_move(lifted, probe):
+		return  # la pared es más alta que un escalón: hay que saltar
+	# Hay hueco un escalón más arriba: subir, avanzar hasta quedar encima y apoyarse.
+	# Se avanza lo bastante para que la base redondeada del cuerpo quede sobre el escalón
+	# y no en su borde (si no, resbalaría hacia atrás).
+	global_position += Vector3.UP * STEP_HEIGHT + probe
 	move_and_collide(Vector3.DOWN * STEP_HEIGHT)
 
 
