@@ -1,35 +1,55 @@
 extends Node3D
 class_name PlayerAvatar
-## Cuerpo del jugador, construido a partir de su skin (formato Minecraft, ver Skin y
-## docs/SKINS.md). Mide lo mismo que el jugador (1,4 m), mira hacia -Z y anima brazos,
-## piernas y cabeza. Todas sus mallas están en la capa visual 2: la cámara en primera persona
-## no las dibuja, pero siguen proyectando sombra.
+## Cuerpo del jugador, construido a partir de su skin (formato Minecraft, ver SkinModel y
+## docs/SKINS.md). Mide lo mismo que el jugador (1,4 m), mira hacia -Z y se anima solo:
+##   - andar: brazos y piernas alternos;
+##   - reposo: respiración, balanceo suave del cuerpo y parpadeo;
+##   - tras IDLE_ACTION_DELAY s quieto: una acción al azar (estirarse, sentadillas, salto,
+##     voltereta hacia atrás). Moverse o golpear la cancela al instante.
+## Todas sus mallas están en la capa visual 2: la cámara en primera persona no las dibuja,
+## pero siguen proyectando sombra.
 
 const LAYER := 1 << 1
+const IDLE_ACTION_DELAY := 15.0
+const ACTIONS := {"estirarse": 2.6, "sentadillas": 2.6, "salto": 1.1, "voltereta": 1.4}  # duración (s)
+const HIP_HEIGHT := 0.7   # centro de giro del cuerpo (para la voltereta)
 
+var _root: Node3D          # "cadera": todo cuelga de aquí; se mueve y gira para las acciones
 var _head: Node3D
 var _arm_left: Node3D
 var _arm_right: Node3D
 var _leg_left: Node3D
 var _leg_right: Node3D
 var _held: MeshInstance3D
+var _lids: Node3D          # párpados (visibles un instante al parpadear)
+
+var _time := 0.0
 var _walk_phase := 0.0
 var _walk_amount := 0.0
 var _swing := 0.0
+var _look_pitch := 0.0
+var _idle_time := 0.0
+var _action := ""
+var _action_t := 0.0       # 0..1 a lo largo de la acción
+var _frozen := false       # solo para capturas: congela la acción en un instante
+var _blink_timer := 3.0
+var _rng := RandomNumberGenerator.new()
 
 
 ## Construye el cuerpo con una skin (textura de 64x64). Se puede volver a llamar para cambiarla.
 func build(texture: Texture2D, slim: bool) -> void:
 	for child in get_children():
 		child.queue_free()
-	add_child(SkinModel.make_part("body", texture, slim, LAYER))
-	_head = SkinModel.make_part("head", texture, slim, LAYER)
-	_arm_right = SkinModel.make_part("arm_right", texture, slim, LAYER)
-	_arm_left = SkinModel.make_part("arm_left", texture, slim, LAYER)
-	_leg_right = SkinModel.make_part("leg_right", texture, slim, LAYER)
-	_leg_left = SkinModel.make_part("leg_left", texture, slim, LAYER)
-	for part in [_head, _arm_right, _arm_left, _leg_right, _leg_left]:
-		add_child(part)
+	_root = Node3D.new()
+	_root.position = Vector3(0, HIP_HEIGHT, 0)
+	add_child(_root)
+
+	_add_part(SkinModel.make_part("body", texture, slim, LAYER))
+	_head = _add_part(SkinModel.make_part("head", texture, slim, LAYER))
+	_arm_right = _add_part(SkinModel.make_part("arm_right", texture, slim, LAYER))
+	_arm_left = _add_part(SkinModel.make_part("arm_left", texture, slim, LAYER))
+	_leg_right = _add_part(SkinModel.make_part("leg_right", texture, slim, LAYER))
+	_leg_left = _add_part(SkinModel.make_part("leg_left", texture, slim, LAYER))
 
 	# Bloque en la mano derecha (al final del brazo, un poco por delante).
 	_held = MeshInstance3D.new()
@@ -40,6 +60,37 @@ func build(texture: Texture2D, slim: bool) -> void:
 	_held.layers = LAYER
 	_arm_right.add_child(_held)
 
+	_build_lids(texture)
+
+
+func _add_part(part: Node3D) -> Node3D:
+	part.position -= Vector3(0, HIP_HEIGHT, 0)  # relativo a la cadera
+	_root.add_child(part)
+	return part
+
+
+func _build_lids(texture: Texture2D) -> void:
+	# Párpados: dos rectángulos del color de la frente justo delante de los ojos (donde los
+	# pinta SkinComposer: filas 4 de la cara, columnas 1-2 y 5-6).
+	var image := texture.get_image()
+	var face: Rect2i = SkinModel.face_rects(SkinModel.PARTS["head"]["base"], SkinModel.PARTS["head"]["size"])["front"]
+	var skin_color := image.get_pixel(face.position.x + 3, face.position.y + 2)
+	var material := StandardMaterial3D.new()
+	material.albedo_color = skin_color
+	material.roughness = 0.9
+	_lids = Node3D.new()
+	_lids.visible = false
+	_head.add_child(_lids)
+	for x in [2.0, -2.0]:  # en píxeles: derecha del personaje = +X
+		var lid := MeshInstance3D.new()
+		var quad := BoxMesh.new()
+		quad.size = Vector3(2.0, 1.0, 0.1) * SkinModel.PIXEL
+		lid.mesh = quad
+		lid.material_override = material
+		lid.position = Vector3(x, 3.5, -4.06) * SkinModel.PIXEL
+		lid.layers = LAYER
+		_lids.add_child(lid)
+
 
 func set_block(id: int) -> void:
 	if _held != null:
@@ -48,12 +99,12 @@ func set_block(id: int) -> void:
 
 ## Hacia dónde mira (arriba/abajo), en radianes.
 func set_look_pitch(pitch: float) -> void:
-	if _head != null:
-		_head.rotation.x = clampf(pitch, -0.9, 0.7)
+	_look_pitch = pitch
 
 
 func swing() -> void:
 	_swing = 1.0
+	_cancel_idle()
 
 
 ## speed01 = 0 quieto, 1 andando a velocidad normal. on_floor = false en el aire.
@@ -61,17 +112,142 @@ func update_walk(speed01: float, on_floor: bool, delta: float) -> void:
 	var target := clampf(speed01, 0.0, 1.0) if on_floor else 0.0
 	_walk_amount = lerpf(_walk_amount, target, 1.0 - exp(-10.0 * delta))
 	_walk_phase += delta * 9.0 * _walk_amount
+	if speed01 > 0.05 or not on_floor:
+		_cancel_idle()
+
+
+## Solo para capturas: congela una acción ("estirarse", "voltereta"...) en el instante t (0..1).
+func debug_freeze_action(action: String, t: float) -> void:
+	_action = action
+	_action_t = t
+	_frozen = true
+
+
+func _cancel_idle() -> void:
+	_idle_time = 0.0
+	if not _frozen:
+		_action = ""
 
 
 func _process(delta: float) -> void:
-	if _head == null:
+	if _root == null:
 		return
+	_time += delta
 	_swing = maxf(_swing - delta * 4.5, 0.0)
+	_update_blink(delta)
+
+	# Acciones de reposo largo.
+	if not _frozen:
+		_idle_time += delta
+		if _action == "" and _idle_time > IDLE_ACTION_DELAY:
+			var names := ACTIONS.keys()
+			_action = names[_rng.randi() % names.size()]
+			_action_t = 0.0
+		if _action != "":
+			_action_t += delta / float(ACTIONS[_action])
+			if _action_t >= 1.0:
+				_action = ""
+				_idle_time = IDLE_ACTION_DELAY - _rng.randf_range(6.0, 12.0)  # la siguiente, en un rato
+
+	# --- Pose base: andar + reposo (respiración y balanceo) ---
 	var stride := sin(_walk_phase) * 0.75 * _walk_amount
-	_leg_left.rotation.x = stride
-	_leg_right.rotation.x = -stride
-	_arm_left.rotation.x = -stride * 0.8
-	# El brazo derecho sostiene el bloque un poco adelantado y da el golpe al romper/colocar
-	# (ángulo positivo en X = brazo hacia delante, porque el cuerpo mira a -Z).
+	var rest := 1.0 - _walk_amount
+	var breath := sin(_time * 2.2) * rest           # ~3 respiraciones cada 8 s
+	var sway := sin(_time * 0.9) * rest             # balanceo lento de lado a lado
 	var s := sin(_swing * PI)
-	_arm_right.rotation = Vector3(stride * 0.8 + 0.35 + s * 1.3, s * 0.3, -s * 0.15)
+
+	var pose := {
+		"root_y": breath * 0.006,
+		"root_rot": Vector3(0.0, 0.0, sway * 0.025),
+		"head": Vector3(clampf(_look_pitch, -0.9, 0.7) + breath * 0.02, sway * 0.05, -sway * 0.02),
+		"arm_r": Vector3(stride * 0.8 + 0.35 + s * 1.3, s * 0.3, -s * 0.15 + 0.04 * rest + breath * 0.015),
+		"arm_l": Vector3(-stride * 0.8, 0.0, -0.04 * rest - breath * 0.015),
+		"leg_r": Vector3(-stride, 0.0, 0.0),
+		"leg_l": Vector3(stride, 0.0, 0.0),
+	}
+	if _action != "":
+		_blend_action(pose)
+	_apply(pose)
+
+
+func _apply(pose: Dictionary) -> void:
+	_root.position = Vector3(0, HIP_HEIGHT + float(pose["root_y"]), 0)
+	_root.rotation = pose["root_rot"]
+	_head.rotation = pose["head"]
+	_arm_right.rotation = pose["arm_r"]
+	_arm_left.rotation = pose["arm_l"]
+	_leg_right.rotation = pose["leg_r"]
+	_leg_left.rotation = pose["leg_l"]
+
+
+func _update_blink(delta: float) -> void:
+	_blink_timer -= delta
+	if _blink_timer <= 0.0:
+		_lids.visible = true
+		if _blink_timer <= -0.12:  # ojos cerrados 0,12 s
+			_lids.visible = false
+			_blink_timer = _rng.randf_range(2.5, 6.0)
+
+
+# ------------------------------------------------------------------ acciones de reposo largo
+
+func _blend_action(pose: Dictionary) -> void:
+	var t := clampf(_action_t, 0.0, 1.0)
+	# Entrada y salida suaves para no saltar de golpe desde/hacia la pose de reposo.
+	var w := smoothstep(0.0, 0.12, t) * (1.0 - smoothstep(0.88, 1.0, t))
+	var target := pose.duplicate()
+	match _action:
+		"estirarse":
+			# Brazos arriba, cabeza atrás, un ligero vaivén en el punto más alto.
+			var up := smoothstep(0.0, 0.35, t) * (1.0 - smoothstep(0.75, 1.0, t))
+			var wobble := sin(t * TAU * 2.0) * 0.08 * up
+			target["arm_r"] = Vector3(2.9 * up, 0.0, 0.25 * up + wobble)
+			target["arm_l"] = Vector3(2.9 * up, 0.0, -0.25 * up - wobble)
+			target["head"] = Vector3(0.45 * up, 0.0, 0.0)
+			target["root_rot"] = Vector3(0.08 * up, 0.0, wobble * 0.5)
+			target["root_y"] = 0.02 * up
+		"sentadillas":
+			# Dos sentadillas con los brazos al frente.
+			var p := 0.5 - 0.5 * cos(t * TAU * 2.0)
+			target["leg_r"] = Vector3(1.25 * p, 0.0, 0.0)
+			target["leg_l"] = Vector3(1.25 * p, 0.0, 0.0)
+			target["arm_r"] = Vector3(1.45 * p, 0.0, 0.0)
+			target["arm_l"] = Vector3(1.45 * p, 0.0, 0.0)
+			target["root_y"] = -0.36 * p
+			target["root_rot"] = Vector3(-0.18 * p, 0.0, 0.0)
+		"salto":
+			_jump_pose(target, t, 0.55, 0.0)
+		"voltereta":
+			_jump_pose(target, t, 0.9, TAU)
+	for key in pose:
+		pose[key] = _mix(pose[key], target[key], w)
+
+
+## Salto con agachada previa y aterrizaje. spin = vueltas hacia atrás (radianes) en el aire.
+func _jump_pose(target: Dictionary, t: float, height: float, spin: float) -> void:
+	const TAKE_OFF := 0.2
+	const LAND := 0.82
+	var crouch := 0.0
+	var air := 0.0
+	if t < TAKE_OFF:
+		crouch = sin(t / TAKE_OFF * PI)
+	elif t < LAND:
+		air = (t - TAKE_OFF) / (LAND - TAKE_OFF)
+	else:
+		crouch = sin((t - LAND) / (1.0 - LAND) * PI) * 0.8
+	var lift := sin(air * PI) * height
+	var tuck := sin(air * PI) if spin > 0.0 else 0.3 * sin(air * PI)  # piernas encogidas en el aire
+	target["root_y"] = lift - 0.22 * crouch
+	target["root_rot"] = Vector3(smoothstep(0.1, 0.9, air) * spin, 0.0, 0.0)
+	var legs := 1.1 * crouch + 1.4 * tuck
+	target["leg_r"] = Vector3(legs, 0.0, 0.0)
+	target["leg_l"] = Vector3(legs, 0.0, 0.0)
+	var arms := 2.8 * sin(air * PI) + 0.6 * crouch  # brazos arriba al saltar
+	target["arm_r"] = Vector3(arms, 0.0, 0.15)
+	target["arm_l"] = Vector3(arms, 0.0, -0.15)
+
+
+func _mix(a: Variant, b: Variant, w: float) -> Variant:
+	if a is Vector3:
+		return (a as Vector3).lerp(b as Vector3, w)
+	return lerpf(float(a), float(b), w)

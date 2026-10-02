@@ -496,6 +496,11 @@ func is_on_ground_ready() -> bool:
 	return not _waiting_for_ground
 
 
+## Solo para capturas de prueba: congela una animación del cuerpo ("voltereta", ...) en t (0..1).
+func debug_avatar_action(action: String, t: float) -> void:
+	_avatar.debug_freeze_action(action, t)
+
+
 ## Solo para capturas de prueba: lanza la animación de golpe (sin romper nada).
 func debug_swing() -> void:
 	_held.swing()
@@ -514,3 +519,5 @@ func debug_pose(third_person: bool, pitch: float, yaw_degrees: float, up_meters:
 		global_position += Vector3.UP * up_meters
 	if OS.get_cmdline_user_args().has("--front"):
 		_spring.rotation.y = PI  # cámara delante del personaje, mirándolo de frente
+	elif OS.get_cmdline_user_args().has("--side"):
+		_spring.rotation.y = PI / 2.0  # cámara a su derecha, mirándolo de perfil

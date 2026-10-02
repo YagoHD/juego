@@ -355,6 +355,10 @@ func _update_capture() -> void:
 			_player.global_position = Vector3(vx, ground + 2, vz) * VOXEL_SIZE
 		_player.debug_pose(OS.get_cmdline_user_args().has("--tp"), float(_arg("--pitch=", "0")),
 			float(_arg("--yaw=", "0")), float(_arg("--up=", "0")) + (0.01 if at != "" else 0.0))
+		var action := _arg("--action=")  # "nombre:t", p. ej. "voltereta:0.5"
+		if action != "":
+			var parts := action.split(":")
+			_player.debug_avatar_action(parts[0], float(parts[1]))
 		_capture_frames = int(_arg("--wait=", "90"))
 		return
 	_capture_frames -= 1
