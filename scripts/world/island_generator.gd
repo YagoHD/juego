@@ -255,6 +255,23 @@ func _hash01(x: int, z: int) -> float:
 	return float(h & 0x7fffffff) / float(0x7fffffff)
 
 
+## Acceso de solo lectura a los mapas (lo usa la malla lejana, FarTerrain).
+func get_map_size() -> int:
+	return _n
+
+func get_voxels_per_px() -> float:
+	return _voxels_per_px
+
+func get_height_map() -> PackedFloat32Array:
+	return _h
+
+func get_water_map() -> PackedFloat32Array:
+	return _w
+
+func get_surface_map() -> PackedByteArray:
+	return _surface
+
+
 ## Altura del suelo en coordenadas de voxel (para colocar al jugador al aparecer).
 func get_ground_height(wx: int, wz: int) -> int:
 	var i := _index(wx, wz)

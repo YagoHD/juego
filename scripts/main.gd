@@ -1,17 +1,48 @@
 extends Node3D
-## Mundo jugable: la isla de la Beta (generada desde los mapas de assets/island/),
+## Mundo jugable: la isla de la Beta (diseñada en tools/island_baker y guardada en disco),
 ## jugador en primera persona, romper (clic izq.) y colocar (clic der.) bloques.
+##
+## Dibujado en 3 capas:
+##   1. Cerca del jugador: voxels con todo el detalle (editables).
+##   2. Lejos: la isla entera como una malla simplificada (FarTerrain), siempre visible.
+##   3. Niebla por distancia: visión limpia hasta media isla y luego bruma suave.
 
 # Tamaño de cada voxel en metros. 1.0 = estilo Minecraft; 0.5 = cada cubo se parte en 8
 # (estilo Cube World, personaje de ~4 cubos de alto). Baja este valor para más detalle.
 const VOXEL_SIZE := 0.5
 
+# Radio de voxels detallados alrededor del jugador (en voxels; 320 = 160 m).
+const NEAR_VIEW_VOXELS := 320
+# La malla lejana se recorta un poco antes de donde acaban los voxels, para que se solapen.
+const FAR_HIDE_RADIUS := NEAR_VIEW_VOXELS * VOXEL_SIZE - 15.0
+
+# Niebla: limpia hasta FOG_BEGIN metros, y se va difuminando hasta FOG_END.
+const FOG_BEGIN := 450.0
+const FOG_END := 1600.0
+const FOG_MAX := 0.75  # opacidad máxima de la niebla (1 = tapa del todo)
+
 # Punto de aparición (en voxels): la playa del pueblo junto a la bahía.
 const SPAWN_VOXEL := Vector2i(-560, 607)
+const MAX_LOAD_SECONDS := 60.0  # tope de seguridad: entrar aunque no haya "terminado"
 
-# Región central que debe estar mallada antes de entrar (en voxels, dentro de la distancia de carga).
-const LOAD_AREA := AABB(Vector3(-1024, 0, -1024), Vector3(2048, 256, 2048))
-const MAX_LOAD_SECONDS := 180.0  # tope de seguridad: entrar aunque no haya "terminado"
+const WORLD_DIR := "user://world"
+const AUTOSAVE_SECONDS := 60.0
+
+# Colores de los bloques (los usan los cubos y la malla lejana, para que coincidan).
+const BLOCK_COLORS := {
+	IslandGenerator.GRASS: Color(0.37, 0.65, 0.33),
+	IslandGenerator.DIRT: Color(0.55, 0.40, 0.26),
+	IslandGenerator.STONE: Color(0.50, 0.50, 0.52),
+	IslandGenerator.SAND: Color(0.88, 0.80, 0.56),
+	IslandGenerator.SNOW: Color(0.95, 0.96, 0.98),
+	IslandGenerator.WOOD: Color(0.45, 0.30, 0.17),
+	IslandGenerator.LEAVES: Color(0.24, 0.52, 0.22),
+	IslandGenerator.WATER: Color(0.25, 0.62, 0.80, 0.62),
+	IslandGenerator.PINE_LEAVES: Color(0.13, 0.33, 0.20),
+	IslandGenerator.CORRUPT_SOIL: Color(0.30, 0.22, 0.32),
+	IslandGenerator.DEAD_WOOD: Color(0.22, 0.18, 0.17),
+	IslandGenerator.WHEAT: Color(0.90, 0.76, 0.30),
+}
 
 const BLOCK_NAMES := {
 	IslandGenerator.GRASS: "Hierba",
@@ -33,17 +64,15 @@ var _loading := true
 var _loading_label: Label
 var _loading_overlay: CanvasLayer
 var _elapsed := 0.0
-var _settled_frames := 0
 var _world_is_new := false
-
-const WORLD_DIR := "user://world"
-const AUTOSAVE_SECONDS := 60.0
 
 
 func _ready() -> void:
 	_build_world()
+	_build_far_terrain()
 	_build_environment()
 	_build_hud()
+	_build_player()
 	_build_loading_overlay()
 	print("[main] %s" % _loading_title())
 
@@ -65,16 +94,51 @@ func _save_world() -> void:
 		_terrain.save_modified_blocks()
 
 
-func _loading_title() -> String:
-	if _world_is_new:
-		return "Creando la isla por primera vez...\n(solo pasa una vez; las siguientes cargas serán rápidas)"
-	return "Cargando la isla..."
+# ------------------------------------------------------------------ mundo
+
+func _build_world() -> void:
+	var library := VoxelBlockyLibrary.new()
+	library.add_model(VoxelBlockyModelEmpty.new())  # 0 AIR
+	for id in range(1, 13):
+		if id == IslandGenerator.WATER:
+			library.add_model(_make_water())
+		else:
+			library.add_model(_make_cube(BLOCK_COLORS[id]))
+	library.bake()
+
+	var mesher := VoxelMesherBlocky.new()
+	mesher.library = library
+
+	_generator = IslandGenerator.new()
+
+	var terrain := VoxelTerrain.new()
+	terrain.mesher = mesher
+	terrain.generator = _generator
+	terrain.stream = _make_world_stream()
+	terrain.generate_collisions = true
+	# Solo existen voxels dentro de la isla y entre el fondo marino y las cimas.
+	terrain.bounds = AABB(Vector3(-1024, 0, -1024), Vector3(2048, 256, 2048))
+	# Mallas de 32³ voxels: 8 veces menos objetos de malla y colisión que con 16³.
+	terrain.mesh_block_size = 32
+	terrain.max_view_distance = NEAR_VIEW_VOXELS + 64
+	terrain.scale = Vector3.ONE * VOXEL_SIZE  # voxels más pequeños (estilo Cube World)
+	terrain.add_to_group("voxel_terrain")
+	add_child(terrain)
+	_terrain = terrain
+
+	_build_sea()
+
+
+func _build_far_terrain() -> void:
+	var far := FarTerrain.new()
+	far.build(_generator, BLOCK_COLORS, VOXEL_SIZE, FAR_HIDE_RADIUS)
+	add_child(far)
 
 
 func _make_world_stream() -> VoxelStreamSQLite:
-	# El mundo se guarda en un archivo. La primera vez se genera y se va guardando; las
-	# siguientes se lee del archivo (mucho más rápido) y conserva lo que el jugador construya.
-	# El nombre lleva una "huella" de los mapas y del generador: si cambian, se crea un mundo nuevo.
+	# El mundo se guarda en un archivo: lo ya visitado se lee de ahí (rápido) y conserva lo
+	# que el jugador construya. El nombre lleva una "huella" de los mapas y del generador:
+	# si cambian, se crea un mundo nuevo.
 	DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(WORLD_DIR))
 	var file_name := "isla_%s.sqlite" % _world_fingerprint()
 	var path := WORLD_DIR.path_join(file_name)
@@ -104,64 +168,6 @@ func _delete_old_worlds(keep: String) -> void:
 			dir.remove(file)
 
 
-func _build_world() -> void:
-	var library := VoxelBlockyLibrary.new()
-	library.add_model(VoxelBlockyModelEmpty.new())                 # 0 AIR
-	library.add_model(_make_cube(Color(0.37, 0.65, 0.33)))         # 1 GRASS
-	library.add_model(_make_cube(Color(0.55, 0.40, 0.26)))         # 2 DIRT
-	library.add_model(_make_cube(Color(0.50, 0.50, 0.52)))         # 3 STONE
-	library.add_model(_make_cube(Color(0.88, 0.80, 0.56)))         # 4 SAND
-	library.add_model(_make_cube(Color(0.95, 0.96, 0.98)))         # 5 SNOW
-	library.add_model(_make_cube(Color(0.45, 0.30, 0.17)))         # 6 WOOD
-	library.add_model(_make_cube(Color(0.24, 0.52, 0.22)))         # 7 LEAVES
-	library.add_model(_make_water())                               # 8 WATER
-	library.add_model(_make_cube(Color(0.13, 0.33, 0.20)))         # 9 PINE_LEAVES
-	library.add_model(_make_cube(Color(0.30, 0.22, 0.32)))         # 10 CORRUPT_SOIL
-	library.add_model(_make_cube(Color(0.22, 0.18, 0.17)))         # 11 DEAD_WOOD
-	library.add_model(_make_cube(Color(0.90, 0.76, 0.30)))         # 12 WHEAT
-	library.bake()
-
-	var mesher := VoxelMesherBlocky.new()
-	mesher.library = library
-
-	_generator = IslandGenerator.new()
-
-	var terrain := VoxelTerrain.new()
-	terrain.mesher = mesher
-	terrain.generator = _generator
-	terrain.stream = _make_world_stream()
-	terrain.generate_collisions = true
-	# Solo se generan voxels dentro de la isla y entre el fondo marino y las cimas:
-	# sin esto, generaría kilómetros de roca subterránea inútil.
-	terrain.bounds = AABB(Vector3(-1024, 0, -1024), Vector3(2048, 256, 2048))
-	# Mallas de 32³ voxels: 8 veces menos objetos de malla y colisión que con 16³
-	# (carga más rápida y menos llamadas de dibujo).
-	terrain.mesh_block_size = 32
-	terrain.max_view_distance = 1600  # tope del terreno (en voxels); sin esto solo carga un recuadro
-	terrain.scale = Vector3.ONE * VOXEL_SIZE  # voxels más pequeños (estilo Cube World)
-	terrain.add_to_group("voxel_terrain")
-	add_child(terrain)
-	_terrain = terrain
-
-	# Observador FIJO en el centro de la isla: fuerza a cargar TODO el mapa a la vez y lo
-	# mantiene cargado aunque el jugador se aleje. Solo pide lo visual: las colisiones (caras)
-	# se calculan únicamente cerca del jugador.
-	var loader := VoxelViewer.new()
-	loader.view_distance = 1500  # en voxels; llega a las esquinas del mapa (1024·√2 ≈ 1450)
-	loader.requires_collisions = false
-	loader.position = Vector3(0, 40, 0)
-	add_child(loader)
-
-	# Observador en el punto de aparición: prepara el suelo (con colisión) antes de entrar.
-	var spawn_viewer := VoxelViewer.new()
-	spawn_viewer.view_distance = 48
-	var ground := _generator.get_ground_height(SPAWN_VOXEL.x, SPAWN_VOXEL.y)
-	spawn_viewer.position = Vector3(SPAWN_VOXEL.x, ground, SPAWN_VOXEL.y) * VOXEL_SIZE
-	add_child(spawn_viewer)
-
-	_build_sea()
-
-
 func _build_sea() -> void:
 	# Plano de agua al nivel del mar, con color según la profundidad (turquesa en la orilla).
 	var water := MeshInstance3D.new()
@@ -188,7 +194,7 @@ func _make_water() -> VoxelBlockyModelCube:
 	# Agua de ríos y lagos: translúcida, sin caras internas y atravesable.
 	var cube := VoxelBlockyModelCube.new()
 	var material := StandardMaterial3D.new()
-	material.albedo_color = Color(0.25, 0.62, 0.80, 0.62)
+	material.albedo_color = BLOCK_COLORS[IslandGenerator.WATER]
 	material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 	material.roughness = 0.08
 	cube.set_material_override(0, material)
@@ -198,10 +204,21 @@ func _make_water() -> VoxelBlockyModelCube:
 
 
 func _build_player() -> void:
+	# El jugador existe desde el principio (sus observadores cargan el terreno a su alrededor),
+	# pero flota quieto hasta que hay suelo con colisión debajo.
 	var ground := _generator.get_ground_height(SPAWN_VOXEL.x, SPAWN_VOXEL.y)
 	_player = Player.new()
+	_player.near_view_voxels = NEAR_VIEW_VOXELS
 	_player.position = Vector3(SPAWN_VOXEL.x, ground + 4, SPAWN_VOXEL.y) * VOXEL_SIZE
 	add_child(_player)
+
+
+# ------------------------------------------------------------------ pantalla de carga
+
+func _loading_title() -> String:
+	if _world_is_new:
+		return "Preparando la isla por primera vez..."
+	return "Cargando la isla..."
 
 
 func _build_loading_overlay() -> void:
@@ -225,39 +242,17 @@ func _build_loading_overlay() -> void:
 
 func _update_loading() -> void:
 	_elapsed += get_process_delta_time()
-
-	var remaining := -1
-	var stats: Dictionary = _terrain.get_statistics()
-	if stats.has("remaining_main_thread_blocks"):
-		remaining = int(stats["remaining_main_thread_blocks"])
-
-	# Consideramos "asentado" cuando no quedan bloques pendientes varios frames seguidos.
-	if remaining == 0:
-		_settled_frames += 1
-	else:
-		_settled_frames = 0
-
-	var meshed := _terrain.is_area_meshed(LOAD_AREA)
-	var spawn_ready := _terrain.is_area_meshed(_spawn_area())
-
 	_loading_label.text = "%s\n\n%.0f s" % [_loading_title(), _elapsed]
-	if int(_elapsed / 5.0) != int((_elapsed - get_process_delta_time()) / 5.0):
-		print("[carga] %.0f s · pendientes=%s · isla=%s · aparición=%s" % [_elapsed, remaining, meshed, spawn_ready])
 
-	# Listo cuando la isla está mallada (o no queda trabajo pendiente) y, sobre todo, cuando el
-	# suelo donde aparece el jugador ya existe: si no, caería a través del terreno.
-	var ready_by_mesh := meshed and _elapsed > 2.0
-	var ready_by_settle := _settled_frames > 60 and _elapsed > 2.0
-	var ready_by_timeout := _elapsed > MAX_LOAD_SECONDS
-	if spawn_ready and (ready_by_mesh or ready_by_settle or ready_by_timeout):
+	# Listo cuando la zona detallada alrededor del punto de aparición ya está dibujada.
+	var near_ready := _terrain.is_area_meshed(_near_spawn_area())
+	if (near_ready and _elapsed > 0.5) or _elapsed > MAX_LOAD_SECONDS:
 		_finish_loading()
-	elif _elapsed > MAX_LOAD_SECONDS * 1.5:
-		_finish_loading()  # último recurso: entrar igualmente
 
 
-func _spawn_area() -> AABB:
-	var ground := _generator.get_ground_height(SPAWN_VOXEL.x, SPAWN_VOXEL.y)
-	return AABB(Vector3(SPAWN_VOXEL.x - 16, ground - 16, SPAWN_VOXEL.y - 16), Vector3(32, 48, 32))
+func _near_spawn_area() -> AABB:
+	var r := NEAR_VIEW_VOXELS * 0.8
+	return AABB(Vector3(SPAWN_VOXEL.x - r, 0, SPAWN_VOXEL.y - r), Vector3(2 * r, 256, 2 * r))
 
 
 func _finish_loading() -> void:
@@ -265,12 +260,13 @@ func _finish_loading() -> void:
 	if _loading_overlay != null:
 		_loading_overlay.queue_free()
 		_loading_overlay = null
-	_build_player()
 	print("[main] Isla cargada en %.1f s. ¡A jugar!" % _elapsed)
 	# Modo medición: "godot --headless --path . -- --quit-after-load" sale al terminar de cargar.
 	if OS.get_cmdline_user_args().has("--quit-after-load"):
 		get_tree().quit()
 
+
+# ------------------------------------------------------------------ ambiente y HUD
 
 func _build_environment() -> void:
 	var sun := DirectionalLight3D.new()
@@ -294,11 +290,16 @@ func _build_environment() -> void:
 	env.sky = sky
 	env.ambient_light_source = Environment.AMBIENT_SOURCE_SKY
 	env.tonemap_mode = Environment.TONE_MAPPER_FILMIC
-	# Bruma suave para dar profundidad al horizonte (perspectiva aérea).
+	# Niebla por distancia: nada hasta FOG_BEGIN y luego una bruma suave del color del horizonte.
 	env.fog_enabled = true
+	env.fog_mode = Environment.FOG_MODE_DEPTH
+	env.fog_depth_begin = FOG_BEGIN
+	env.fog_depth_end = FOG_END
+	env.fog_depth_curve = 1.6
+	env.fog_density = FOG_MAX
 	env.fog_light_color = Color(0.70, 0.82, 0.95)
-	env.fog_density = 0.0012
-	env.fog_aerial_perspective = 0.6
+	env.fog_sky_affect = 0.35
+	env.fog_aerial_perspective = 0.5
 	world_env.environment = env
 	add_child(world_env)
 

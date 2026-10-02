@@ -16,6 +16,9 @@ var _flying := false
 var _spawn_point := Vector3.ZERO
 var _waiting_for_ground := true  # no aplicar gravedad hasta que exista suelo con colisión
 
+## Radio (en voxels) de terreno detallado alrededor del jugador. Lo fija main.gd.
+var near_view_voxels := 320
+
 var _camera: Camera3D
 var _terrain: VoxelTerrain
 var _pitch := 0.0
@@ -39,10 +42,18 @@ func _ready() -> void:
 	add_child(_camera)
 	_camera.current = true
 
-	# El VoxelViewer hace que el terreno cargue chunks alrededor del jugador.
-	var viewer := VoxelViewer.new()
-	viewer.view_distance = 160  # el observador fijo del mundo ya carga toda la isla
-	_camera.add_child(viewer)
+	# Observadores del terreno: uno amplio solo para dibujar (la zona detallada) y otro
+	# pequeño solo para las colisiones, que son caras de calcular.
+	var visual_viewer := VoxelViewer.new()
+	visual_viewer.view_distance = near_view_voxels
+	visual_viewer.view_distance_vertical_ratio = 2.5  # que no haya huecos al volar alto
+	visual_viewer.requires_collisions = false
+	_camera.add_child(visual_viewer)
+
+	var collision_viewer := VoxelViewer.new()
+	collision_viewer.view_distance = 48
+	collision_viewer.requires_visuals = false
+	_camera.add_child(collision_viewer)
 
 	var terrains := get_tree().get_nodes_in_group("voxel_terrain")
 	if terrains.size() > 0:
