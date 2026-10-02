@@ -334,8 +334,15 @@ func _update_capture() -> void:
 	if _capture_frames < 0:
 		if not _player.is_on_ground_ready():
 			return
+		var at := _arg("--at=")  # "x,z" en voxels: teletransporte (volando) a ese punto
+		if at != "":
+			var xz := at.split(",")
+			var vx := int(xz[0])
+			var vz := int(xz[1])
+			var ground := _generator.get_ground_height(vx, vz)
+			_player.global_position = Vector3(vx, ground + 2, vz) * VOXEL_SIZE
 		_player.debug_pose(OS.get_cmdline_user_args().has("--tp"), float(_arg("--pitch=", "0")),
-			float(_arg("--yaw=", "0")), float(_arg("--up=", "0")))
+			float(_arg("--yaw=", "0")), float(_arg("--up=", "0")) + (0.01 if at != "" else 0.0))
 		_capture_frames = int(_arg("--wait=", "90"))
 		return
 	_capture_frames -= 1

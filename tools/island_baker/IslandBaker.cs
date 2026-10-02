@@ -527,12 +527,15 @@ public static class IslandBaker
                 float u = ToDesign(x / (float)(N - 1)), v = ToDesign(y / (float)(N - 1));
                 float h = H[i];
                 byte biome = B[i];
-                int xl = Math.Max(x - 1, 0), xr = Math.Min(x + 1, N - 1);
-                int yu = Math.Max(y - 1, 0), yd = Math.Min(y + 1, N - 1);
-                float slope = Math.Max(Math.Abs(H[y * N + xr] - H[y * N + xl]),
-                                       Math.Abs(H[yd * N + x] - H[yu * N + x])) / (2f * VOXELS_PER_PX);
+                // Pendiente medida sobre ±2 píxeles (8 voxels): con vecinos inmediatos, en una
+                // ladera media cada bloque caía a un lado u otro del umbral y salía "moteado".
+                int xl = Math.Max(x - 2, 0), xr = Math.Min(x + 2, N - 1);
+                int yu = Math.Max(y - 2, 0), yd = Math.Min(y + 2, N - 1);
+                float slope = Math.Max(Math.Abs(H[y * N + xr] - H[y * N + xl]) / ((xr - xl) * VOXELS_PER_PX),
+                                       Math.Abs(H[yd * N + x] - H[yu * N + x]) / ((yd - yu) * VOXELS_PER_PX));
                 bool steep = slope > STEEP;
-                float snowLine = SNOW + Perlin(u * 60f, v * 60f) * 8f;
+                // Borde de la nieve en manchas grandes (no en puntitos).
+                float snowLine = SNOW + Fbm(u * 14f + 3f, v * 14f + 8f, 3) * 14f;
 
                 byte top, sub;
                 switch (biome)
