@@ -56,10 +56,13 @@ func _get_used_channels_mask() -> int:
 # ------------------------------------------------------------------ carga de mapas
 
 func _load_image(path: String) -> Image:
-	var img: Image = Image.load_from_file(path)
+	# Los mapas se importan como "Image" (sin compresión, ver sus .import): así se leen
+	# igual en el editor que en el juego exportado, con los valores exactos.
+	var img := load(path) as Image
 	if img == null:
 		push_error("No se pudo cargar el mapa: " + path)
 		return null
+	img = img.duplicate() as Image  # el recurso importado es compartido: no lo modificamos
 	img.convert(Image.FORMAT_RGB8)
 	if _n == 0:
 		_n = img.get_width()
