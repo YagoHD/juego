@@ -23,6 +23,7 @@ static func paint(id: String) -> Image:
 		"rough_backpack": _rough_backpack(img)
 		"note_belt", "note_backpack", "note_pick": _note(img)
 		"stone_pick": _stone_pick(img)
+		"torch": _torch(img)
 		_: img.fill(Color.MAGENTA)
 	_outline(img)
 	return img
@@ -247,3 +248,14 @@ static func _stone_pick(img: Image) -> void:
 	_line(img, Vector2i(4, 5), Vector2i(8, 3), stone.darkened(0.15))
 	_line(img, Vector2i(12, 4), Vector2i(13, 8), stone.darkened(0.15))
 	_rect(img, 9, 5, 10, 6, Color(0.78, 0.65, 0.42))  # atadura
+
+
+static func _torch(img: Image) -> void:
+	# Palo con tela enrollada arriba y una llama.
+	var wood := Color(0.5, 0.34, 0.18)
+	_rect(img, 7, 7, 8, 15, wood)
+	_rect(img, 8, 7, 8, 15, wood.darkened(0.2))
+	_rect(img, 6, 5, 9, 7, Color(0.78, 0.72, 0.6))   # tela
+	_rect(img, 6, 3, 9, 4, Color(1.0, 0.62, 0.12))   # llama
+	_rect(img, 7, 1, 8, 2, Color(1.0, 0.85, 0.3))
+	_rect(img, 7, 3, 8, 4, Color(1.0, 0.92, 0.55))

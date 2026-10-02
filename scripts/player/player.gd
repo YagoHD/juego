@@ -99,6 +99,8 @@ var _cracks: BlockCracks
 var debug_cracks := false
 var _place_ghost: MeshInstance3D   # dónde caería el objeto de la mano al dejarlo (G)
 var _place_ghost_id := ""
+var _hand_light: OmniLight3D  # luz de la antorcha que se lleva en la mano
+var _hand_light_time := 0.0
 ## true mientras hay una pantalla abierta (inventario, cofre...): no se mueve ni mira.
 var ui_open := false
 var _captured := true
@@ -170,6 +172,10 @@ func _ready() -> void:
 	add_child(_highlight)
 	_cracks = BlockCracks.new()
 	add_child(_cracks)
+	_hand_light = TorchLight.make_light()
+	_hand_light.position = Vector3(0.25, EYE_HEIGHT - 0.25, -0.3)
+	_hand_light.visible = false
+	add_child(_hand_light)
 	_place_ghost = MeshInstance3D.new()
 	_place_ghost.top_level = true
 	_place_ghost.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
@@ -332,6 +338,8 @@ func _refresh_held() -> void:
 	var id: String = "" if stack.is_empty() else stack["id"]
 	_held.set_item(id)
 	_avatar.set_item(id)
+	if _hand_light != null:
+		_hand_light.visible = id == "torch"
 
 
 func _apply_camera_mode() -> void:
@@ -448,6 +456,9 @@ func _process(delta: float) -> void:
 	_update_highlight()
 	_update_breaking(delta)
 	_update_place_ghost()
+	if _hand_light.visible:
+		_hand_light_time += delta
+		TorchLight.flicker(_hand_light, null, _hand_light_time)
 
 
 func _wait_for_ground() -> void:

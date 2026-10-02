@@ -481,6 +481,14 @@ func _update_capture() -> void:
 			for entry in give.split(","):
 				var pair := entry.split(":")
 				_player.pick_up(pair[0], int(pair[1]))
+		if OS.get_cmdline_user_args().has("--torches"):  # dos antorchas clavadas delante
+			var fwd := -_player.global_basis.z
+			for k in [-1.2, 1.2]:
+				var p: Vector3 = _player.global_position + Vector3(fwd.x, 0, fwd.z).normalized() * 3.0 + _player.global_basis.x * float(k)
+				var hit := get_world_3d().direct_space_state.intersect_ray(PhysicsRayQueryParameters3D.create(p + Vector3.UP * 3.0, p + Vector3.DOWN * 6.0))
+				if not hit.is_empty():
+					var pt: Vector3 = hit.position
+					_ground.place(pt, "torch", 0.0, Vector3i((pt / VOXEL_SIZE - Vector3(0, 0.5, 0)).floor()))
 		if OS.get_cmdline_user_args().has("--bench"):
 			_debug_bench()
 		var shape := _arg("--shape=")  # receta dibujada en el suelo delante del jugador

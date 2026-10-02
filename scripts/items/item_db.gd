@@ -58,6 +58,7 @@ const OTHER_ITEMS := {
 	"stone_knife": {"name": "Cuchillo de piedra", "stack": 1},
 	"stone_axe": {"name": "Hacha de piedra", "stack": 1},
 	"stone_pick": {"name": "Pico de piedra", "stack": 1},
+	"torch": {"name": "Antorcha", "stack": 16},
 	# Se lee con J; al recogerlo no ocupa hueco (va siempre con el personaje).
 	"captain_journal": {"name": "Diario del capitán", "stack": 1},
 	"berries": {"name": "Bayas silvestres", "stack": 24},
