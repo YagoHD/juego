@@ -14,3 +14,6 @@ mono_crash.*.json
 .DS_Store
 Thumbs.db
 *.tmp
+
+# Ejecutables de Godot (no van al repositorio)
+*.exe

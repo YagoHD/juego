@@ -13,6 +13,7 @@ const FLY_SPEED := 18.0
 const FLY_SPEED_FAST := 60.0
 
 var _flying := false
+var _spawn_point := Vector3.ZERO
 
 var _camera: Camera3D
 var _terrain: VoxelTerrain
@@ -46,6 +47,7 @@ func _ready() -> void:
 	if terrains.size() > 0:
 		_terrain = terrains[0] as VoxelTerrain
 
+	_spawn_point = global_position
 	Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
 
 
@@ -82,6 +84,10 @@ func _unhandled_input(event: InputEvent) -> void:
 				_current_block = IslandGenerator.WOOD
 			elif key.keycode == KEY_7:
 				_current_block = IslandGenerator.LEAVES
+			elif key.keycode == KEY_8:
+				_current_block = IslandGenerator.WATER
+			elif key.keycode == KEY_9:
+				_current_block = IslandGenerator.WHEAT
 			elif key.keycode == KEY_F:
 				_flying = not _flying
 				velocity = Vector3.ZERO
@@ -118,7 +124,7 @@ func _physics_process(delta: float) -> void:
 
 	# Red de seguridad: si se cae del mundo, reaparece arriba.
 	if global_position.y < -60.0:
-		global_position = Vector3(0, 40, 0)
+		global_position = _spawn_point
 		velocity = Vector3.ZERO
 
 
