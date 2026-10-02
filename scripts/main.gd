@@ -91,6 +91,8 @@ func _build_world() -> void:
 	for id in range(1, Blocks.LAST_ID + 1):
 		if id == IslandGenerator.WATER:
 			library.add_model(_make_water(water))
+		elif id == IslandGenerator.CLOTH:
+			library.add_model(_make_carpet(id, solid))
 		else:
 			library.add_model(_make_cube(id, solid))
 	library.bake()
@@ -191,6 +193,15 @@ func _make_cube(id: int, material: Material) -> VoxelBlockyModelCube:
 			VoxelBlockyModel.SIDE_POSITIVE_Z, VoxelBlockyModel.SIDE_NEGATIVE_Z]:
 		cube.set_tile(side, BlockTextures.tile_of(id, 1))
 	cube.set_material_override(0, material)
+	return cube
+
+
+func _make_carpet(id: int, material: Material) -> VoxelBlockyModelCube:
+	# Capa fina tumbada en el suelo (como la alfombra de Minecraft): 1/16 de bloque de alto.
+	# No tapa las caras de los bloques vecinos (si no, el suelo de debajo se vería hueco).
+	var cube := _make_cube(id, material)
+	cube.height = 1.0 / 16.0
+	cube.culls_neighbors = false
 	return cube
 
 

@@ -102,6 +102,11 @@ static func make_block_mesh(block_id: int, size: float) -> ArrayMesh:
 			normals.append(f[0])
 			uvs.append(face_uvs[k])
 		indices.append_array([start, start + 1, start + 2, start, start + 2, start + 3])
+	if block_id == IslandGenerator.CLOTH:
+		# La tela es una alfombra: el cubo se aplasta hasta 1/8 de su altura, apoyado abajo.
+		for i in vertices.size():
+			var v := vertices[i]
+			vertices[i] = Vector3(v.x, -h + (v.y + h) * 0.125, v.z)
 	var arrays := []
 	arrays.resize(Mesh.ARRAY_MAX)
 	arrays[Mesh.ARRAY_VERTEX] = vertices

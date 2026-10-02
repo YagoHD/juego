@@ -24,7 +24,7 @@ const BODY_HEIGHT := SkinModel.BODY_HEIGHT       # 1,8 bloques (como Steve)
 const BODY_RADIUS := 0.3 * B * SkinModel.PLAYER_HEIGHT_BLOCKS / 1.8  # 0,6 bloques de ancho
 const EYE_HEIGHT := BODY_HEIGHT * 0.9            # ojos a 1,62 bloques
 const SPEED := 4.3 * B          # andando: 4,3 bloques/s
-const SPRINT_SPEED := 5.6 * B   # corriendo (doble toque de W): 5,6 bloques/s
+const SPRINT_SPEED := 6.5 * B   # corriendo (doble toque de W): 6,5 bloques/s
 const SPRINT_DOUBLE_TAP := 0.3  # segundos máximos entre los dos toques de W
 const SPRINT_FOV_BOOST := 8.0   # grados que se abre la vista al correr
 const GRAVITY := 32.0 * B       # 32 bloques/s²
@@ -63,6 +63,7 @@ var _debug_camera_yaw := 0.0     # solo capturas de prueba (vista de perfil)
 var _spawn_point := Vector3.ZERO
 var _waiting_for_ground := true  # no aplicar gravedad hasta que exista suelo con colisión
 var _camera_lag := Vector3.ZERO  # desfase de la cámara (en el mundo) que se va suavizando
+var _step_debt := 0.0            # metros adelantados al subir escalones, pendientes de descontar
 var _pitch := 0.0
 var _hotbar_index := 0
 
@@ -334,6 +335,7 @@ func _physics_process(delta: float) -> void:
 	var speed := SWIM_SPEED if feet_wet else (SPRINT_SPEED if _sprinting else SPEED)
 	velocity.x = dir.x * speed
 	velocity.z = dir.z * speed
+	_pay_step_debt(delta)
 
 	if _key(KEY_SPACE) and is_on_floor() and not feet_wet:
 		velocity.y = JUMP_VELOCITY
@@ -442,6 +444,9 @@ func _try_step_up(dir: Vector3) -> void:
 	# El cuerpo ya está arriba, pero la cámara se queda donde estaba y lo alcanza poco a poco
 	# (ver _process): así subir un escalón se siente suave y no como un golpe.
 	_camera_lag += before - global_position
+	# Ese avance extra se "devuelve" andando un poco menos los siguientes instantes: si no, subir
+	# una colina escalón a escalón era más rápido que andar en llano.
+	_step_debt += probe.length()
 
 
 # ------------------------------------------------------------------ romper y colocar
@@ -707,3 +712,18 @@ func debug_pose(third_person: bool, pitch: float, yaw_degrees: float, up_meters:
 ## Tecla de movimiento pulsada (siempre "no" mientras hay una pantalla abierta).
 func _key(key: Key) -> bool:
 	return not ui_open and Input.is_key_pressed(key)
+
+
+## Descuenta del movimiento de este instante lo adelantado al subir escalones.
+func _pay_step_debt(delta: float) -> void:
+	if _step_debt <= 0.0:
+		return
+	var frame_distance := Vector2(velocity.x, velocity.z).length() * delta
+	if frame_distance <= 0.0:
+		_step_debt = 0.0  # se ha parado: nada que descontar
+		return
+	var pay := minf(_step_debt, frame_distance)
+	var keep := 1.0 - pay / frame_distance
+	velocity.x *= keep
+	velocity.z *= keep
+	_step_debt -= pay
