@@ -39,7 +39,7 @@ func _ready() -> void:
 
 	# El VoxelViewer hace que el terreno cargue chunks alrededor del jugador.
 	var viewer := VoxelViewer.new()
-	viewer.view_distance = 900  # en voxels; cubre casi toda la isla (más coste de generación)
+	viewer.view_distance = 160  # el observador fijo del mundo ya carga toda la isla
 	_camera.add_child(viewer)
 
 	var terrains := get_tree().get_nodes_in_group("voxel_terrain")

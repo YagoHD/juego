@@ -51,6 +51,14 @@ func _build_world() -> void:
 	terrain.add_to_group("voxel_terrain")
 	add_child(terrain)
 
+	# Observador FIJO en el centro de la isla: fuerza a generar/cargar TODO el mapa a la vez
+	# y lo mantiene cargado aunque el jugador se aleje. Muy costoso (toda la isla a máxima
+	# resolución). Baja este valor si va lento o se queda sin memoria.
+	var loader := VoxelViewer.new()
+	loader.view_distance = 1100  # en voxels; cubre el radio de la isla (~820) con margen
+	loader.position = Vector3(0, 40, 0)
+	add_child(loader)
+
 	_build_sea()
 
 
