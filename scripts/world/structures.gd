@@ -205,6 +205,7 @@ static func _build_shipwreck(gen: IslandGenerator) -> void:
 	_chest_loot[beach_chest] = [
 		{"id": "planks", "count": 10}, {"id": "cloth", "count": 3}, {"id": "rope", "count": 2},
 		{"id": "chest", "count": 1}, {"id": "pants", "count": 1}, {"id": "note_belt", "count": 1},
+		{"id": "stone_axe", "count": 1},
 		{"id": "berries", "count": 6},
 	]
 

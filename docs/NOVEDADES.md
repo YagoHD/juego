@@ -64,5 +64,5 @@ nivel del mar y aparecías "buceando" con la pantalla azul. Se volvió al mapa a
 - Mochila improvisada (+9): `C.C` / `TTT` / `TTT` (C cuerda, T tela) (Coser). — nota en el cofre del barco
 - Cofre: cubo 2x2x2 de tablones (Montar). — desmontando el cofre de la playa
 - Cuchillo: palito con piedra encima y cuerda al lado (Atar). — desmontando el cuchillo del barco
-- Hacha: 2 palitos y cuerda en línea, piedra encima de la cuerda (Atar). — desmontando un hacha
+- Hacha: 2 palitos y cuerda en línea, piedra encima de la cuerda (Atar). — desmontando el hacha del cofre de la playa
 - Sobre la mesa: mochila de marinero y pico de piedra. — ruinas
