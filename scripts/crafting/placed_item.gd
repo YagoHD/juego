@@ -11,6 +11,7 @@ var support := Vector3i.ZERO  # bloque sobre el que está apoyado
 var _material: StandardMaterial3D
 var _glow := false
 var _time := 0.0
+var _box := AABB()  # caja que ocupa, relativa a su posición (para el recuadro al apuntarlo)
 
 
 func _ready() -> void:
@@ -35,8 +36,14 @@ func _ready() -> void:
 	box.size = Vector3(size, maxf(height, 0.06), size)
 	shape.shape = box
 	shape.position.y = box.size.y * 0.5
+	_box = AABB(Vector3(-size * 0.5, 0.0, -size * 0.5), box.size).grow(0.01)
 	add_child(shape)
 	set_process(false)
+
+
+## Caja que ocupa (relativa a su posición, sin girar), un pelín más grande.
+func get_box() -> AABB:
+	return _box
 
 
 ## Brillo suave cuando forma parte de una receta que el personaje sabe hacer.

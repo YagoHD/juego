@@ -631,6 +631,14 @@ func _update_highlight() -> void:
 	if target.is_empty():
 		_highlight.visible = false
 		return
+	if target.has("item"):
+		# Un objeto dejado en el suelo: recuadro ajustado a su tamaño.
+		var item: PlacedItem = target["item"]
+		var box := item.get_box()
+		_highlight.global_transform = Transform3D(item.global_basis * Basis.from_scale(box.size),
+			item.global_transform * box.position)
+		_highlight.visible = true
+		return
 	var cell: Vector3i = target["voxel"]
 	var size := _terrain.scale.x
 	var grow := 0.004  # un pelín más grande que el bloque para que no parpadee con sus caras

@@ -83,6 +83,28 @@ func _process(_delta: float) -> bool:
 			var placed := tool.get_voxel(cell) == IslandGenerator.STONE
 			var spent := player.inventory.count_of("stone") == before - 1
 			print("Colocar al frente gasta una piedra: %s" % ("OK" if placed and spent else "FALLO (colocado=%s, gastado=%s)" % [placed, spent]))
+			# G: dejar una cuerda en el suelo donde se apunta.
+			player.inventory.clear()
+			player.inventory.add("rope", 3)
+			player._select_slot(0)
+			player.debug_pose(false, -1.0, 180.0, 0.0)  # hacia atrás: suelo libre
+			_step = 4
+			_wait = 0
+		4:
+			if _wait < 5:
+				return false
+			var ok := player._place_on_ground(player._target())
+			print("G deja una cuerda en el suelo: %s" % ("OK" if ok and player.inventory.count_of("rope") == 2 else "FALLO"))
+			_step = 5
+			_wait = 0
+		5:
+			if _wait < 5:
+				return false  # unos fotogramas apuntando al objeto (el recuadro lo rodea)
+			var target: Dictionary = player._target()
+			var highlight: MeshInstance3D = player.get("_highlight")
+			print("Apuntar a la cuerda del suelo la recuadra: %s" % ("OK" if target.has("item") and highlight.visible else "FALLO"))
+			player._edit_block(false)
+			print("Clic izquierdo la recoge: %s" % ("OK" if player.inventory.count_of("rope") == 3 else "FALLO"))
 			return true
 	return false
 
