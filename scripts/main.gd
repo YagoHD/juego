@@ -56,7 +56,8 @@ func _build_sea() -> void:
 	var plane := PlaneMesh.new()
 	plane.size = Vector2(4000, 4000)
 	water.mesh = plane
-	water.position = Vector3(0, IslandGenerator.SEA_LEVEL * VOXEL_SIZE, 0)
+	# Un pelín por debajo del tope del bloque de arena para evitar z-fighting con el terreno.
+	water.position = Vector3(0, IslandGenerator.SEA_LEVEL * VOXEL_SIZE - 0.08, 0)
 
 	var mat := StandardMaterial3D.new()
 	mat.albedo_color = Color(0.18, 0.40, 0.62, 0.65)

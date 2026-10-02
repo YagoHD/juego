@@ -8,6 +8,7 @@ const JUMP_VELOCITY := 8.0
 const GRAVITY := 24.0
 const SENSITIVITY := 0.0025
 const REACH := 8.0
+const STEP_HEIGHT := 0.55  # sube solo escalones de hasta ~1 bloque (0.5 m); para 2+ hay que saltar
 
 var _camera: Camera3D
 var _terrain: VoxelTerrain
@@ -91,12 +92,32 @@ func _physics_process(delta: float) -> void:
 	if Input.is_key_pressed(KEY_SPACE) and is_on_floor():
 		velocity.y = JUMP_VELOCITY
 
+	var was_on_floor := is_on_floor()
 	move_and_slide()
+	if was_on_floor:
+		_try_step_up(delta)
 
 	# Red de seguridad: si se cae del mundo, reaparece arriba.
 	if global_position.y < -60.0:
 		global_position = Vector3(0, 40, 0)
 		velocity = Vector3.ZERO
+
+
+func _try_step_up(delta: float) -> void:
+	# Si vamos contra una pared baja de ≤1 bloque, nos subimos solos.
+	var horizontal := Vector3(velocity.x, 0.0, velocity.z)
+	if horizontal.length() < 0.05:
+		return
+	var motion := horizontal * delta
+	if not test_move(global_transform, motion):
+		return  # nada bloqueando al frente
+	var lifted := Transform3D(global_transform.basis, global_transform.origin + Vector3.UP * STEP_HEIGHT)
+	if test_move(lifted, motion):
+		return  # la pared es más alta que un escalón: no trepar
+	# Hay hueco un escalón más arriba: subimos, avanzamos y bajamos hasta el suelo.
+	global_position += Vector3.UP * STEP_HEIGHT
+	move_and_collide(motion)
+	move_and_collide(Vector3.DOWN * STEP_HEIGHT)
 
 
 func _edit_block(place: bool) -> void:
