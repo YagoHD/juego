@@ -8,6 +8,16 @@ const VOXEL_SIZE := 0.5
 
 var _player: Player
 var _hud: Label
+var _terrain: VoxelTerrain
+var _loading := true
+var _loading_label: Label
+var _loading_overlay: CanvasLayer
+var _elapsed := 0.0
+var _settled_frames := 0
+
+# Región central que debe estar mallada antes de entrar (en voxels, dentro de la distancia de carga).
+const LOAD_AREA := AABB(Vector3(-700, -20, -700), Vector3(1400, 200, 1400))
+const MAX_LOAD_SECONDS := 120.0  # tope de seguridad: entrar aunque no haya "terminado"
 
 const BLOCK_NAMES := {
 	IslandGenerator.GRASS: "Hierba",
@@ -22,10 +32,10 @@ const BLOCK_NAMES := {
 
 func _ready() -> void:
 	_build_world()
-	_build_player()
 	_build_environment()
 	_build_hud()
-	print("[main] Mundo de cubos listo.")
+	_build_loading_overlay()
+	print("[main] Generando la isla completa...")
 
 
 func _build_world() -> void:
@@ -51,6 +61,7 @@ func _build_world() -> void:
 	terrain.scale = Vector3.ONE * VOXEL_SIZE  # voxels más pequeños (estilo Cube World)
 	terrain.add_to_group("voxel_terrain")
 	add_child(terrain)
+	_terrain = terrain
 
 	# Observador FIJO en el centro de la isla: fuerza a generar/cargar TODO el mapa a la vez
 	# y lo mantiene cargado aunque el jugador se aleje. Muy costoso (toda la isla a máxima
@@ -95,6 +106,63 @@ func _build_player() -> void:
 	add_child(_player)
 
 
+func _build_loading_overlay() -> void:
+	_loading_overlay = CanvasLayer.new()
+	_loading_overlay.layer = 100  # por encima de todo
+	add_child(_loading_overlay)
+
+	var bg := ColorRect.new()
+	bg.color = Color(0.06, 0.08, 0.12)
+	bg.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_loading_overlay.add_child(bg)
+
+	_loading_label = Label.new()
+	_loading_label.text = "Generando la isla..."
+	_loading_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_loading_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	_loading_label.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_loading_label.add_theme_font_size_override("font_size", 28)
+	_loading_overlay.add_child(_loading_label)
+
+
+func _update_loading() -> void:
+	_elapsed += get_process_delta_time()
+
+	var remaining := -1
+	var stats: Dictionary = _terrain.get_statistics()
+	if stats.has("remaining_main_thread_blocks"):
+		remaining = int(stats["remaining_main_thread_blocks"])
+
+	# Consideramos "asentado" cuando no quedan bloques pendientes varios frames seguidos.
+	if remaining == 0:
+		_settled_frames += 1
+	else:
+		_settled_frames = 0
+
+	var meshed := false
+	if _terrain.has_method("is_area_meshed"):
+		meshed = _terrain.is_area_meshed(LOAD_AREA)
+
+	_loading_label.text = "Generando la isla...\n%.1f s\nBloques pendientes: %s" % [_elapsed, remaining]
+
+	# Listo cuando lleva un rato sin trabajo pendiente (o la zona central está mallada),
+	# con un tope de seguridad para no quedarse colgado.
+	var ready_by_settle := _settled_frames > 60 and _elapsed > 2.0
+	var ready_by_mesh := meshed and _settled_frames > 10 and _elapsed > 2.0
+	var ready_by_timeout := _elapsed > MAX_LOAD_SECONDS
+	if ready_by_settle or ready_by_mesh or ready_by_timeout:
+		_finish_loading()
+
+
+func _finish_loading() -> void:
+	_loading = false
+	if _loading_overlay != null:
+		_loading_overlay.queue_free()
+		_loading_overlay = null
+	_build_player()
+	print("[main] Isla cargada en %.1f s. ¡A jugar!" % _elapsed)
+
+
 func _build_environment() -> void:
 	var sun := DirectionalLight3D.new()
 	sun.rotation_degrees = Vector3(-50, -40, 0)
@@ -136,6 +204,9 @@ func _build_hud() -> void:
 
 
 func _process(_delta: float) -> void:
+	if _loading:
+		_update_loading()
+		return
 	if _hud == null or _player == null:
 		return
 	var block_name: String = BLOCK_NAMES.get(_player.get_current_block(), "?")
