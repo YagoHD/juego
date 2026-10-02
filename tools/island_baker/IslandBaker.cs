@@ -231,13 +231,14 @@ public static class IslandBaker
                 float h;
                 if (c < 0f)
                 {
-                    h = SEA - 1f + c * 80f;  // plataforma y fondo marino
+                    h = SEA - 1f + c * 45f;  // plataforma de aguas someras (turquesa) y luego fondo
                     if (h < 4f) h = 4f;
                 }
                 else
                 {
                     // La altura sube cerca de la costa y luego la dan las colinas (sin "círculos").
-                    float land = Smooth(c / 0.06f);
+                    // Las colinas empiezan algo tierra adentro: deja una franja llana para playas.
+                    float land = Smooth((c - 0.03f) / 0.10f);
                     h = SEA + 0.8f + Smooth(c / 0.22f) * 14f;
                     float hills = Fbm(u * 6f, v * 6f, 5) * 0.5f + 0.5f;
                     h += hills * hills * 30f * land;
@@ -288,6 +289,9 @@ public static class IslandBaker
                 H[i] = h;
             }
         }
+
+        // --- 1b. Playas: franjas de arena de anchura variable junto al mar.
+        bool[] beach = CarveBeaches(H, mountain, corrupt, castle, village);
 
         // --- 2. Lago en una meseta de la montaña.
         int lcx = (int)(FromDesign(LAKE_U) * (N - 1)), lcy = (int)(FromDesign(LAKE_V) * (N - 1));
@@ -402,9 +406,10 @@ public static class IslandBaker
                 if (W[i] > h + 0.25f) b = WATER;
                 else if (h <= SEA) b = OCEAN;
                 else if (corrupt[i] > 0.5f && mountain[i] < 0.35f) b = CORRUPT;
-                else if (h <= SEA + 2.5f && C[i] < 0.08f) b = BEACH;
+                else if (beach[i]) b = BEACH;
                 else if (village[i] > 0.5f) b = VILLAGE;
                 else if (farm[i] > 0.5f) b = FARM;
+                else if (h <= SEA + 2f && C[i] < 0.12f) b = BEACH;
                 else if (mountain[i] > 0.12f) b = (h > 152f) ? ALPINE : PINE;
                 else if (castle[i] > 0.4f) b = MEADOW;
                 else b = (Fbm(u * 9f + 11f, v * 9f + 3f, 3) > -0.12f) ? FOREST : MEADOW;
@@ -443,6 +448,70 @@ public static class IslandBaker
         for (int k = 0; k < names.Length; k++)
             summary += String.Format("  {0}: {1:F1}%\n", names[k], 100.0 * biomeCount[k] / count);
         return summary;
+    }
+
+    // Distancia (en píxeles) de cada punto al mar más cercano: transformada de distancia
+    // "chamfer" en dos pasadas (rápida y suficientemente precisa).
+    static float[] DistanceToSea(float[] H)
+    {
+        int count = N * N;
+        float[] d = new float[count];
+        for (int i = 0; i < count; i++) d[i] = H[i] <= SEA ? 0f : 1e9f;
+        const float D1 = 1f, D2 = 1.4142f;
+        for (int y = 0; y < N; y++)
+            for (int x = 0; x < N; x++)
+            {
+                int i = y * N + x;
+                if (x > 0) d[i] = Math.Min(d[i], d[i - 1] + D1);
+                if (y > 0)
+                {
+                    d[i] = Math.Min(d[i], d[i - N] + D1);
+                    if (x > 0) d[i] = Math.Min(d[i], d[i - N - 1] + D2);
+                    if (x < N - 1) d[i] = Math.Min(d[i], d[i - N + 1] + D2);
+                }
+            }
+        for (int y = N - 1; y >= 0; y--)
+            for (int x = N - 1; x >= 0; x--)
+            {
+                int i = y * N + x;
+                if (x < N - 1) d[i] = Math.Min(d[i], d[i + 1] + D1);
+                if (y < N - 1)
+                {
+                    d[i] = Math.Min(d[i], d[i + N] + D1);
+                    if (x < N - 1) d[i] = Math.Min(d[i], d[i + N + 1] + D2);
+                    if (x > 0) d[i] = Math.Min(d[i], d[i + N - 1] + D2);
+                }
+            }
+        return d;
+    }
+
+    // Aplana una franja junto al mar en una rampa suave de arena. La anchura varía a lo largo de
+    // la costa (playas anchas en unos sitios, casi nada en otros) y en la montaña, la zona
+    // corrupta y la colina de las ruinas la costa se queda en roca (acantilados).
+    static bool[] CarveBeaches(float[] H, float[] mountain, float[] corrupt, float[] castle, float[] village)
+    {
+        float[] dist = DistanceToSea(H);
+        bool[] beach = new bool[N * N];
+        for (int y = 0; y < N; y++)
+        {
+            for (int x = 0; x < N; x++)
+            {
+                int i = y * N + x;
+                float d = dist[i];
+                if (d <= 0f || d > 20f) continue;
+                float u = ToDesign(x / (float)(N - 1)), v = ToDesign(y / (float)(N - 1));
+                float width = 2f + 14f * Smooth(Fbm(u * 7f + 13f, v * 7f + 2f, 3) * 2.2f + 0.45f);
+                float rocky = Math.Max(Math.Max(mountain[i], corrupt[i]), castle[i]);
+                width *= 1f - Smooth((rocky - 0.15f) / 0.3f);
+                width = Math.Max(width, 14f * village[i]);  // el pueblo tiene su playa (y luego muelles)
+                if (d >= width) continue;
+                float t = d / width;
+                float sand = SEA + 0.8f + 2.2f * t;  // la arena sube suavemente desde el agua
+                H[i] = Math.Min(H[i], Lerp(sand, H[i], Smooth(t) * Smooth(t)));
+                beach[i] = t < 0.8f && H[i] <= SEA + 3.5f;
+            }
+        }
+        return beach;
     }
 
     // surface.png: R = bloque de la superficie, G = bloque del subsuelo,
