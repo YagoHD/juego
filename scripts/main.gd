@@ -31,6 +31,7 @@ const AUTOSAVE_SECONDS := 60.0
 var _player: Player
 var _hud: Label
 var _hotbar: Hotbar
+var _underwater: ColorRect
 var _terrain: VoxelTerrain
 var _generator: IslandGenerator
 var _loading := true
@@ -125,9 +126,9 @@ func _make_world_stream() -> VoxelStreamSQLite:
 
 
 func _world_fingerprint() -> String:
-	var text := ""
-	for file in ["height.png", "water.png", "surface.png"]:
-		text += FileAccess.get_md5(IslandGenerator.MAP_DIR + file)
+	# Huella de los datos que el generador ha cargado de verdad (no de los PNG en disco: Godot
+	# usa su copia importada, que puede ir por detrás) + la del propio generador.
+	var text := _generator.get_maps_fingerprint()
 	text += FileAccess.get_md5("res://scripts/world/island_generator.gd")
 	return text.md5_text().substr(0, 12)
 
@@ -169,7 +170,8 @@ func _make_water() -> VoxelBlockyModelCube:
 	var material := StandardMaterial3D.new()
 	material.albedo_color = Blocks.color_of(IslandGenerator.WATER)
 	material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-	material.roughness = 0.08
+	material.roughness = 0.35  # poco brillo: si no, refleja tanto el cielo que parece hielo
+	material.metallic_specular = 0.25
 	cube.set_material_override(0, material)
 	cube.transparency_index = 1
 	cube.set_mesh_collision_enabled(0, false)
@@ -307,6 +309,15 @@ func _build_hud() -> void:
 	_hotbar = Hotbar.new()
 	canvas.add_child(_hotbar)
 
+	# Tinte azul cuando la cabeza está bajo el agua.
+	_underwater = ColorRect.new()
+	_underwater.color = Color(0.06, 0.30, 0.50, 0.42)
+	_underwater.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_underwater.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_underwater.visible = false
+	canvas.add_child(_underwater)
+	canvas.move_child(_underwater, 0)  # por debajo del HUD y la barra
+
 
 func _process(_delta: float) -> void:
 	if _loading:
@@ -315,6 +326,7 @@ func _process(_delta: float) -> void:
 	if _hud == null or _player == null:
 		return
 	_hotbar.select(_player.get_hotbar_index())
+	_underwater.visible = _player.is_head_underwater()
 	_hud.text = "FPS: %d\nClic izq. romper · Clic der. colocar · 1-9 / rueda: bloque\nWASD mover · Espacio saltar · F volar · V cámara · Esc ratón" \
 		% Engine.get_frames_per_second()
 	_update_capture()

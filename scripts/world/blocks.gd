@@ -10,7 +10,7 @@ const COLORS := {
 	IslandGenerator.SNOW: Color(0.95, 0.96, 0.98),
 	IslandGenerator.WOOD: Color(0.45, 0.30, 0.17),
 	IslandGenerator.LEAVES: Color(0.24, 0.52, 0.22),
-	IslandGenerator.WATER: Color(0.25, 0.62, 0.80, 0.62),
+	IslandGenerator.WATER: Color(0.12, 0.45, 0.70, 0.74),
 	IslandGenerator.PINE_LEAVES: Color(0.13, 0.33, 0.20),
 	IslandGenerator.CORRUPT_SOIL: Color(0.30, 0.22, 0.32),
 	IslandGenerator.DEAD_WOOD: Color(0.22, 0.18, 0.17),

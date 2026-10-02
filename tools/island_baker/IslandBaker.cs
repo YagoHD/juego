@@ -542,7 +542,7 @@ public static class IslandBaker
                 {
                     case OCEAN: top = h > SEA - 12f ? BL_SAND : BL_STONE; sub = BL_SAND; break;
                     case BEACH: top = BL_SAND; sub = BL_SAND; break;
-                    case WATER: top = BL_SAND; sub = BL_DIRT; break;
+                    case WATER: top = BL_DIRT; sub = BL_DIRT; break;  // fondo oscuro: el agua parece más profunda
                     case CORRUPT:
                         if (steep) { top = BL_STONE; sub = BL_STONE; } else { top = BL_CORRUPT_SOIL; sub = BL_DIRT; }
                         break;

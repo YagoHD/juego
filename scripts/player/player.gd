@@ -27,6 +27,10 @@ const FLY_SPEED_FAST := 60.0
 const CAMERA_CATCH_UP := 14.0      # rapidez con la que la cámara alcanza al cuerpo tras un escalón
 const THIRD_PERSON_DISTANCE := 3.2 # metros detrás del jugador en tercera persona
 const THIRD_PERSON_SHOULDER := 0.35 # desplazamiento a la derecha (vista "por encima del hombro")
+const SWIM_SPEED := 3.0        # velocidad horizontal en el agua
+const SWIM_UP_SPEED := 3.2     # nadar hacia arriba (Espacio con la cabeza bajo el agua)
+const WATER_GRAVITY := 5.0     # en el agua se hunde despacio...
+const MAX_SINK_SPEED := 2.5    # ...y sin pasar de esta velocidad
 
 ## Radio (en voxels) de terreno detallado alrededor del jugador. Lo fija main.gd.
 var near_view_voxels := 320
@@ -47,6 +51,10 @@ var _held: HeldBlock
 var _avatar: PlayerAvatar
 var _highlight: MeshInstance3D
 var _terrain: VoxelTerrain
+var _generator: IslandGenerator
+var _tool: VoxelTool
+var _sea_y := -INF               # altura (mundo) de la superficie del mar
+var _head_underwater := false
 
 
 func _ready() -> void:
@@ -102,6 +110,10 @@ func _ready() -> void:
 	var terrains := get_tree().get_nodes_in_group("voxel_terrain")
 	if terrains.size() > 0:
 		_terrain = terrains[0] as VoxelTerrain
+		_generator = _terrain.generator as IslandGenerator
+		_tool = _terrain.get_voxel_tool()
+		_tool.channel = VoxelBuffer.CHANNEL_TYPE
+		_sea_y = IslandGenerator.SEA_LEVEL * _terrain.scale.x - 0.08
 
 	_select_slot(0)
 	_apply_camera_mode()
@@ -185,7 +197,15 @@ func _physics_process(delta: float) -> void:
 		_held.update_walk(0.0, delta)
 		return
 
-	if not is_on_floor():
+	var feet_wet := _in_water(global_position + Vector3.UP * 0.4)
+	_head_underwater = _in_water(_head.global_position)
+
+	if feet_wet:
+		# Nadando: se hunde despacio; Espacio sube (o, en la superficie, impulsa para salir).
+		velocity.y = maxf(velocity.y - WATER_GRAVITY * delta, -MAX_SINK_SPEED)
+		if Input.is_key_pressed(KEY_SPACE):
+			velocity.y = SWIM_UP_SPEED if _head_underwater else maxf(velocity.y, JUMP_VELOCITY * 0.75)
+	elif not is_on_floor():
 		velocity.y -= GRAVITY * delta
 
 	var dir := Vector3.ZERO
@@ -195,10 +215,11 @@ func _physics_process(delta: float) -> void:
 	if Input.is_key_pressed(KEY_D): dir += transform.basis.x
 	dir.y = 0.0
 	dir = dir.normalized()
-	velocity.x = dir.x * SPEED
-	velocity.z = dir.z * SPEED
+	var speed := SWIM_SPEED if feet_wet else SPEED
+	velocity.x = dir.x * speed
+	velocity.z = dir.z * speed
 
-	if Input.is_key_pressed(KEY_SPACE) and is_on_floor():
+	if Input.is_key_pressed(KEY_SPACE) and is_on_floor() and not feet_wet:
 		velocity.y = JUMP_VELOCITY
 
 	# La dirección deseada se guarda ANTES de mover: al chocar con la pared, move_and_slide
@@ -438,6 +459,25 @@ func get_hotbar_index() -> int:
 
 func is_third_person() -> bool:
 	return _third_person
+
+
+## ¿Hay agua en este punto del mundo? Ríos y lagos son bloques de agua; el mar es un plano,
+## y solo cuenta donde el terreno original estaba bajo el nivel del mar (un hoyo cavado en la
+## playa no se llena de agua imaginaria).
+func _in_water(world_pos: Vector3) -> bool:
+	if _tool == null:
+		return false
+	var cell := _world_to_voxel(world_pos)
+	var id := _tool.get_voxel(cell)
+	if id == IslandGenerator.WATER:
+		return true
+	if world_pos.y < _sea_y and id == IslandGenerator.AIR and _generator != null:
+		return _generator.get_ground_height(cell.x, cell.z) < IslandGenerator.SEA_LEVEL
+	return false
+
+
+func is_head_underwater() -> bool:
+	return _head_underwater
 
 
 ## Ya está apoyado en el suelo (la colisión del terreno existe bajo sus pies).

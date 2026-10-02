@@ -37,14 +37,19 @@ var _h := PackedFloat32Array()
 var _w := PackedFloat32Array()
 var _surface := PackedByteArray()  # RGB por píxel: superficie, subsuelo, árbol
 var _voxels_per_px := 2.0
+var _hasher := HashingContext.new()
+var _fingerprint := ""
 
 
 func _init() -> void:
+	_hasher.start(HashingContext.HASH_MD5)
 	_h = _load_16bit(MAP_DIR + "height.png")
 	_w = _load_16bit(MAP_DIR + "water.png")
 	var surface_img := _load_image(MAP_DIR + "surface.png")
 	if surface_img != null:
 		_surface = surface_img.get_data()
+		_hasher_update(_surface)
+	_fingerprint = _hasher.finish().hex_encode()
 	if _n > 1:
 		_voxels_per_px = 2.0 * MAP_HALF / float(_n - 1)
 
@@ -75,6 +80,7 @@ func _load_16bit(path: String) -> PackedFloat32Array:
 	if img == null:
 		return out
 	var data := img.get_data()
+	_hasher_update(data)
 	var count := img.get_width() * img.get_height()
 	out.resize(count)
 	for i in count:
@@ -256,6 +262,16 @@ func _hash01(x: int, z: int) -> float:
 	var h: int = (x * 73856093) ^ (z * 19349663)
 	h = (h ^ (h >> 13)) * 1274126177
 	return float(h & 0x7fffffff) / float(0x7fffffff)
+
+
+func _hasher_update(data: PackedByteArray) -> void:
+	_hasher.update(data)
+
+
+## Huella (MD5) de los datos de los mapas tal como los carga el juego. Si cambia, el mundo
+## guardado ya no corresponde a la isla actual.
+func get_maps_fingerprint() -> String:
+	return _fingerprint
 
 
 ## Acceso de solo lectura a los mapas (lo usa la malla lejana, FarTerrain).
