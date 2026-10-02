@@ -2,53 +2,64 @@
 
 Juego de **voxels pequeños** (estilo Cube World) con colocar/romper bloques (estilo Minecraft),
 más profundidad en combate, construcción y progresión, y una historia que se cuenta sola.
-Hecho en **Godot 4** apoyándose en el módulo **godot_voxel** (de Zylann) vía GDExtension.
+Hecho en **Godot 4.7** con el módulo **godot_voxel** (de Zylann).
 
-El diseño completo está en [`docs/DESIGN.md`](docs/DESIGN.md) — es la memoria viva del proyecto.
-El estado actual y los próximos pasos están en [`docs/STATUS.md`](docs/STATUS.md).
-
----
-
-## Puesta en marcha (una sola vez)
-
-### 1. Descargar el Godot de Zylann (con el módulo voxel ya integrado)
-La forma más simple: usar la build oficial de Zylann, que es un Godot 4.7.2 con el módulo
-voxel compilado dentro. **No hay que instalar extensiones ni copiar nada en `addons/`.**
-
-- Ve a https://github.com/Zylann/godot_voxel/releases (release v1.7).
-- En Assets, descarga **`godot.windows.editor.x86_64.exe.zip`** (~85 MB).
-  - ❌ NO los `...double...`, `...tracy...`, `...template_release...` ni "Source code".
-- Descomprímelo. El `.exe` de dentro **es tu Godot** para este proyecto.
-
-> Alternativa (no usada ahora): existe una release GDExtension aparte que se añadiría a
-> `addons/zylann.voxel/` sobre un Godot estándar. La build integrada es más simple para empezar.
-- Abre el proyecto en Godot. La extensión se carga sola; verás nodos nuevos como
-  `VoxelTerrain`, `VoxelLodTerrain`, `VoxelGeneratorNoise`, etc.
-
-> Si al abrir el proyecto Godot avisa de que faltan clases `Voxel...`, es que la extensión
-> no está en `addons/` o no coincide la versión de Godot. Avísame con el mensaje exacto.
-
-### 3. Abrir el proyecto
-- Abre Godot → **Import** → selecciona el `project.godot` de esta carpeta.
-- Pulsa Play (F5). La escena principal es el **test de voxels** (`tests/voxel_test/`).
+- Diseño completo: [`docs/DESIGN.md`](docs/DESIGN.md) — la memoria viva del proyecto.
+- Estado actual, decisiones técnicas y próximos pasos: [`docs/STATUS.md`](docs/STATUS.md).
 
 ---
 
-## Flujo de trabajo
+## Puesta en marcha
 
-- **Git desde el día 1.** Cada avance verificado es un commit.
-- **Sistemas pequeños y separados** (mundo, jugador, combate, construcción, idioma, sueños).
-- **Pasos pequeños y verificables.** Para bugs visuales: captura de pantalla + consola de Godot.
+1. Usa el **Godot de Zylann con el módulo voxel integrado** (no el Godot normal):
+   https://github.com/Zylann/godot_voxel/releases → release v1.7 →
+   `godot.windows.editor.x86_64.exe.zip`. Descomprímelo **fuera** de esta carpeta
+   (si el `.exe` está junto a `project.godot`, arranca el juego directamente en vez del editor).
+2. Abre ese Godot → **Import** → `project.godot` de esta carpeta → **Import & Edit**.
+3. **F5** para jugar.
+
+## Controles
+
+| Tecla | Acción |
+|---|---|
+| WASD / ratón | Moverse / mirar |
+| Espacio | Saltar (los escalones de 1 bloque se suben solos) |
+| Clic izquierdo / derecho | Romper / colocar bloque |
+| 1–9 o rueda del ratón | Elegir bloque |
+| V | Primera / tercera persona |
+| F | Volar (Espacio sube, Ctrl baja, Shift rápido) |
+| Esc | Soltar el ratón (un clic lo recupera) |
+
+## Cómo se hace la isla
+
+La isla de la Beta está **diseñada**, no es aleatoria:
+
+1. [`tools/island_baker/IslandBaker.cs`](tools/island_baker/IslandBaker.cs) describe la isla
+   (costa, montaña, lago, río, pueblo, zona corrupta, playas...) y la "hornea" en mapas:
+   `assets/island/height.png`, `water.png`, `surface.png` (+ `biome.png` y `preview.png` de referencia).
+   Se ejecuta con:
+   ```
+   powershell -ExecutionPolicy Bypass -File tools/island_baker/bake_island.ps1
+   ```
+2. El juego convierte esos mapas en bloques ([`island_generator.gd`](scripts/world/island_generator.gd))
+   y guarda el mundo en `user://world/` (las cargas siguientes leen de ahí y conservan lo construido).
+   Si los mapas o el generador cambian, se crea un mundo nuevo automáticamente.
 
 ## Dónde está cada cosa
 
 | Carpeta | Contenido |
 |---|---|
 | `docs/` | Diseño (`DESIGN.md`) y estado del proyecto (`STATUS.md`) |
-| `addons/` | GDExtension de godot_voxel (lo instalas tú, ver arriba) |
-| `tests/voxel_test/` | Fase 1: test técnico de rendimiento de voxels |
-| `scripts/world/` | Generación de terreno, chunks, bloques |
-| `scripts/player/` | Movimiento, cámara, interacción |
-| `scripts/systems/` | Combate, construcción, habilidades, idioma, sueños |
-| `scenes/` | Escenas del juego |
-| `assets/` | Modelos, texturas, sonido |
+| `scenes/` | Escena principal |
+| `scripts/main.gd` | Monta el mundo, la isla lejana, el ambiente, el HUD y la pantalla de carga |
+| `scripts/world/` | Generador de la isla, isla lejana (malla simplificada), catálogo de bloques |
+| `scripts/player/` | Jugador, bloque en la mano, muñeco provisional |
+| `scripts/ui/` | Barra de bloques |
+| `assets/` | Mapas de la isla y shaders (mar, isla lejana) |
+| `tools/` | Horneador de la isla, banco de pruebas, prueba de física, capturas automáticas |
+
+## Herramientas de prueba
+
+- `tools/test_step_up.gd` — comprueba que el jugador sube 1 bloque solo y se para ante 2.
+- `tools/bench_generator.gd` — mide cuánto tarda el generador por tipo de bloque.
+- `tools/capture.ps1` — arranca el juego, coloca la cámara y guarda una captura (para revisar el aspecto).
