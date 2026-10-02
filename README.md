@@ -11,18 +11,17 @@ El estado actual y los próximos pasos están en [`docs/STATUS.md`](docs/STATUS.
 
 ## Puesta en marcha (una sola vez)
 
-### 1. Instalar Godot 4
-- Descarga **Godot 4.3** (o superior) desde https://godotengine.org/download/windows/
-- Sirve la versión **estándar** (no hace falta la .NET/C# para empezar).
-- Es un `.exe` portable: lo descomprimes y lo ejecutas, no necesita instalación.
+### 1. Descargar el Godot de Zylann (con el módulo voxel ya integrado)
+La forma más simple: usar la build oficial de Zylann, que es un Godot 4.7.2 con el módulo
+voxel compilado dentro. **No hay que instalar extensiones ni copiar nada en `addons/`.**
 
-### 2. Instalar la extensión godot_voxel (sin compilar nada)
-Antes se necesitaba compilar Godot entero. Ya **no**: Zylann publica binarios como GDExtension.
+- Ve a https://github.com/Zylann/godot_voxel/releases (release v1.7).
+- En Assets, descarga **`godot.windows.editor.x86_64.exe.zip`** (~85 MB).
+  - ❌ NO los `...double...`, `...tracy...`, `...template_release...` ni "Source code".
+- Descomprímelo. El `.exe` de dentro **es tu Godot** para este proyecto.
 
-- Ve a https://github.com/Zylann/godot_voxel/releases
-- Descarga el `.zip` de la versión que coincida con tu Godot (ej. `godot_voxel` para Godot 4.3, Windows).
-- Dentro del zip hay una carpeta `addons/`. Copia su contenido dentro de la carpeta
-  [`addons/`](addons/) de este proyecto (de modo que quede `addons/zylann.voxel/...`).
+> Alternativa (no usada ahora): existe una release GDExtension aparte que se añadiría a
+> `addons/zylann.voxel/` sobre un Godot estándar. La build integrada es más simple para empezar.
 - Abre el proyecto en Godot. La extensión se carga sola; verás nodos nuevos como
   `VoxelTerrain`, `VoxelLodTerrain`, `VoxelGeneratorNoise`, etc.
 

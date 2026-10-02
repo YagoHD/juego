@@ -1,22 +1,26 @@
 ; Engine configuration file.
-; Proyecto: Isla del Naufragio (Beta) — mundo de voxels pequeños
-; Ver docs/DESIGN.md para el diseño completo.
+; It's best edited using the editor UI and not directly,
+; since the parameters that go here are not all obvious.
+;
+; Format:
+;   [section] ; section goes between []
+;   param=value ; assign values to parameters
 
 config_version=5
+
+[animation]
+
+compatibility/default_parent_skeleton_in_mesh_instance_3d=true
 
 [application]
 
 config/name="Isla del Naufragio"
 config/description="Beta: isla de voxels pequeños. Tutorial y primer hito."
 run/main_scene="res://tests/voxel_test/voxel_test.tscn"
-config/features=PackedStringArray("4.3")
+config/features=PackedStringArray("4.7")
 config/icon="res://icon.svg"
 
 [display]
 
 window/size/viewport_width=1280
 window/size/viewport_height=720
-
-[rendering]
-
-renderer/rendering_method="forward_plus"
