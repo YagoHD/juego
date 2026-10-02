@@ -9,6 +9,10 @@ const GRAVITY := 24.0
 const SENSITIVITY := 0.0025
 const REACH := 8.0
 const STEP_HEIGHT := 0.55  # sube solo escalones de hasta ~1 bloque (0.5 m); para 2+ hay que saltar
+const FLY_SPEED := 18.0
+const FLY_SPEED_FAST := 60.0
+
+var _flying := false
 
 var _camera: Camera3D
 var _terrain: VoxelTerrain
@@ -35,7 +39,7 @@ func _ready() -> void:
 
 	# El VoxelViewer hace que el terreno cargue chunks alrededor del jugador.
 	var viewer := VoxelViewer.new()
-	viewer.view_distance = 256  # en voxels; sube para ver más lejos (más coste)
+	viewer.view_distance = 900  # en voxels; cubre casi toda la isla (más coste de generación)
 	_camera.add_child(viewer)
 
 	var terrains := get_tree().get_nodes_in_group("voxel_terrain")
@@ -78,12 +82,19 @@ func _unhandled_input(event: InputEvent) -> void:
 				_current_block = IslandGenerator.WOOD
 			elif key.keycode == KEY_7:
 				_current_block = IslandGenerator.LEAVES
+			elif key.keycode == KEY_F:
+				_flying = not _flying
+				velocity = Vector3.ZERO
 			elif key.keycode == KEY_ESCAPE:
 				_captured = not _captured
 				Input.mouse_mode = Input.MOUSE_MODE_CAPTURED if _captured else Input.MOUSE_MODE_VISIBLE
 
 
 func _physics_process(delta: float) -> void:
+	if _flying:
+		_fly(delta)
+		return
+
 	if not is_on_floor():
 		velocity.y -= GRAVITY * delta
 
@@ -109,6 +120,21 @@ func _physics_process(delta: float) -> void:
 	if global_position.y < -60.0:
 		global_position = Vector3(0, 40, 0)
 		velocity = Vector3.ZERO
+
+
+func _fly(_delta: float) -> void:
+	# Vuelo libre en la dirección de la cámara (W/S), lateral (A/D) y vertical (Espacio/Ctrl).
+	var cam := _camera.global_transform.basis
+	var dir := Vector3.ZERO
+	if Input.is_key_pressed(KEY_W): dir -= cam.z
+	if Input.is_key_pressed(KEY_S): dir += cam.z
+	if Input.is_key_pressed(KEY_A): dir -= cam.x
+	if Input.is_key_pressed(KEY_D): dir += cam.x
+	if Input.is_key_pressed(KEY_SPACE): dir += Vector3.UP
+	if Input.is_key_pressed(KEY_CTRL): dir -= Vector3.UP
+	var speed := FLY_SPEED_FAST if Input.is_key_pressed(KEY_SHIFT) else FLY_SPEED
+	velocity = dir.normalized() * speed
+	move_and_slide()
 
 
 func _try_step_up(delta: float) -> void:

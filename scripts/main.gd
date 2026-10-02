@@ -130,5 +130,5 @@ func _process(_delta: float) -> void:
 	if _hud == null or _player == null:
 		return
 	var block_name: String = BLOCK_NAMES.get(_player.get_current_block(), "?")
-	_hud.text = "FPS: %d\nBloque: %s  (teclas 1 hierba · 2 tierra · 3 piedra)\nClic izq. romper · Clic der. colocar · WASD mover · Espacio saltar · Esc ratón" \
+	_hud.text = "FPS: %d\nBloque: %s  (1 hierba · 2 tierra · 3 piedra · 4 arena · 5 nieve · 6 madera · 7 hoja)\nClic izq. romper · Clic der. colocar · WASD mover · Espacio saltar · F volar · Esc ratón" \
 		% [Engine.get_frames_per_second(), block_name]
