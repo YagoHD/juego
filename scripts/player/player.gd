@@ -97,6 +97,8 @@ var _break_progress := 0.0   # 0..1
 var _break_swing := 0.0
 var _cracks: BlockCracks
 var debug_cracks := false
+var _place_ghost: MeshInstance3D   # dónde caería el objeto de la mano al dejarlo (G)
+var _place_ghost_id := ""
 ## true mientras hay una pantalla abierta (inventario, cofre...): no se mueve ni mira.
 var ui_open := false
 var _captured := true
@@ -168,6 +170,11 @@ func _ready() -> void:
 	add_child(_highlight)
 	_cracks = BlockCracks.new()
 	add_child(_cracks)
+	_place_ghost = MeshInstance3D.new()
+	_place_ghost.top_level = true
+	_place_ghost.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	_place_ghost.visible = false
+	add_child(_place_ghost)
 
 	var terrains := get_tree().get_nodes_in_group("voxel_terrain")
 	if terrains.size() > 0:
@@ -440,6 +447,7 @@ func _process(delta: float) -> void:
 	_avatar.set_look_pitch(_pitch)
 	_update_highlight()
 	_update_breaking(delta)
+	_update_place_ghost()
 
 
 func _wait_for_ground() -> void:
@@ -1105,3 +1113,31 @@ func _reset_breaking() -> void:
 	_break_cell = Vector3i(0, -99999, 0)
 	if _cracks != null:
 		_cracks.visible = false
+
+
+## Con un objeto que no es bloque en la mano, apuntando al suelo (o encima de otro objeto):
+## se ve en transparente dónde quedaría al dejarlo con G o clic derecho.
+func _update_place_ghost() -> void:
+	var stack := active_inventory().get_slot(_hotbar_index)
+	var id: String = "" if stack.is_empty() else stack["id"]
+	var target := _target() if _captured and not ui_open and id != "" and ItemDB.block_of(id) < 0 \
+		and ItemDB.teaches(id) == "" else {}
+	var normal: Vector3 = target.get("normal", Vector3.ZERO)
+	if target.is_empty() or normal.y < 0.7:
+		_place_ghost.visible = false
+		return
+	if id != _place_ghost_id:
+		_place_ghost_id = id
+		_place_ghost.mesh = ItemMesh.make(id, 0.3)
+		var material := ItemMesh.make_material(id)
+		material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+		material.albedo_color = Color(1, 1, 1, 0.45)
+		material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		_place_ghost.material_override = material
+	var pos: Vector3 = target["point"]
+	if target.has("item"):
+		var other: PlacedItem = ground._top_of(target["item"]) if ground != null else target["item"]
+		pos = other.global_position + Vector3.UP * other.height()
+	_place_ghost.global_transform = Transform3D(Basis(Vector3.UP, rotation.y) * Basis(Vector3.RIGHT, -PI / 2.0),
+		pos + Vector3.UP * 0.012)
+	_place_ghost.visible = true

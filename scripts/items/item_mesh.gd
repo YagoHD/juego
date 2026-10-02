@@ -16,6 +16,7 @@ static func make_material(id: String) -> StandardMaterial3D:
 		return BlockTextures.make_material(block == IslandGenerator.WATER)
 	var material := StandardMaterial3D.new()
 	material.vertex_color_use_as_albedo = true
+	material.vertex_color_is_srgb = true  # los colores del dibujo son sRGB (si no, salen desvaídos)
 	material.roughness = 1.0
 	return material
 

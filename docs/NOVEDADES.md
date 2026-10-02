@@ -47,6 +47,8 @@ La isla se vuelve a crear (cambiaron las estructuras); tu mundo anterior no se b
     ratón, FPS) y **pantalla de título** con la carta de la isla y consejos mientras carga.
 12. Pantalla limpia: arriba solo el reloj; los controles con F1.
 13. Al pasar el ratón por el inventario se ve el nombre del objeto.
+14. Con un objeto (no bloque) en la mano, al apuntar al suelo se ve en transparente dónde quedará.
+15. Los objetos planos (cuerda, ropa...) ya no salen descoloridos.
 
 ## Cambios de ChatGPT
 
