@@ -56,9 +56,9 @@ func build(texture: Texture2D, slim: bool) -> void:
 	var box := BoxMesh.new()
 	box.size = Vector3.ONE * 0.15
 	_held.mesh = box
-	_held.position = Vector3(0, -11.0, -1.5) * SkinModel.PIXEL
+	_held.position = Vector3(0, -5.0, -1.5) * SkinModel.PIXEL  # en el antebrazo, junto a la mano
 	_held.layers = LAYER
-	_arm_right.add_child(_held)
+	_arm_right.get_node("lower").add_child(_held)
 
 	_build_lids(texture)
 
@@ -116,7 +116,7 @@ func update_walk(speed01: float, on_floor: bool, delta: float) -> void:
 		_cancel_idle()
 
 
-## Solo para capturas: congela una acción ("estirarse", "voltereta"...) en el instante t (0..1).
+## Solo para capturas: congela una acción ("estirarse", "voltereta"... o "andar") en el instante t (0..1).
 func debug_freeze_action(action: String, t: float) -> void:
 	_action = action
 	_action_t = t
@@ -149,23 +149,38 @@ func _process(delta: float) -> void:
 				_action = ""
 				_idle_time = IDLE_ACTION_DELAY - _rng.randf_range(6.0, 12.0)  # la siguiente, en un rato
 
+
+	if _frozen and _action == "andar":  # solo capturas: paso congelado (t = fase del paso)
+		_walk_amount = 1.0
+		_walk_phase = _action_t * TAU
+
 	# --- Pose base: andar + reposo (respiración y balanceo) ---
+	# Ángulos en X: positivo = la extremidad va hacia delante (el cuerpo mira a -Z). Rodillas
+	# en negativo (el pie va hacia atrás) y codos en positivo (la mano va hacia delante).
 	var stride := sin(_walk_phase) * 0.75 * _walk_amount
+	var lift_l := maxf(0.0, cos(_walk_phase)) * _walk_amount   # la pierna izquierda avanza
+	var lift_r := maxf(0.0, -cos(_walk_phase)) * _walk_amount  # la derecha avanza
 	var rest := 1.0 - _walk_amount
 	var breath := sin(_time * 2.2) * rest           # ~3 respiraciones cada 8 s
 	var sway := sin(_time * 0.9) * rest             # balanceo lento de lado a lado
 	var s := sin(_swing * PI)
 
 	var pose := {
-		"root_y": breath * 0.006,
-		"root_rot": Vector3(0.0, 0.0, sway * 0.025),
+		"root_y": breath * 0.006 - 0.012 * _walk_amount,
+		"root_rot": Vector3(-0.05 * _walk_amount, 0.0, sway * 0.025),
 		"head": Vector3(clampf(_look_pitch, -0.9, 0.7) + breath * 0.02, sway * 0.05, -sway * 0.02),
-		"arm_r": Vector3(stride * 0.8 + 0.35 + s * 1.3, s * 0.3, -s * 0.15 + 0.04 * rest + breath * 0.015),
+		# Brazo derecho: sostiene el bloque con el codo doblado; al golpear, el brazo sube y el
+		# codo se estira hacia el bloque.
+		"arm_r": Vector3(stride * 0.7 + 0.15 + s * 1.15, s * 0.3, -s * 0.15 + 0.04 * rest + breath * 0.015),
+		"elbow_r": 0.75 - s * 0.55,
 		"arm_l": Vector3(-stride * 0.8, 0.0, -0.04 * rest - breath * 0.015),
+		"elbow_l": 0.12 + 0.35 * _walk_amount + 0.25 * maxf(0.0, -stride),
 		"leg_r": Vector3(-stride, 0.0, 0.0),
+		"knee_r": -1.1 * lift_r - 0.04,
 		"leg_l": Vector3(stride, 0.0, 0.0),
+		"knee_l": -1.1 * lift_l - 0.04,
 	}
-	if _action != "":
+	if ACTIONS.has(_action):
 		_blend_action(pose)
 	_apply(pose)
 
@@ -178,6 +193,14 @@ func _apply(pose: Dictionary) -> void:
 	_arm_left.rotation = pose["arm_l"]
 	_leg_right.rotation = pose["leg_r"]
 	_leg_left.rotation = pose["leg_l"]
+	_bend(_arm_right, pose["elbow_r"])
+	_bend(_arm_left, pose["elbow_l"])
+	_bend(_leg_right, pose["knee_r"])
+	_bend(_leg_left, pose["knee_l"])
+
+
+func _bend(limb: Node3D, angle: float) -> void:
+	(limb.get_node("lower") as Node3D).rotation.x = angle
 
 
 func _update_blink(delta: float) -> void:
@@ -198,23 +221,29 @@ func _blend_action(pose: Dictionary) -> void:
 	var target := pose.duplicate()
 	match _action:
 		"estirarse":
-			# Brazos arriba, cabeza atrás, un ligero vaivén en el punto más alto.
+			# Brazos arriba y estirados, cabeza atrás, un ligero vaivén en el punto más alto.
 			var up := smoothstep(0.0, 0.35, t) * (1.0 - smoothstep(0.75, 1.0, t))
 			var wobble := sin(t * TAU * 2.0) * 0.08 * up
 			target["arm_r"] = Vector3(2.9 * up, 0.0, 0.25 * up + wobble)
 			target["arm_l"] = Vector3(2.9 * up, 0.0, -0.25 * up - wobble)
+			target["elbow_r"] = 0.0
+			target["elbow_l"] = 0.0
 			target["head"] = Vector3(0.45 * up, 0.0, 0.0)
 			target["root_rot"] = Vector3(0.08 * up, 0.0, wobble * 0.5)
 			target["root_y"] = 0.02 * up
 		"sentadillas":
-			# Dos sentadillas con los brazos al frente.
+			# Dos sentadillas de verdad: muslos horizontales, espinillas verticales y brazos al frente.
 			var p := 0.5 - 0.5 * cos(t * TAU * 2.0)
-			target["leg_r"] = Vector3(1.25 * p, 0.0, 0.0)
-			target["leg_l"] = Vector3(1.25 * p, 0.0, 0.0)
-			target["arm_r"] = Vector3(1.45 * p, 0.0, 0.0)
-			target["arm_l"] = Vector3(1.45 * p, 0.0, 0.0)
-			target["root_y"] = -0.36 * p
-			target["root_rot"] = Vector3(-0.18 * p, 0.0, 0.0)
+			target["leg_r"] = Vector3(1.4 * p, 0.0, 0.0)
+			target["leg_l"] = Vector3(1.4 * p, 0.0, 0.0)
+			target["knee_r"] = -1.75 * p
+			target["knee_l"] = -1.75 * p
+			target["arm_r"] = Vector3(1.5 * p, 0.0, 0.0)
+			target["arm_l"] = Vector3(1.5 * p, 0.0, 0.0)
+			target["elbow_r"] = 0.1
+			target["elbow_l"] = 0.1
+			target["root_y"] = -0.27 * p
+			target["root_rot"] = Vector3(-0.32 * p, 0.0, 0.0)
 		"salto":
 			_jump_pose(target, t, 0.55, 0.0)
 		"voltereta":
@@ -236,15 +265,20 @@ func _jump_pose(target: Dictionary, t: float, height: float, spin: float) -> voi
 	else:
 		crouch = sin((t - LAND) / (1.0 - LAND) * PI) * 0.8
 	var lift := sin(air * PI) * height
-	var tuck := sin(air * PI) if spin > 0.0 else 0.3 * sin(air * PI)  # piernas encogidas en el aire
-	target["root_y"] = lift - 0.22 * crouch
-	target["root_rot"] = Vector3(smoothstep(0.1, 0.9, air) * spin, 0.0, 0.0)
-	var legs := 1.1 * crouch + 1.4 * tuck
+	var tuck := sin(air * PI) if spin > 0.0 else 0.35 * sin(air * PI)  # piernas encogidas en el aire
+	target["root_y"] = lift - 0.17 * crouch
+	target["root_rot"] = Vector3(smoothstep(0.1, 0.9, air) * spin - 0.25 * crouch, 0.0, 0.0)
+	var legs := 0.85 * crouch + 1.5 * tuck
+	var knees := -1.4 * crouch - 2.0 * tuck
 	target["leg_r"] = Vector3(legs, 0.0, 0.0)
 	target["leg_l"] = Vector3(legs, 0.0, 0.0)
-	var arms := 2.8 * sin(air * PI) + 0.6 * crouch  # brazos arriba al saltar
+	target["knee_r"] = knees
+	target["knee_l"] = knees
+	var arms := 2.8 * sin(air * PI) - 0.5 * crouch  # brazos atrás al agacharse, arriba al saltar
 	target["arm_r"] = Vector3(arms, 0.0, 0.15)
 	target["arm_l"] = Vector3(arms, 0.0, -0.15)
+	target["elbow_r"] = 0.25 + 0.5 * tuck
+	target["elbow_l"] = 0.25 + 0.5 * tuck
 
 
 func _mix(a: Variant, b: Variant, w: float) -> Variant:

@@ -27,6 +27,8 @@ static func load_player_skin(options := DEFAULT_OPTIONS) -> ImageTexture:
 		image = Image.load_from_file(ProjectSettings.globalize_path(USER_SKIN_PATH))
 	if image == null or image.get_width() != SkinModel.TEXTURE_SIZE or image.get_height() != SkinModel.TEXTURE_SIZE:
 		image = compose(options)
+	# Mipmaps: de cerca se ven los píxeles nítidos; de lejos la textura no "parpadea".
+	image.generate_mipmaps()
 	return ImageTexture.create_from_image(image)
 
 

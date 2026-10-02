@@ -12,8 +12,10 @@ const REST_POSITION := Vector3(0.30, -0.22, -0.10)
 const REST_ROTATION := Vector3(1.32, 0.32, 0.10)
 const ARM_SCALE := 0.6  # el brazo de la skin a tamaño real queda enorme pegado a la cámara
 const BLOCK_SIZE := 0.13
+const ELBOW_REST := 0.35  # codo un poco doblado (radianes)
 
 var _arm: Node3D
+var _forearm: Node3D       # segmento del codo hacia la mano
 var _block_mesh: MeshInstance3D
 var _block_id := -1
 var _swing := 0.0   # 1 al empezar un golpe, baja a 0
@@ -41,10 +43,11 @@ func set_skin(texture: Texture2D, slim: bool) -> void:
 	box.size = Vector3.ONE * BLOCK_SIZE
 	_block_mesh.mesh = box
 	# En la palma: al final del brazo y un poco por delante de él.
-	_block_mesh.position = Vector3(0.0, -10.5, -3.6) * SkinModel.PIXEL
+	_block_mesh.position = Vector3(0.0, -6.5, -3.6) * SkinModel.PIXEL
 	_block_mesh.rotation = Vector3(-0.35, 0.6, 0.0)
 	_block_mesh.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	_arm.add_child(_block_mesh)
+	_forearm = _arm.get_node("lower") as Node3D
+	_forearm.add_child(_block_mesh)
 	if _block_id != -1:
 		_block_mesh.material_override = _overlay_material(_block_id)
 
@@ -90,3 +93,6 @@ func _process(delta: float) -> void:
 	# hasta salirse de la vista.
 	position = REST_POSITION + bob + Vector3(-0.10 * s2, 0.02 * s - 0.30 * _equip, -0.07 * s)
 	rotation = REST_ROTATION + Vector3(0.22 * s, 0.45 * s2, -0.18 * s)
+	# Codo algo doblado sosteniendo el bloque; al golpear se estira hacia él.
+	if _forearm != null:
+		_forearm.rotation.x = ELBOW_REST - 0.3 * s

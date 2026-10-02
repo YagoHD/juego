@@ -25,6 +25,10 @@ Cada parte se despliega así a partir de su esquina (u, v):
 fila de arriba `[arriba][abajo]`, fila de abajo `[derecha][delante][izquierda][detrás]`.
 La **capa exterior** es un poco más grande que la base y admite transparencia.
 
+**Codos y rodillas:** brazos y piernas se doblan a mitad (6 px desde arriba). La mitad de
+arriba de su textura es el brazo/muslo y la de abajo el antebrazo/espinilla; la imagen sigue
+siendo una skin normal de Minecraft.
+
 ## Cómo funciona en el código
 
 - [`SkinModel`](../scripts/player/skin_model.gd): construye las partes 3D a partir de la imagen
