@@ -27,6 +27,7 @@ var _lids: Node3D          # párpados (visibles un instante al parpadear)
 var _time := 0.0
 var _walk_phase := 0.0
 var _walk_amount := 0.0
+var _run := 0.0           # 0 andando, 1 corriendo (paso más largo y rápido, más inclinado)
 var _swing := 0.0
 var _look_pitch := 0.0
 var _idle_time := 0.0
@@ -109,11 +110,13 @@ func swing() -> void:
 	_cancel_idle()
 
 
-## speed01 = 0 quieto, 1 andando a velocidad normal. on_floor = false en el aire.
+## speed01 = 0 quieto, 1 andando, >1 corriendo. on_floor = false en el aire.
 func update_walk(speed01: float, on_floor: bool, delta: float) -> void:
 	var target := clampf(speed01, 0.0, 1.0) if on_floor else 0.0
 	_walk_amount = lerpf(_walk_amount, target, 1.0 - exp(-10.0 * delta))
-	_walk_phase += delta * 9.0 * _walk_amount
+	var run_target := clampf((speed01 - 1.0) / 0.5, 0.0, 1.0) if on_floor else 0.0
+	_run = lerpf(_run, run_target, 1.0 - exp(-8.0 * delta))
+	_walk_phase += delta * 9.0 * _walk_amount * (1.0 + 0.4 * _run)
 	if speed01 > 0.05 or not on_floor:
 		_cancel_idle()
 
@@ -161,8 +164,8 @@ func _process(delta: float) -> void:
 	# en negativo (el pie va hacia atrás) y codos en positivo (la mano va hacia delante).
 	var walk := _walk_amount
 	var phase := _walk_phase
-	var stride := sin(phase) * 0.7 * walk                     # muslo izquierdo (el derecho, opuesto)
-	var arm_swing := sin(phase - 0.25) * 0.6 * walk           # los brazos van un poco por detrás
+	var stride := sin(phase) * (0.7 + 0.3 * _run) * walk       # muslo izquierdo (el derecho, opuesto)
+	var arm_swing := sin(phase - 0.25) * (0.6 + 0.4 * _run) * walk  # los brazos van un poco por detrás
 	var lift_l := maxf(0.0, cos(phase)) * walk                # la pierna izquierda avanza (se dobla)
 	var lift_r := maxf(0.0, -cos(phase)) * walk
 	var bounce := (absf(cos(phase)) - 0.5) * 0.035 * walk     # sube y baja dos veces por paso
@@ -174,7 +177,7 @@ func _process(delta: float) -> void:
 	var pose := {
 		"root_y": breath * 0.006 + bounce - 0.015 * walk,
 		# Al andar: inclinación hacia delante, giro de caderas con cada paso y vaivén lateral.
-		"root_rot": Vector3(-0.06 * walk, sin(phase) * 0.12 * walk, sway * 0.025 + sin(phase) * 0.03 * walk),
+		"root_rot": Vector3((-0.06 - 0.12 * _run) * walk, sin(phase) * 0.12 * walk, sway * 0.025 + sin(phase) * 0.03 * walk),
 		# La cabeza compensa el giro de caderas (mira al frente) y sigue hacia dónde se apunta.
 		"head": Vector3(clampf(_look_pitch, -0.9, 0.7) + breath * 0.02,
 			sway * 0.05 - sin(phase) * 0.1 * walk, -sway * 0.02),

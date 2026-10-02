@@ -23,10 +23,12 @@ Hecho en **Godot 4.7** con el módulo **godot_voxel** (de Zylann).
 | Tecla | Acción |
 |---|---|
 | WASD / ratón | Moverse / mirar |
+| W dos veces rápido (y mantener) | Correr |
 | Espacio | Saltar (los escalones de 1 bloque se suben solos) |
 | Clic izquierdo / derecho | Romper / colocar bloque |
 | 1–9 o rueda del ratón | Elegir bloque |
 | V | Cámara: primera persona → tercera por detrás → tercera de frente |
+| Mantener V + ratón adelante/atrás (o rueda) | Acercar/alejar la cámara (como en Skyrim) |
 | Alt o botón central (mantener) | Girar la cámara alrededor del personaje |
 | F | Volar (Espacio sube, Ctrl baja, Shift rápido) |
 | Esc | Soltar el ratón (un clic lo recupera) |

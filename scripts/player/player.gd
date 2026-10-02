@@ -12,7 +12,10 @@ class_name Player
 ##                         └─ Camera3D
 ##                              └─ HeldBlock (bloque en la mano; solo en primera persona)
 
-const SPEED := 5.2
+const SPEED := 4.3          # andando
+const SPRINT_SPEED := 6.6   # corriendo (doble toque de W)
+const SPRINT_DOUBLE_TAP := 0.3  # segundos máximos entre los dos toques de W
+const SPRINT_FOV_BOOST := 8.0   # grados que se abre la vista al correr
 const BODY_HEIGHT := 1.4   # altura del personaje en metros (~2,8 bloques de 0,5 m)
 const BODY_RADIUS := 0.32
 const EYE_HEIGHT := 1.25   # altura de la cámara (los ojos)
@@ -25,7 +28,11 @@ const STEP_FORWARD := 0.25 # cuánto avanza al subir un escalón (para quedar bi
 const FLY_SPEED := 18.0
 const FLY_SPEED_FAST := 60.0
 const CAMERA_CATCH_UP := 14.0      # rapidez con la que la cámara alcanza al cuerpo tras un escalón
-const THIRD_PERSON_DISTANCE := 2.3 # metros detrás del jugador en tercera persona
+const THIRD_PERSON_DISTANCE := 2.3 # distancia inicial de la cámara en tercera persona (m)
+const MIN_CAMERA_DISTANCE := 1.2
+const MAX_CAMERA_DISTANCE := 7.0
+const ZOOM_MOUSE_SPEED := 0.01  # metros por píxel de ratón (manteniendo V)
+const ZOOM_WHEEL_STEP := 0.4    # metros por paso de rueda (manteniendo V)
 const THIRD_PERSON_SHOULDER := 0.3  # desplazamiento a la derecha (vista "por encima del hombro")
 const SWIM_SPEED := 3.0        # velocidad horizontal en el agua
 const SWIM_UP_SPEED := 3.2     # nadar hacia arriba (Espacio con la cabeza bajo el agua)
@@ -38,6 +45,11 @@ var near_view_voxels := 320
 var _flying := false
 var _third_person := false
 var _front_view := false        # tercera persona mirando al personaje de frente
+var _camera_distance := THIRD_PERSON_DISTANCE
+var _zoomed_while_v := false
+var _sprinting := false
+var _last_w_press := -10.0
+var _base_fov := 75.0
 var _orbit := Vector2.ZERO       # giro libre de la cámara (x = alrededor, y = arriba/abajo)
 var _debug_camera_yaw := 0.0     # solo capturas de prueba (vista de perfil)
 var _spawn_point := Vector3.ZERO
@@ -132,6 +144,10 @@ func _ready() -> void:
 func _input(event: InputEvent) -> void:
 	if event is InputEventMouseMotion and _captured:
 		var motion := event as InputEventMouseMotion
+		if Input.is_key_pressed(KEY_V):
+			# Manteniendo V, ratón adelante/atrás acerca o aleja la cámara (como en Skyrim).
+			_zoom_camera(motion.relative.y * ZOOM_MOUSE_SPEED)
+			return
 		if _is_orbiting():
 			# Girar la cámara alrededor del personaje sin moverlo (para ver la skin).
 			_orbit.x -= motion.relative.x * SENSITIVITY
@@ -150,37 +166,80 @@ func _unhandled_input(event: InputEvent) -> void:
 		if not _captured:
 			_set_captured(true)  # un clic con el ratón suelto lo vuelve a capturar
 			return
+		var zooming := Input.is_key_pressed(KEY_V)
 		match button.button_index:
 			MOUSE_BUTTON_LEFT:
 				_edit_block(false)
 			MOUSE_BUTTON_RIGHT:
 				_edit_block(true)
 			MOUSE_BUTTON_WHEEL_UP:
-				_select_slot(_hotbar_index - 1)
+				if zooming:
+					_zoom_camera(-ZOOM_WHEEL_STEP)
+				else:
+					_select_slot(_hotbar_index - 1)
 			MOUSE_BUTTON_WHEEL_DOWN:
-				_select_slot(_hotbar_index + 1)
+				if zooming:
+					_zoom_camera(ZOOM_WHEEL_STEP)
+				else:
+					_select_slot(_hotbar_index + 1)
 	elif event is InputEventKey:
 		var key := event as InputEventKey
-		if not key.pressed or key.echo:
+		if key.echo:
 			return
+		if key.keycode == KEY_V:
+			if key.pressed:
+				_zoomed_while_v = false
+			elif not _zoomed_while_v:
+				_cycle_camera_mode()  # solo si se soltó V sin haber hecho zoom
+			return
+		if not key.pressed:
+			return
+		if key.keycode == KEY_W:
+			# Doble toque de W rápido = correr (como en Minecraft).
+			var now := Time.get_ticks_msec() / 1000.0
+			if now - _last_w_press < SPRINT_DOUBLE_TAP:
+				_sprinting = true
+			_last_w_press = now
 		if key.keycode >= KEY_1 and key.keycode <= KEY_9:
 			_select_slot(key.keycode - KEY_1)
 		elif key.keycode == KEY_F:
 			_flying = not _flying
 			velocity = Vector3.ZERO
-		elif key.keycode == KEY_V:
-			# Primera persona -> tercera por detrás -> tercera de frente -> primera persona.
-			if not _third_person:
-				_third_person = true
-				_front_view = false
-			elif not _front_view:
-				_front_view = true
-			else:
-				_third_person = false
-				_front_view = false
-			_apply_camera_mode()
 		elif key.keycode == KEY_ESCAPE:
 			_set_captured(not _captured)
+
+
+func _cycle_camera_mode() -> void:
+	# Primera persona -> tercera por detrás -> tercera de frente -> primera persona.
+	if not _third_person:
+		_third_person = true
+		_front_view = false
+	elif not _front_view:
+		_front_view = true
+	else:
+		_third_person = false
+		_front_view = false
+	_apply_camera_mode()
+
+
+## Acerca (negativo) o aleja (positivo) la cámara de tercera persona. Acercarse del todo pasa a
+## primera persona; alejarse desde primera persona sale a tercera.
+func _zoom_camera(amount: float) -> void:
+	_zoomed_while_v = true
+	if not _third_person:
+		if amount <= 0.0:
+			return
+		_third_person = true
+		_front_view = false
+		_camera_distance = MIN_CAMERA_DISTANCE  # sale a tercera persona y sigue alejándose
+		_apply_camera_mode()
+	_camera_distance += amount
+	if _camera_distance < MIN_CAMERA_DISTANCE - 0.3:
+		_third_person = false
+		_front_view = false
+		_camera_distance = MIN_CAMERA_DISTANCE
+		_apply_camera_mode()
+	_camera_distance = clampf(_camera_distance, MIN_CAMERA_DISTANCE, MAX_CAMERA_DISTANCE)
 
 
 func _is_orbiting() -> bool:
@@ -238,7 +297,10 @@ func _physics_process(delta: float) -> void:
 	if Input.is_key_pressed(KEY_D): dir += transform.basis.x
 	dir.y = 0.0
 	dir = dir.normalized()
-	var speed := SWIM_SPEED if feet_wet else SPEED
+	# Correr dura mientras se mantenga W (y no en el agua ni yendo hacia atrás).
+	if not Input.is_key_pressed(KEY_W) or feet_wet:
+		_sprinting = false
+	var speed := SWIM_SPEED if feet_wet else (SPRINT_SPEED if _sprinting else SPEED)
 	velocity.x = dir.x * speed
 	velocity.z = dir.z * speed
 
@@ -274,7 +336,7 @@ func _process(delta: float) -> void:
 	_head.position = Vector3(0, EYE_HEIGHT, 0) + global_basis.inverse() * _camera_lag
 
 	# Transición suave entre primera y tercera persona.
-	var target_length := THIRD_PERSON_DISTANCE if _third_person else 0.0
+	var target_length := _camera_distance if _third_person else 0.0
 	var target_shoulder := THIRD_PERSON_SHOULDER if _third_person and not _front_view else 0.0
 	var t := 1.0 - exp(-10.0 * delta)
 	_spring.spring_length = lerpf(_spring.spring_length, target_length, t)
@@ -289,6 +351,11 @@ func _process(delta: float) -> void:
 	# inclinación; si no, al girar la cámara de lado la inclinación se volvería un giro del horizonte.
 	var desired := Basis.from_euler(Vector3(_pitch + _orbit.y, base_yaw + _orbit.x, 0.0))
 	_spring.basis = _head.basis.inverse() * desired
+
+	# Al correr la vista se abre un poco (sensación de velocidad, como en Minecraft).
+	var moving := Vector2(velocity.x, velocity.z).length() > SPEED * 1.1
+	var target_fov := _base_fov + (SPRINT_FOV_BOOST if _sprinting and moving else 0.0)
+	_camera.fov = lerpf(_camera.fov, target_fov, 1.0 - exp(-8.0 * delta))
 
 	_avatar.set_look_pitch(_pitch)
 	_update_highlight()
