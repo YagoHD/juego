@@ -13,6 +13,8 @@ static func paint(id: String) -> Image:
 		"wheat": _wheat_bundle(img)
 		"sticks": _sticks(img)
 		"stone_knife": _stone_knife(img)
+		"stone_axe": _stone_axe(img)
+		"captain_journal": _journal(img)
 		"berries": _berries(img)
 		"shirt": _shirt(img)
 		"pants": _pants(img)
@@ -206,3 +208,27 @@ static func _note(img: Image) -> void:
 		_rect(img, 5, y, 10, y, ink)
 	_rect(img, 5, 11, 6, 12, Color(0.6, 0.38, 0.22))  # dibujito
 	_rect(img, 8, 11, 9, 12, Color(0.6, 0.38, 0.22))
+
+
+static func _stone_axe(img: Image) -> void:
+	# Mango de palo en diagonal, cabeza de piedra atada con cuerda.
+	var wood := Color(0.55, 0.38, 0.2)
+	_line(img, Vector2i(3, 14), Vector2i(11, 4), wood)
+	_line(img, Vector2i(4, 14), Vector2i(12, 4), wood.darkened(0.2))
+	var stone := Color(0.55, 0.56, 0.58)
+	_rect(img, 8, 1, 13, 5, stone)
+	_rect(img, 12, 2, 14, 7, stone.darkened(0.15))
+	_rect(img, 8, 1, 9, 2, stone.lightened(0.2))
+	_rect(img, 10, 5, 11, 6, Color(0.78, 0.65, 0.42))  # atadura de cuerda
+
+
+static func _journal(img: Image) -> void:
+	# Libro de tapas de cuero, hinchado por el agua, con cierre de latón.
+	var leather := Color(0.42, 0.24, 0.13)
+	_rect(img, 2, 2, 13, 13, leather)
+	_rect(img, 2, 2, 3, 13, leather.darkened(0.3))          # lomo
+	_rect(img, 13, 3, 14, 12, Color(0.88, 0.82, 0.66))     # hojas por el canto
+	_rect(img, 5, 5, 10, 6, leather.lightened(0.18))       # grabado
+	_rect(img, 6, 8, 9, 8, leather.lightened(0.18))
+	_rect(img, 11, 7, 13, 8, Color(0.82, 0.66, 0.3))       # cierre
+	_rect(img, 4, 11, 6, 12, Color(0.3, 0.32, 0.36, 1.0))  # mancha de agua

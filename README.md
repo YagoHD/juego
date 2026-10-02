@@ -34,9 +34,11 @@ Hecho en **Godot 4.7** con el módulo **godot_voxel** (de Zylann).
 | T (mantener) | Acelerar el tiempo (para ver el ciclo de día y noche) |
 | E | Inventario (clic: coger/soltar · clic derecho: la mitad o de uno en uno · Mayús+clic: mover rápido) |
 | Q (Ctrl + Q) | Tirar uno (el montón entero) del objeto de la mano |
-| G | Dejar el objeto de la mano en el suelo, justo donde se apunta (para fabricar) |
+| G | Dejar el objeto de la mano en el suelo, justo donde se apunta (para fabricar); apuntando a la cara de arriba de otro objeto, se apila encima |
+| Mayús + clic izquierdo | Sobre un objeto del suelo: recoger todo el montón de una vez |
+| J | Diario del capitán (A / D o flechas: pasar página) |
 | R (mantener) | Fabricar: junto a una forma que brilla, el personaje se agacha a trabajarla |
-| Clic derecho con una nota | Leerla y aprender una receta (se dibuja en el cuaderno, dentro del inventario) |
+| Clic derecho con una nota | Leerla y aprender una receta (se apunta en el diario) |
 | C | Modo creativo (todos los bloques infinitos) / supervivencia |
 | Esc | Soltar el ratón (un clic lo recupera) |
 

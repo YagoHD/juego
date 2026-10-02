@@ -10,6 +10,8 @@ signal block_broken(cell: Vector3i, block_id: int)
 ## Mensaje corto para el jugador ("Has aprendido...").
 signal notice(text: String)
 signal recipe_learned(recipe_id: String)
+## Ha encontrado el diario del capitán (se lee con J).
+signal journal_found
 ## Jugador: camina, salta, vuela, mira con el ratón y rompe/coloca bloques.
 ## Cámara en primera o tercera persona (tecla V). Encuentra el VoxelTerrain por el grupo
 ## "voxel_terrain".
@@ -81,9 +83,10 @@ var creative := false
 var equipment := {"shirt": "", "pants": "", "belt": "", "backpack": ""}
 const BASE_HOTBAR := 3    # huecos de la barra sin ropa con bolsillos
 const BASE_STORAGE := 9   # huecos de inventario sin mochila
-## Recetas de fabricar en el suelo que conoce (se dibujan en el cuaderno).
+## Recetas de fabricar en el suelo que conoce (se dibujan en el diario del capitán).
 var known_recipes: Array = GroundRecipes.KNOWN_AT_START.duplicate()
 var ground: GroundCrafting   # objetos dejados en el suelo (lo pone main.gd)
+var has_journal := false     # lleva el diario del capitán
 var _working := false        # agachado fabricando
 var _work_swing := 0.0
 var _crouch := 0.0           # 0..1: cuánto baja la vista al agacharse
@@ -520,7 +523,7 @@ func _edit_block(place: bool) -> void:
 		if place:
 			_place_on_ground(target)  # otro objeto al lado del que se apunta
 		else:
-			_pick_up_placed(target["item"])
+			_pick_up_placed(target["item"], Input.is_key_pressed(KEY_SHIFT))
 		return
 	var tool := _terrain.get_voxel_tool()
 	tool.channel = VoxelBuffer.CHANNEL_TYPE
@@ -668,11 +671,16 @@ func active_inventory() -> Inventory:
 ## Mete objetos recogidos en el inventario (solo en los huecos desbloqueados).
 ## Devuelve los que no cupieron.
 func pick_up(id: String, count: int) -> int:
+	if id == "captain_journal":
+		find_journal()  # no ocupa hueco: va siempre con el personaje
+		return 0
 	return inventory.add(id, count, unlocked_slots())
 
 
 ## ¿Cabe al menos uno de estos objetos? (para que no vuelen hacia él si va lleno)
 func can_pick_up(id: String) -> bool:
+	if id == "captain_journal":
+		return true
 	for i in unlocked_slots():
 		var s := inventory.get_slot(i)
 		if s.is_empty() or (s["id"] == id and int(s["count"]) < ItemDB.max_stack(id)):
@@ -879,28 +887,49 @@ func _place_on_ground(target: Dictionary) -> bool:
 		return false
 	var point: Vector3 = target["point"]
 	var support: Vector3i
+	var yaw := rotation.y + randf_range(-0.6, 0.6)
 	if target.has("item"):
 		var other: PlacedItem = target["item"]
-		point.y = other.global_position.y
+		var normal_up: Vector3 = target["normal"]
+		if normal_up.y > 0.7:
+			# Apuntando a la cara de arriba de un objeto: se apila encima (fabricar en vertical).
+			if ground.stack_on(other, stack["id"], yaw) == null:
+				notice.emit("No se puede apilar más alto.")
+				return false
+			if not creative:
+				inventory.take(_hotbar_index, 1)
+			return true
+		point.y = other.base_y  # apuntando a un lado: al suelo, junto a él
 		support = other.support
 	else:
 		var normal: Vector3 = target["normal"]
 		if normal.y < 0.7:
 			return false  # solo sobre superficies horizontales
 		support = target["voxel"]
-	ground.place(point, stack["id"], rotation.y + randf_range(-0.6, 0.6), support)
+	ground.place(point, stack["id"], yaw, support)
 	if not creative:
 		inventory.take(_hotbar_index, 1)
 	return true
 
 
-func _pick_up_placed(item: PlacedItem) -> void:
-	if not creative and not can_pick_up(item.item_id):
-		notice.emit("No te cabe")
-		return
-	var id := ground.remove(item)
-	if not creative:
-		pick_up(id, 1)
+## Recoge un objeto del suelo; con Mayúsculas, todo el montón que se toca con él.
+func _pick_up_placed(item: PlacedItem, whole_group := false) -> void:
+	var items: Array[PlacedItem] = [item]
+	if whole_group:
+		items = ground.group_of(item)
+	# De arriba abajo, para que no se "caigan" los de encima mientras se recogen.
+	items.sort_custom(func(a: PlacedItem, b: PlacedItem) -> bool: return a.level > b.level)
+	for it in items:
+		if it.item_id == "captain_journal":
+			ground.remove(it)
+			find_journal()
+			continue
+		if not creative and not can_pick_up(it.item_id):
+			notice.emit("No te cabe todo.")
+			return
+		var id := ground.remove(it)
+		if not creative:
+			pick_up(id, 1)
 
 
 ## Con una nota en la mano, clic derecho la lee y se aprende lo que enseña.
@@ -911,7 +940,7 @@ func _read_note() -> bool:
 	var recipe_id := ItemDB.teaches(stack["id"])
 	if learn(recipe_id):
 		var result: String = GroundRecipes.RECIPES[recipe_id]["result"]
-		notice.emit("Has aprendido a hacer: %s. Está dibujado en tu cuaderno (E)." % ItemDB.display_name(result))
+		notice.emit("Has aprendido a hacer: %s. Está en el diario (J)." % ItemDB.display_name(result))
 		if not creative:
 			inventory.take(_hotbar_index, 1)
 	else:
@@ -957,3 +986,14 @@ func _throw_held(whole_stack: bool) -> void:
 	ItemDrop.throw(get_parent(), _head.global_position + look * 0.4 - Vector3.UP * 0.25, look, stack["id"], amount)
 	_held.swing()
 	_avatar.swing()
+
+
+## Recoge el diario del capitán: de él se salvan las recetas básicas.
+func find_journal() -> void:
+	if has_journal:
+		return
+	has_journal = true
+	for recipe_id in GroundRecipes.JOURNAL_RECIPES:
+		learn(recipe_id)
+	notice.emit("Has encontrado el diario del capitán. Pulsa J para leerlo.")
+	journal_found.emit()

@@ -54,6 +54,9 @@ const OTHER_ITEMS := {
 	"wheat": {"name": "Manojo de trigo", "stack": 32},
 	"sticks": {"name": "Manojo de palitos", "stack": 32},
 	"stone_knife": {"name": "Cuchillo de piedra", "stack": 1},
+	"stone_axe": {"name": "Hacha de piedra", "stack": 1},
+	# Se lee con J; al recogerlo no ocupa hueco (va siempre con el personaje).
+	"captain_journal": {"name": "Diario del capitán", "stack": 1},
 	"berries": {"name": "Bayas silvestres", "stack": 24},
 	"shirt": {"name": "Camiseta", "stack": 1, "wear": "shirt", "pockets": 2},
 	"pants": {"name": "Pantalón", "stack": 1, "wear": "pants", "pockets": 2},

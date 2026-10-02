@@ -18,6 +18,9 @@ param(
     [string]$Wear = "", # ropa puesta: "shirt,pants,belt,backpack"
     [string]$Shape = "", # receta dibujada en el suelo delante (p. ej. "rough_backpack")
     [switch]$Working,   # el personaje agachado trabajando
+    [switch]$Journal,   # recoger el diario del capitán y abrirlo
+    [int]$Page = 0,     # con -Journal: página izquierda (par)
+    [string]$Learn = "", # con -Journal: recetas aprendidas, p. ej. "chest,belt"
     [int]$Wait = 90,
     [string]$Godot = "$env:USERPROFILE\Desktop\godot.windows.editor.x86_64.exe"
 )
@@ -36,6 +39,8 @@ if ($Inventory) { $gameArgs += "--inventory" }
 if ($Wear -ne "") { $gameArgs += "--wear=$Wear" }
 if ($Shape -ne "") { $gameArgs += "--shape=$Shape" }
 if ($Working) { $gameArgs += "--working" }
+if ($Journal) { $gameArgs += "--journal"; $gameArgs += "--page=$Page" }
+if ($Learn -ne "") { $gameArgs += "--learn=$Learn" }
 if ($At -ne "") { $gameArgs += "--at=$At" }
 $p = Start-Process -FilePath $Godot -ArgumentList $gameArgs -RedirectStandardOutput "$env:TEMP\capture_out.txt" -RedirectStandardError "$env:TEMP\capture_err.txt" -PassThru
 if (-not $p.WaitForExit(180000)) { $p.Kill(); Write-Output "TIMEOUT" }

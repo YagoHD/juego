@@ -60,11 +60,18 @@
   con grosor en la mano y en el suelo (`scripts/items/item_mesh.gd`).
 - **Cofres** (clic derecho) y **naufragio** en la playa con botín (`scripts/world/structures.gd`).
 - **Fabricar en el suelo** (`scripts/crafting/`): G deja un objeto en el punto exacto donde se
-  apunta (sin anclarse). Una cuadrícula invisible de 0,25 m lee la FORMA que hacen (vale girada o
-  reflejada); si es una receta conocida brilla y "Mantén R" la trabaja (animación agachado).
-  Recetas en `GroundRecipes.RECIPES`: cuerda (3 hojas en línea, se sabe de inicio), cinturón
-  (3 cuerdas; nota en el cofre de la playa), mochila improvisada +9 (2 cuerdas + 6 telas; nota
-  en el cofre del barco). Las aprendidas se dibujan en el cuaderno del inventario.
+  apunta (sin anclarse); G sobre la cara de arriba de otro lo apila (hasta 4). Una cuadrícula
+  invisible de 0,25 m lee la FORMA en 3D (vale girada o reflejada); si es una receta conocida
+  brilla y "Mantén R" la trabaja (animación agachado). Si es un trozo de una receta conocida,
+  dice qué falta y lo muestra en transparente. Herramientas (cuchillo) no se gastan. Un objeto
+  "desmontable" dejado solo se desmonta con R: devuelve materiales y enseña la receta.
+  Mayús + clic recoge el montón entero. Recetas en `GroundRecipes.RECIPES`: cuerda, tablones,
+  palitos (las tres en el diario), cinturón y mochila improvisada (notas en los cofres), cofre
+  (cubo 2x2x2 de tablones), cuchillo y hacha de piedra (se aprenden desmontando).
+- **Diario del capitán** (`scripts/ui/journal.gd`, tecla J): aparece en la playa al empezar;
+  libro de dos páginas, papel con manchas de agua, texto corrido (la página del mineral),
+  mapa sepia con naufragio, ruinas y "tú", recetas del capitán y "Mis notas" a lápiz con lo
+  aprendido después.
 - **Q** tira objetos (Ctrl+Q el montón).
 
 ## Variante del mapa y naufragio (2026-10-02)

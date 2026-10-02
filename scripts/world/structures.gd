@@ -24,6 +24,8 @@ static var _by_chunk := {}       # Vector3i (origen del chunk de 16) -> Array de
 static var _chest_loot := {}     # Vector3i (celda del cofre) -> Array de {"id", "count"}
 static var _spawn := Vector2i.ZERO
 static var _spawn_yaw := 0.0
+static var _ship := Vector2i.ZERO  # centro del barco naufragado (voxels x, z)
+static var _ruins := Vector2i(-548, -691)
 static var _built := false
 
 
@@ -54,6 +56,15 @@ static func loot_for_chest(cell: Vector3i) -> Array:
 ## Dónde aparece el jugador (columna en voxels) y hacia dónde mira (radianes).
 static func spawn_voxel() -> Vector2i:
 	return _spawn
+
+
+## Centro del barco naufragado (x, z en voxels), para el mapa del diario.
+static func ship_voxel() -> Vector2i:
+	return _ship
+
+
+static func ruins_voxel() -> Vector2i:
+	return _ruins
 
 
 static func spawn_yaw() -> float:
@@ -103,6 +114,7 @@ static func _build_shipwreck(gen: IslandGenerator) -> void:
 
 	# El barco: algo metido en el agua, de costado a la orilla y con la quilla medio enterrada.
 	var center := shore + dir * 9.0
+	_ship = Vector2i(center)
 	var yaw := dir.angle() + PI * 0.5 + 0.35
 	var base_y := float(IslandGenerator.SEA_LEVEL - 3)
 	var ship_basis := Basis(Vector3.UP, -yaw) * Basis(Vector3.RIGHT, SHIP_ROLL)

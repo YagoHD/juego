@@ -39,6 +39,8 @@ var _ground: GroundCrafting     # objetos dejados en el suelo para fabricar
 var _prompt: Label             # "Mantén R: Coser..." junto a una receta
 var _notice: Label             # mensajes cortos ("Has aprendido...")
 var _notice_time := 0.0
+var _journal: Journal
+var _ui_layer: CanvasLayer
 var _hotbar: Hotbar
 var _underwater: ColorRect
 var _day_night: DayNight
@@ -281,6 +283,7 @@ func _finish_loading() -> void:
 		_loading_overlay.queue_free()
 		_loading_overlay = null
 	print("[main] Isla cargada en %.1f s. ¡A jugar!" % _elapsed)
+	_place_journal_if_lost()
 	# Modo medición: "godot --headless --path . -- --quit-after-load" sale al terminar de cargar.
 	if OS.get_cmdline_user_args().has("--quit-after-load"):
 		get_tree().quit()
@@ -333,6 +336,7 @@ func _build_hud() -> void:
 	var ui_layer := CanvasLayer.new()
 	ui_layer.layer = 10
 	add_child(ui_layer)
+	_ui_layer = ui_layer
 	_inventory_screen = InventoryScreen.new()
 	ui_layer.add_child(_inventory_screen)
 	_inventory_screen.closed.connect(_on_screen_closed)
@@ -355,11 +359,15 @@ func _process(delta: float) -> void:
 	if _hud == null or _player == null:
 		return
 	_hotbar.select(_player.get_hotbar_index())
+	var reading := _journal != null and _journal.visible  # con el diario abierto, nada encima
+	_hotbar.visible = not reading
+	_hud.visible = not reading
+	_prompt.visible = not reading
 	_underwater.visible = _player.is_head_underwater()
 	_prompt.text = _ground.prompt()
 	_notice_time -= delta
 	_notice.modulate.a = clampf(_notice_time, 0.0, 1.0)
-	_hud.text = "%s · FPS: %d\nClic izq. romper · Clic der. colocar · Q tirar · G dejar en el suelo · R (mantener) fabricar · 1-9 / rueda: objeto\nWASD mover (W+W correr) · Espacio saltar · F volar · V cámara (mantener V + ratón: distancia) · Alt girar cámara · T (mantener) acelerar el tiempo · Esc ratón" \
+	_hud.text = "%s · FPS: %d\nClic izq. romper · Clic der. colocar · J diario · Q tirar · G dejar en el suelo · R (mantener) fabricar · 1-9 / rueda: objeto\nWASD mover (W+W correr) · Espacio saltar · F volar · V cámara (mantener V + ratón: distancia) · Alt girar cámara · T (mantener) acelerar el tiempo · Esc ratón" \
 		% [_day_night.get_clock_text(), Engine.get_frames_per_second()]
 	_update_capture()
 
@@ -405,6 +413,13 @@ func _update_capture() -> void:
 		if _arg("--drop=") != "":  # soltar un objeto delante del jugador para verlo en el suelo
 			var forward := -_player.global_basis.z
 			ItemDrop.spawn(self, _player.global_position + forward * 1.6 + Vector3.UP, _arg("--drop="), 1)
+		if OS.get_cmdline_user_args().has("--journal"):  # recoger el diario y abrirlo en la página --page
+			_player.find_journal()
+			for r in _arg("--learn=").split(",", false):
+				_player.learn(r)
+			open_journal()
+			_journal._spread = int(_arg("--page=", "0"))
+			_journal.open()
 		if OS.get_cmdline_user_args().has("--inventory"):
 			open_inventory()
 		if OS.get_cmdline_user_args().has("--open-chest"):  # abrir el cofre de la playa del naufragio
@@ -450,6 +465,7 @@ func _save_player() -> void:
 		"creative": _player.creative,
 		"equipment": _player.equipment,
 		"recipes": _player.known_recipes,
+		"journal": _player.has_journal,
 		"hour": _day_night.hour,
 		"day": _day_night.day,
 	}
@@ -469,6 +485,7 @@ func _load_player() -> void:
 		_player.inventory.from_data(d["inventory"])
 	if d.get("equipment") is Dictionary:
 		_player.set_equipment(d["equipment"])
+	_player.has_journal = bool(d.get("journal", false))
 	if d.get("recipes") is Array:
 		for recipe_id in d["recipes"]:
 			_player.learn(str(recipe_id))
@@ -485,7 +502,14 @@ func _input(event: InputEvent) -> void:
 	var key := event as InputEventKey
 	if key == null or not key.pressed or key.echo:
 		return
-	if _inventory_screen.visible and (key.keycode == KEY_ESCAPE or key.keycode == KEY_E):
+	if _journal != null and _journal.visible:
+		if key.keycode == KEY_ESCAPE or key.keycode == KEY_J:
+			_journal.close()
+			get_viewport().set_input_as_handled()
+	elif not _inventory_screen.visible and key.keycode == KEY_J:
+		open_journal()
+		get_viewport().set_input_as_handled()
+	elif _inventory_screen.visible and (key.keycode == KEY_ESCAPE or key.keycode == KEY_E):
 		_inventory_screen.close()
 		get_viewport().set_input_as_handled()
 	elif not _inventory_screen.visible and key.keycode == KEY_E:
@@ -646,3 +670,34 @@ func _debug_lay_shape(recipe_id: String) -> void:
 		var point: Vector3 = hit.position
 		var support := Vector3i((point / VOXEL_SIZE - Vector3(0, 0.5, 0)).floor())
 		_ground.place(point, cells[c], randf() * TAU, support)
+
+
+# ------------------------------------------------------------------ diario del capitán
+
+func open_journal() -> void:
+	if not _player.has_journal:
+		_show_notice("Aún no tienes ningún diario. Quizá haya algo entre los restos del naufragio...")
+		return
+	if _journal == null:
+		_journal = Journal.new(_player)
+		_ui_layer.add_child(_journal)
+		_journal.closed.connect(_on_screen_closed)
+	_player.ui_open = true
+	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
+	_journal.open()
+
+
+## Al empezar: si el jugador aún no tiene el diario y no está en el suelo, se deja en la playa,
+## unos pasos delante, camino del barco.
+func _place_journal_if_lost() -> void:
+	if _player.has_journal or _ground.has_item("captain_journal"):
+		return
+	var f := -_player.global_basis.z
+	var p := _player.global_position + Vector3(f.x, 0, f.z).normalized() * 3.0
+	var hit := get_world_3d().direct_space_state.intersect_ray(
+		PhysicsRayQueryParameters3D.create(p + Vector3.UP * 3.0, p + Vector3.DOWN * 6.0))
+	if hit.is_empty():
+		return
+	var point: Vector3 = hit.position
+	var support := Vector3i((point / VOXEL_SIZE - Vector3(0, 0.5, 0)).floor())
+	_ground.place(point, "captain_journal", randf() * TAU, support)
