@@ -73,6 +73,10 @@
   mapa sepia con naufragio, ruinas y "tú", recetas del capitán y "Mis notas" a lápiz con lo
   aprendido después.
 - **Q** tira objetos (Ctrl+Q el montón).
+- **Sonido** (`scripts/systems/sfx.gd`): todo generado por código (sin archivos): pasos según el
+  suelo, romper por material, colocar, recoger, tirar, trabajar, fabricado, aprender, páginas,
+  cofre, clics; ambiente: olas cerca del mar, pájaros de día, grillos de noche.
+  `tools/test_sounds.gd` comprueba que se generan sin saturar.
 - **Menú de pausa** (Esc, `scripts/ui/pause_menu.gd`): pausa el juego; opciones guardadas en
   `user://ajustes.cfg` (`scripts/systems/settings.gd`). Pantalla limpia: arriba solo el reloj;
   F1 muestra los controles, F3 los FPS.

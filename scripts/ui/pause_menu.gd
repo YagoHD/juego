@@ -98,6 +98,7 @@ static func menu_button(text: String) -> Button:
 		style.set_corner_radius_all(6)
 		button.add_theme_stylebox_override(state[0], style)
 	button.add_theme_color_override("font_hover_color", Color(1.0, 0.92, 0.75))
+	button.pressed.connect(func() -> void: Sfx.play("clic", null, -6.0))
 	return button
 
 

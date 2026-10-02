@@ -44,6 +44,8 @@ var _ui_layer: CanvasLayer
 var _pause: PauseMenu
 var _help: Control             # ayuda de controles (F1)
 var _help_on := false
+var _sfx: Sfx
+var _sea_check := 0.0
 var _hotbar: Hotbar
 var _underwater: ColorRect
 var _day_night: DayNight
@@ -62,6 +64,8 @@ var _world_is_new := false
 
 func _ready() -> void:
 	Settings.load_settings()
+	_sfx = Sfx.new()
+	add_child(_sfx)
 	_build_world()
 	_build_far_terrain()
 	_build_environment()
@@ -405,6 +409,7 @@ func _process(delta: float) -> void:
 	if Settings.show_fps:
 		_hud.text += "  ·  %d FPS" % Engine.get_frames_per_second()
 	_help.visible = _help_on and not reading
+	_update_ambience(delta)
 	if _help.visible:  # ajustada a su contenido, pegada a la derecha y centrada en alto
 		var help_size := _help.get_combined_minimum_size()
 		_help.offset_left = -16 - help_size.x
@@ -635,6 +640,7 @@ func _chests_save_path() -> String:
 func _on_block_used(cell: Vector3i, block_id: int) -> void:
 	if block_id != IslandGenerator.CHEST:
 		return
+	Sfx.play("cofre", (Vector3(cell) + Vector3(0.5, 0.5, 0.5)) * VOXEL_SIZE)
 	var chest := _chests.get_or_create(cell)
 	_screen_sections = _chest_sections.bind(chest)
 	_show_screen(_screen_sections.call())
@@ -758,3 +764,22 @@ func _place_journal_if_lost() -> void:
 	var point: Vector3 = hit.position
 	var support := Vector3i((point / VOXEL_SIZE - Vector3(0, 0.5, 0)).floor())
 	_ground.place(point, "captain_journal", randf() * TAU, support)
+
+
+## Ambiente sonoro: olas según lo cerca que esté el mar; pájaros de día y grillos de noche.
+func _update_ambience(delta: float) -> void:
+	_sfx.daylight = 0.0 if _day_night.is_night() else 1.0
+	_sea_check -= delta
+	if _sea_check > 0.0:
+		return
+	_sea_check = 0.5
+	# Muestras alrededor del jugador: cuántas son mar (el terreno queda bajo el nivel del mar).
+	var center := Vector2i(int(_player.global_position.x / VOXEL_SIZE), int(_player.global_position.z / VOXEL_SIZE))
+	var sea := 0
+	for i in 12:
+		var a := TAU * i / 12.0
+		var p := center + Vector2i(int(cos(a) * 36.0), int(sin(a) * 36.0))
+		if _generator.get_ground_height(p.x, p.y) < IslandGenerator.SEA_LEVEL:
+			sea += 1
+	var height_above := _player.global_position.y / VOXEL_SIZE - IslandGenerator.SEA_LEVEL
+	_sfx.sea_amount = (sea / 12.0) * clampf(1.0 - height_above / 30.0, 0.0, 1.0) * 1.6

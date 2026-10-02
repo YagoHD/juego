@@ -113,6 +113,7 @@ func open() -> void:
 	_spread = clampi(_spread, 0, _last_spread())
 	_show_spread()
 	visible = true
+	Sfx.play("pagina", null, -4.0, 0.2)
 
 
 func close() -> void:
@@ -152,6 +153,7 @@ func _turn(step: int) -> void:
 		return
 	_spread = target
 	_show_spread()
+	Sfx.play("pagina", null, -4.0, 0.2)
 
 
 func _last_spread() -> int:

@@ -173,6 +173,7 @@ func craft(m: Dictionary) -> void:
 		var mats := GroundRecipes.materials_of(recipe_id)
 		for id in mats:
 			ItemDrop.spawn(get_parent(), center + Vector3.UP * 0.3, id, int(mats[id]))
+		Sfx.play("aprender", center)
 		if player != null and player.learn(recipe_id):
 			player.notice.emit("Al desmontarlo has aprendido a hacer: %s. Está en el diario (J)." % ItemDB.display_name(recipe["result"]))
 	else:
@@ -181,6 +182,7 @@ func craft(m: Dictionary) -> void:
 			if not tools.has(item.item_id):
 				remove(item)
 		ItemDrop.spawn(get_parent(), center + Vector3.UP * 0.3, recipe["result"], int(recipe["count"]))
+		Sfx.play("fabricado", center)
 	_progress = 0.0
 	_working_on = {}
 	_spawn_dust(center)

@@ -89,6 +89,8 @@ var has_journal := false     # lleva el diario del capitán
 var _working := false        # agachado fabricando
 var _work_swing := 0.0
 var _crouch := 0.0           # 0..1: cuánto baja la vista al agacharse
+var _step_distance := 0.0     # metros andados desde el último paso (para el sonido)
+var _was_in_air := false
 ## true mientras hay una pantalla abierta (inventario, cofre...): no se mueve ni mira.
 var ui_open := false
 var _captured := true
@@ -374,6 +376,7 @@ func _physics_process(delta: float) -> void:
 
 	var speed01 := Vector2(velocity.x, velocity.z).length() / SPEED
 	_avatar.update_walk(speed01, is_on_floor(), delta)
+	_footsteps(delta, feet_wet)
 	_held.update_walk(speed01 if is_on_floor() else 0.0, delta)
 
 	# Red de seguridad: si se cae del mundo, reaparece arriba.
@@ -396,6 +399,7 @@ func _process(delta: float) -> void:
 		_work_swing -= delta
 		if _work_swing <= 0.0:
 			_held.swing()
+			Sfx.play("golpe", global_position, -8.0, 0.2)
 			_work_swing = 0.4
 	_head.position = Vector3(0, EYE_HEIGHT, 0) + global_basis.inverse() * _camera_lag
 	_head.position.y -= _crouch * BODY_HEIGHT * 0.35
@@ -541,6 +545,7 @@ func _edit_block(place: bool) -> void:
 		if id != IslandGenerator.WATER and _overlaps_body(cell):
 			return  # no colocar un bloque dentro de uno mismo
 		tool.set_voxel(cell, id)
+		Sfx.play("colocar", _terrain.to_global(Vector3(cell)) + Vector3.ONE * _terrain.scale.x * 0.5)
 		if not creative:
 			inventory.take(_hotbar_index, 1)
 	else:
@@ -550,6 +555,7 @@ func _edit_block(place: bool) -> void:
 		var size := _terrain.scale.x
 		var center := _terrain.to_global(Vector3(cell)) + Vector3.ONE * size * 0.5
 		_spawn_break_particles(center, broken)
+		Sfx.play("romper_" + Sfx.material_of(broken), center)
 		# En supervivencia, el bloque roto cae al suelo como objeto.
 		var drop := ItemDB.drop_of(broken)
 		if not creative and drop != "":
@@ -896,6 +902,7 @@ func _place_on_ground(target: Dictionary) -> bool:
 			if ground.stack_on(other, stack["id"], yaw) == null:
 				notice.emit("No se puede apilar más alto.")
 				return false
+			Sfx.play("colocar", other.global_position, -8.0)
 			if not creative:
 				inventory.take(_hotbar_index, 1)
 			return true
@@ -907,6 +914,7 @@ func _place_on_ground(target: Dictionary) -> bool:
 			return false  # solo sobre superficies horizontales
 		support = target["voxel"]
 	ground.place(point, stack["id"], yaw, support)
+	Sfx.play("colocar", point, -8.0)
 	if not creative:
 		inventory.take(_hotbar_index, 1)
 	return true
@@ -930,6 +938,7 @@ func _pick_up_placed(item: PlacedItem, whole_group := false) -> void:
 		var id := ground.remove(it)
 		if not creative:
 			pick_up(id, 1)
+	Sfx.play("recoger", null, -6.0, 0.15)
 
 
 ## Con una nota en la mano, clic derecho la lee y se aprende lo que enseña.
@@ -940,6 +949,7 @@ func _read_note() -> bool:
 	var recipe_id := ItemDB.teaches(stack["id"])
 	if learn(recipe_id):
 		var result: String = GroundRecipes.RECIPES[recipe_id]["result"]
+		Sfx.play("aprender")
 		notice.emit("Has aprendido a hacer: %s. Está en el diario (J)." % ItemDB.display_name(result))
 		if not creative:
 			inventory.take(_hotbar_index, 1)
@@ -984,6 +994,7 @@ func _throw_held(whole_stack: bool) -> void:
 		inventory.take(_hotbar_index, amount)
 	var look := -_camera.global_basis.z
 	ItemDrop.throw(get_parent(), _head.global_position + look * 0.4 - Vector3.UP * 0.25, look, stack["id"], amount)
+	Sfx.play("tirar", null, -4.0)
 	_held.swing()
 	_avatar.swing()
 
@@ -997,3 +1008,25 @@ func find_journal() -> void:
 		learn(recipe_id)
 	notice.emit("Has encontrado el diario del capitán. Pulsa J para leerlo.")
 	journal_found.emit()
+
+
+## Sonido de pasos según el suelo, cada ~0,8 m andados; también al caer de un salto.
+func _footsteps(delta: float, feet_wet: bool) -> void:
+	var on_floor := is_on_floor()
+	if on_floor and _was_in_air:
+		_step_distance = 0.0
+		_play_step(feet_wet, -4.0)  # aterrizaje
+	_was_in_air = not on_floor and not feet_wet
+	if not on_floor and not feet_wet:
+		return
+	_step_distance += Vector2(velocity.x, velocity.z).length() * delta
+	if _step_distance >= 0.8:
+		_step_distance = 0.0
+		_play_step(feet_wet, -10.0 if not _sprinting else -7.0)
+
+
+func _play_step(feet_wet: bool, volume_db: float) -> void:
+	var material := "agua"
+	if not feet_wet and _tool != null:
+		material = Sfx.material_of(_tool.get_voxel(_world_to_voxel(global_position - Vector3.UP * 0.1)))
+	Sfx.play("paso_" + material, null, volume_db, 0.12)

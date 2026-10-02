@@ -99,6 +99,8 @@ func _ray(from: Vector3, motion: Vector3) -> Dictionary:
 
 func _give_to(player: Player) -> void:
 	var left := player.pick_up(item_id, count)
+	if left < count:
+		Sfx.play("recoger", null, -8.0, 0.15)
 	if left <= 0:
 		queue_free()
 	else:
