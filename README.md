@@ -26,7 +26,8 @@ Hecho en **Godot 4.7** con el módulo **godot_voxel** (de Zylann).
 | Espacio | Saltar (los escalones de 1 bloque se suben solos) |
 | Clic izquierdo / derecho | Romper / colocar bloque |
 | 1–9 o rueda del ratón | Elegir bloque |
-| V | Primera / tercera persona |
+| V | Cámara: primera persona → tercera por detrás → tercera de frente |
+| Alt o botón central (mantener) | Girar la cámara alrededor del personaje |
 | F | Volar (Espacio sube, Ctrl baja, Shift rápido) |
 | Esc | Soltar el ratón (un clic lo recupera) |
 

@@ -327,7 +327,7 @@ func _process(_delta: float) -> void:
 		return
 	_hotbar.select(_player.get_hotbar_index())
 	_underwater.visible = _player.is_head_underwater()
-	_hud.text = "FPS: %d\nClic izq. romper · Clic der. colocar · 1-9 / rueda: bloque\nWASD mover · Espacio saltar · F volar · V cámara · Esc ratón" \
+	_hud.text = "FPS: %d\nClic izq. romper · Clic der. colocar · 1-9 / rueda: bloque\nWASD mover · Espacio saltar · F volar · V cámara · Alt girar cámara · Esc ratón" \
 		% Engine.get_frames_per_second()
 	_update_capture()
 

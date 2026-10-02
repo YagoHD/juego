@@ -37,6 +37,9 @@ var near_view_voxels := 320
 
 var _flying := false
 var _third_person := false
+var _front_view := false        # tercera persona mirando al personaje de frente
+var _orbit := Vector2.ZERO       # giro libre de la cámara (x = alrededor, y = arriba/abajo)
+var _debug_camera_yaw := 0.0     # solo capturas de prueba (vista de perfil)
 var _spawn_point := Vector3.ZERO
 var _waiting_for_ground := true  # no aplicar gravedad hasta que exista suelo con colisión
 var _camera_lag := Vector3.ZERO  # desfase de la cámara (en el mundo) que se va suavizando
@@ -129,6 +132,11 @@ func _ready() -> void:
 func _input(event: InputEvent) -> void:
 	if event is InputEventMouseMotion and _captured:
 		var motion := event as InputEventMouseMotion
+		if _is_orbiting():
+			# Girar la cámara alrededor del personaje sin moverlo (para ver la skin).
+			_orbit.x -= motion.relative.x * SENSITIVITY
+			_orbit.y = clampf(_orbit.y - motion.relative.y * SENSITIVITY, -1.2, 1.2)
+			return
 		rotate_y(-motion.relative.x * SENSITIVITY)
 		_pitch = clampf(_pitch - motion.relative.y * SENSITIVITY, -1.5, 1.5)
 		_head.rotation = Vector3(_pitch, 0.0, 0.0)
@@ -161,10 +169,22 @@ func _unhandled_input(event: InputEvent) -> void:
 			_flying = not _flying
 			velocity = Vector3.ZERO
 		elif key.keycode == KEY_V:
-			_third_person = not _third_person
+			# Primera persona -> tercera por detrás -> tercera de frente -> primera persona.
+			if not _third_person:
+				_third_person = true
+				_front_view = false
+			elif not _front_view:
+				_front_view = true
+			else:
+				_third_person = false
+				_front_view = false
 			_apply_camera_mode()
 		elif key.keycode == KEY_ESCAPE:
 			_set_captured(not _captured)
+
+
+func _is_orbiting() -> bool:
+	return _third_person and (Input.is_key_pressed(KEY_ALT) or Input.is_mouse_button_pressed(MOUSE_BUTTON_MIDDLE))
 
 
 func _set_captured(captured: bool) -> void:
@@ -255,10 +275,16 @@ func _process(delta: float) -> void:
 
 	# Transición suave entre primera y tercera persona.
 	var target_length := THIRD_PERSON_DISTANCE if _third_person else 0.0
-	var target_shoulder := THIRD_PERSON_SHOULDER if _third_person else 0.0
+	var target_shoulder := THIRD_PERSON_SHOULDER if _third_person and not _front_view else 0.0
 	var t := 1.0 - exp(-10.0 * delta)
 	_spring.spring_length = lerpf(_spring.spring_length, target_length, t)
 	_spring.position.x = lerpf(_spring.position.x, target_shoulder, t)
+
+	# Giro libre de la cámara: al soltar Alt / botón central vuelve sola a su sitio.
+	if not _is_orbiting():
+		_orbit = _orbit.lerp(Vector2.ZERO, 1.0 - exp(-6.0 * delta))
+	var base_yaw := (PI if _front_view else 0.0) + _debug_camera_yaw
+	_spring.rotation = Vector3(_orbit.y, base_yaw + _orbit.x, 0.0)
 
 	_avatar.set_look_pitch(_pitch)
 	_update_highlight()
@@ -518,6 +544,6 @@ func debug_pose(third_person: bool, pitch: float, yaw_degrees: float, up_meters:
 		_flying = true
 		global_position += Vector3.UP * up_meters
 	if OS.get_cmdline_user_args().has("--front"):
-		_spring.rotation.y = PI  # cámara delante del personaje, mirándolo de frente
+		_front_view = true  # cámara delante del personaje, mirándolo de frente
 	elif OS.get_cmdline_user_args().has("--side"):
-		_spring.rotation.y = PI / 2.0  # cámara a su derecha, mirándolo de perfil
+		_debug_camera_yaw = PI / 2.0  # cámara a su derecha, mirándolo de perfil
