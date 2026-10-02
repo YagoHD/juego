@@ -45,13 +45,24 @@
   pero su sombra sí se ve.
 - `project.godot`: el módulo voxel usa el 85 % de los hilos y 16 ms por frame en el hilo principal.
 
+## Hecho en la sesión del 2026-10-02 (tarde)
+- **Cuerpo con skin formato Minecraft** (64x64, 2 capas, codos y rodillas), compositor de skins
+  (base del editor de personaje), guía en `docs/SKINS.md`.
+- **Animaciones**: andar/correr con inercia, respirar, parpadear, acciones tras 15 s quieto.
+- **Cámaras**: V (1ª, detrás, de frente), mantener V + ratón = distancia, Alt = girar alrededor.
+- **Correr** con doble W. **Texturas** de 16x16 en todos los bloques (atlas, repintables).
+- **Ciclo de día y noche** de 24 min (sol, luna, estrellas, nubes 3D, niebla y luz por hora).
+- **Inventario**: objetos al romper, recogida automática, pantalla (E), modo creativo (C).
+- **Cofres** (clic derecho) y **naufragio** en la playa con botín (`scripts/world/structures.gd`).
+
 ## Siguiente (propuestas, a decidir con el usuario)
-1. **Fabricar a mano el contenido de la isla**: el barco naufragado y sus restos en la playa,
+1. **Más contenido fabricado a mano**: (el naufragio ya existe)
    casas y muelles del pueblo, ruinas, puentes del río, la roca de la torre. Opciones: estructuras
    definidas en datos que el generador "estampa", o construirlas en el juego y guardarlas.
-2. **Ciclo día/noche + sueño/cama** (núcleo de la supervivencia del diseño).
+2. **Cama y sueño** (el ciclo de día y noche ya existe): dormir salta la noche, fatiga, sueños.
 3. **Agua jugable**: nadar, cascadas, que el agua colocada fluya.
-4. **Recoger recursos al romper** e inventario (en vez de bloques infinitos).
+4. **Fabricación** (troncos -> tablones, tablones -> cofre...) y objetos que no son bloques
+   (cuerda, comida). El inventario y los objetos ya existen.
 5. Pulido: sonidos de pasos/romper/colocar, texturas en los bloques, partículas al romper.
 
 ## Herramientas

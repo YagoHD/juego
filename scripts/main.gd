@@ -368,6 +368,9 @@ func _update_capture() -> void:
 			ItemDrop.spawn(self, _player.global_position + forward * 1.6 + Vector3.UP, _arg("--drop="), 1)
 		if OS.get_cmdline_user_args().has("--inventory"):
 			open_inventory()
+		if OS.get_cmdline_user_args().has("--open-chest"):  # abrir el cofre de la playa del naufragio
+			var cells: Array = Structures._chest_loot.keys()
+			_on_block_used(cells[cells.size() - 1], IslandGenerator.CHEST)
 		var time := _arg("--time=")  # hora del día para la foto, p. ej. "19.4" (atardecer)
 		if time != "":
 			_day_night.set_hour(float(time))
