@@ -101,22 +101,34 @@ func _physics_process(delta: float) -> void:
 func _edit_block(place: bool) -> void:
 	if _terrain == null:
 		return
+	# Rayo de física contra la colisión del terreno (en coordenadas del mundo).
+	var from := _camera.global_position
+	var to := from + (-_camera.global_transform.basis.z) * REACH
+	var query := PhysicsRayQueryParameters3D.create(from, to)
+	query.collide_with_bodies = true
+	var result := get_world_3d().direct_space_state.intersect_ray(query)
+	if result.is_empty():
+		return
+
+	var hit_point: Vector3 = result.position
+	var hit_normal: Vector3 = result.normal
+	var half_voxel: float = _terrain.scale.x * 0.5
+
 	var tool := _terrain.get_voxel_tool()
 	tool.channel = VoxelBuffer.CHANNEL_TYPE
-	# El VoxelTool trabaja en coordenadas de voxel (espacio local del terreno).
-	# Como el terreno está escalado, convertimos el rayo del mundo a ese espacio.
-	var world_from := _camera.global_position
-	var world_dir := -_camera.global_transform.basis.z
-	var from := _terrain.to_local(world_from)
-	var dir := (_terrain.to_local(world_from + world_dir) - from).normalized()
-	var max_distance := REACH / _terrain.scale.x
-	var hit := tool.raycast(from, dir, max_distance)
-	if hit == null:
-		return
 	if place:
-		tool.set_voxel(hit.previous_position, _current_block)
+		# Un poco hacia fuera de la cara golpeada = la celda vacía donde colocar.
+		var voxel_pos := _world_to_voxel(hit_point + hit_normal * half_voxel)
+		tool.set_voxel(voxel_pos, _current_block)
 	else:
-		tool.set_voxel(hit.position, BlockyTerrainGenerator.AIR)
+		# Un poco hacia dentro = la celda del bloque golpeado.
+		var voxel_pos := _world_to_voxel(hit_point - hit_normal * half_voxel)
+		tool.set_voxel(voxel_pos, BlockyTerrainGenerator.AIR)
+
+
+func _world_to_voxel(world_pos: Vector3) -> Vector3i:
+	var local := _terrain.to_local(world_pos)
+	return Vector3i(floori(local.x), floori(local.y), floori(local.z))
 
 
 func get_current_block() -> int:
