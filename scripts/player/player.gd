@@ -18,6 +18,8 @@ const FLY_SPEED_FAST := 60.0
 var _flying := false
 var _spawn_point := Vector3.ZERO
 var _waiting_for_ground := true  # no aplicar gravedad hasta que exista suelo con colisión
+var _camera_lag := Vector3.ZERO  # desfase de la cámara (en el mundo) que se va suavizando
+const CAMERA_CATCH_UP := 14.0    # rapidez con la que la cámara alcanza al cuerpo
 
 ## Radio (en voxels) de terreno detallado alrededor del jugador. Lo fija main.gd.
 var near_view_voxels := 320
@@ -150,6 +152,16 @@ func _physics_process(delta: float) -> void:
 		_waiting_for_ground = true
 
 
+func _process(delta: float) -> void:
+	# Suavizado de la cámara tras subir un escalón: el desfase se reduce exponencialmente.
+	if _camera_lag.length_squared() < 0.000001:
+		_camera_lag = Vector3.ZERO
+	else:
+		_camera_lag = _camera_lag.lerp(Vector3.ZERO, 1.0 - exp(-CAMERA_CATCH_UP * delta))
+	# El desfase está en coordenadas del mundo; la cámara es hija del jugador (que gira).
+	_camera.position = Vector3(0, EYE_HEIGHT, 0) + global_basis.inverse() * _camera_lag
+
+
 func _wait_for_ground() -> void:
 	# Mientras la colisión del terreno se termina de crear, el jugador flota quieto.
 	# En cuanto un rayo hacia abajo encuentra suelo, se coloca encima y empieza la física.
@@ -194,8 +206,12 @@ func _try_step_up(dir: Vector3) -> void:
 	# Hay hueco un escalón más arriba: subir, avanzar hasta quedar encima y apoyarse.
 	# Se avanza lo bastante para que la base redondeada del cuerpo quede sobre el escalón
 	# y no en su borde (si no, resbalaría hacia atrás).
+	var before := global_position
 	global_position += Vector3.UP * STEP_HEIGHT + probe
 	move_and_collide(Vector3.DOWN * STEP_HEIGHT)
+	# El cuerpo ya está arriba, pero la cámara se queda donde estaba y lo alcanza poco a poco
+	# (ver _process): así subir un escalón se siente suave y no como un golpe.
+	_camera_lag += before - global_position
 
 
 func _edit_block(place: bool) -> void:
