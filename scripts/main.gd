@@ -15,6 +15,8 @@ const BLOCK_NAMES := {
 	IslandGenerator.STONE: "Piedra",
 	IslandGenerator.SAND: "Arena",
 	IslandGenerator.SNOW: "Nieve",
+	IslandGenerator.WOOD: "Madera",
+	IslandGenerator.LEAVES: "Hoja",
 }
 
 
@@ -34,6 +36,8 @@ func _build_world() -> void:
 	library.add_model(_make_cube(Color(0.50, 0.50, 0.52)))         # 3 STONE
 	library.add_model(_make_cube(Color(0.85, 0.78, 0.55)))         # 4 SAND
 	library.add_model(_make_cube(Color(0.95, 0.96, 0.98)))         # 5 SNOW
+	library.add_model(_make_cube(Color(0.45, 0.30, 0.17)))         # 6 WOOD
+	library.add_model(_make_cube(Color(0.20, 0.47, 0.22)))         # 7 LEAVES
 	library.bake()
 
 	var mesher := VoxelMesherBlocky.new()
@@ -78,7 +82,7 @@ func _make_cube(color: Color) -> VoxelBlockyModelCube:
 
 func _build_player() -> void:
 	_player = Player.new()
-	_player.position = Vector3(0, 40, 0)
+	_player.position = Vector3(0, 60, 0)
 	add_child(_player)
 
 

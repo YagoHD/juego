@@ -65,11 +65,19 @@ func _unhandled_input(event: InputEvent) -> void:
 		var key := event as InputEventKey
 		if key.pressed:
 			if key.keycode == KEY_1:
-				_current_block = BlockyTerrainGenerator.GRASS
+				_current_block = IslandGenerator.GRASS
 			elif key.keycode == KEY_2:
-				_current_block = BlockyTerrainGenerator.DIRT
+				_current_block = IslandGenerator.DIRT
 			elif key.keycode == KEY_3:
-				_current_block = BlockyTerrainGenerator.STONE
+				_current_block = IslandGenerator.STONE
+			elif key.keycode == KEY_4:
+				_current_block = IslandGenerator.SAND
+			elif key.keycode == KEY_5:
+				_current_block = IslandGenerator.SNOW
+			elif key.keycode == KEY_6:
+				_current_block = IslandGenerator.WOOD
+			elif key.keycode == KEY_7:
+				_current_block = IslandGenerator.LEAVES
 			elif key.keycode == KEY_ESCAPE:
 				_captured = not _captured
 				Input.mouse_mode = Input.MOUSE_MODE_CAPTURED if _captured else Input.MOUSE_MODE_VISIBLE
