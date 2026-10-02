@@ -51,10 +51,17 @@ func set_skin(texture: Texture2D, slim: bool) -> void:
 
 func _show_block(id: int) -> void:
 	# Cubo con las texturas del bloque, dibujado siempre por encima del mundo y del brazo.
+	# id < 0 = mano vacía.
+	_block_mesh.visible = id >= 0
+	if id < 0:
+		return
 	_block_mesh.mesh = BlockTextures.make_block_mesh(id, BLOCK_SIZE)
 	var material := BlockTextures.make_material(id == IslandGenerator.WATER)
 	material.no_depth_test = true
 	material.render_priority = 11
+	# Sin sombras: el cuerpo del propio personaje proyectaba la suya sobre el bloque y lo volvía
+	# azulado (solo le llegaba la luz del cielo).
+	material.disable_receive_shadows = true
 	_block_mesh.material_override = material
 
 

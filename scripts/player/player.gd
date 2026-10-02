@@ -1,5 +1,7 @@
 extends CharacterBody3D
 class_name Player
+
+signal creative_changed(enabled: bool)
 ## Jugador: camina, salta, vuela, mira con el ratón y rompe/coloca bloques.
 ## Cámara en primera o tercera persona (tecla V). Encuentra el VoxelTerrain por el grupo
 ## "voxel_terrain".
@@ -57,6 +59,14 @@ var _waiting_for_ground := true  # no aplicar gravedad hasta que exista suelo co
 var _camera_lag := Vector3.ZERO  # desfase de la cámara (en el mundo) que se va suavizando
 var _pitch := 0.0
 var _hotbar_index := 0
+
+## Inventario del jugador (36 huecos: 0-8 la barra). En modo creativo se usa otro, con todos
+## los bloques e infinitos.
+var inventory := Inventory.new(36)
+var creative_inventory := Inventory.new(36)
+var creative := false
+## true mientras hay una pantalla abierta (inventario, cofre...): no se mueve ni mira.
+var ui_open := false
 var _captured := true
 
 var _head: Node3D
@@ -133,6 +143,10 @@ func _ready() -> void:
 		_tool.channel = VoxelBuffer.CHANNEL_TYPE
 		_sea_y = IslandGenerator.SEA_LEVEL * _terrain.scale.x - 0.08
 
+	add_to_group("player")
+	_fill_creative_inventory()
+	inventory.changed.connect(_refresh_held)
+	creative_inventory.changed.connect(_refresh_held)
 	_select_slot(0)
 	_apply_camera_mode()
 	_spawn_point = global_position
@@ -142,6 +156,8 @@ func _ready() -> void:
 # ------------------------------------------------------------------ entrada
 
 func _input(event: InputEvent) -> void:
+	if ui_open:
+		return
 	if event is InputEventMouseMotion and _captured:
 		var motion := event as InputEventMouseMotion
 		if Input.is_key_pressed(KEY_V):
@@ -159,6 +175,8 @@ func _input(event: InputEvent) -> void:
 
 
 func _unhandled_input(event: InputEvent) -> void:
+	if ui_open:
+		return
 	if event is InputEventMouseButton:
 		var button := event as InputEventMouseButton
 		if not button.pressed:
@@ -202,6 +220,8 @@ func _unhandled_input(event: InputEvent) -> void:
 			_last_w_press = now
 		if key.keycode >= KEY_1 and key.keycode <= KEY_9:
 			_select_slot(key.keycode - KEY_1)
+		elif key.keycode == KEY_C:
+			set_creative(not creative)
 		elif key.keycode == KEY_F:
 			_flying = not _flying
 			velocity = Vector3.ZERO
@@ -252,7 +272,12 @@ func _set_captured(captured: bool) -> void:
 
 
 func _select_slot(index: int) -> void:
-	_hotbar_index = posmod(index, Blocks.HOTBAR.size())
+	_hotbar_index = posmod(index, Hotbar.SLOTS)
+	_refresh_held()
+
+
+## Actualiza el bloque de la mano (primera y tercera persona) con el hueco seleccionado.
+func _refresh_held() -> void:
 	var id := get_current_block()
 	_held.set_block(id)
 	_avatar.set_block(id)
@@ -285,26 +310,26 @@ func _physics_process(delta: float) -> void:
 	if feet_wet:
 		# Nadando: se hunde despacio; Espacio sube (o, en la superficie, impulsa para salir).
 		velocity.y = maxf(velocity.y - WATER_GRAVITY * delta, -MAX_SINK_SPEED)
-		if Input.is_key_pressed(KEY_SPACE):
+		if _key(KEY_SPACE):
 			velocity.y = SWIM_UP_SPEED if _head_underwater else maxf(velocity.y, JUMP_VELOCITY * 0.75)
 	elif not is_on_floor():
 		velocity.y -= GRAVITY * delta
 
 	var dir := Vector3.ZERO
-	if Input.is_key_pressed(KEY_W): dir -= transform.basis.z
-	if Input.is_key_pressed(KEY_S): dir += transform.basis.z
-	if Input.is_key_pressed(KEY_A): dir -= transform.basis.x
-	if Input.is_key_pressed(KEY_D): dir += transform.basis.x
+	if _key(KEY_W): dir -= transform.basis.z
+	if _key(KEY_S): dir += transform.basis.z
+	if _key(KEY_A): dir -= transform.basis.x
+	if _key(KEY_D): dir += transform.basis.x
 	dir.y = 0.0
 	dir = dir.normalized()
 	# Correr dura mientras se mantenga W (y no en el agua ni yendo hacia atrás).
-	if not Input.is_key_pressed(KEY_W) or feet_wet:
+	if not _key(KEY_W) or feet_wet:
 		_sprinting = false
 	var speed := SWIM_SPEED if feet_wet else (SPRINT_SPEED if _sprinting else SPEED)
 	velocity.x = dir.x * speed
 	velocity.z = dir.z * speed
 
-	if Input.is_key_pressed(KEY_SPACE) and is_on_floor() and not feet_wet:
+	if _key(KEY_SPACE) and is_on_floor() and not feet_wet:
 		velocity.y = JUMP_VELOCITY
 
 	# La dirección deseada se guarda ANTES de mover: al chocar con la pared, move_and_slide
@@ -381,13 +406,13 @@ func _fly(_delta: float) -> void:
 	# Vuelo libre en la dirección de la cámara (W/S), lateral (A/D) y vertical (Espacio/Ctrl).
 	var cam := _camera.global_transform.basis
 	var dir := Vector3.ZERO
-	if Input.is_key_pressed(KEY_W): dir -= cam.z
-	if Input.is_key_pressed(KEY_S): dir += cam.z
-	if Input.is_key_pressed(KEY_A): dir -= cam.x
-	if Input.is_key_pressed(KEY_D): dir += cam.x
-	if Input.is_key_pressed(KEY_SPACE): dir += Vector3.UP
-	if Input.is_key_pressed(KEY_CTRL): dir -= Vector3.UP
-	var speed := FLY_SPEED_FAST if Input.is_key_pressed(KEY_SHIFT) else FLY_SPEED
+	if _key(KEY_W): dir -= cam.z
+	if _key(KEY_S): dir += cam.z
+	if _key(KEY_A): dir -= cam.x
+	if _key(KEY_D): dir += cam.x
+	if _key(KEY_SPACE): dir += Vector3.UP
+	if _key(KEY_CTRL): dir -= Vector3.UP
+	var speed := FLY_SPEED_FAST if _key(KEY_SHIFT) else FLY_SPEED
 	velocity = dir.normalized() * speed
 	move_and_slide()
 
@@ -450,15 +475,24 @@ func _edit_block(place: bool) -> void:
 	if place:
 		var cell: Vector3i = target["place"]
 		var id := get_current_block()
+		if id < 0:
+			return  # mano vacía (o el objeto no es un bloque)
 		if id != IslandGenerator.WATER and _overlaps_body(cell):
 			return  # no colocar un bloque dentro de uno mismo
 		tool.set_voxel(cell, id)
+		if not creative:
+			inventory.take(_hotbar_index, 1)
 	else:
 		var cell: Vector3i = target["voxel"]
 		var broken := tool.get_voxel(cell)
 		tool.set_voxel(cell, IslandGenerator.AIR)
 		var size := _terrain.scale.x
-		_spawn_break_particles(_terrain.to_global(Vector3(cell)) + Vector3.ONE * size * 0.5, broken)
+		var center := _terrain.to_global(Vector3(cell)) + Vector3.ONE * size * 0.5
+		_spawn_break_particles(center, broken)
+		# En supervivencia, el bloque roto cae al suelo como objeto.
+		var drop := ItemDB.drop_of(broken)
+		if not creative and drop != "":
+			ItemDrop.spawn(get_parent(), center - Vector3.UP * size * 0.4, drop, 1)
 
 
 func _spawn_break_particles(center: Vector3, block_id: int) -> void:
@@ -549,12 +583,50 @@ func _update_highlight() -> void:
 
 # ------------------------------------------------------------------ consultas
 
+## Bloque del hueco seleccionado, o -1 si está vacío o no es un bloque.
 func get_current_block() -> int:
-	return Blocks.HOTBAR[_hotbar_index]
+	var stack := active_inventory().get_slot(_hotbar_index)
+	return -1 if stack.is_empty() else ItemDB.block_of(stack["id"])
 
 
 func get_hotbar_index() -> int:
 	return _hotbar_index
+
+
+## Inventario en uso: el normal, o el de modo creativo (todos los bloques, infinitos).
+func active_inventory() -> Inventory:
+	return creative_inventory if creative else inventory
+
+
+## Mete objetos recogidos en el inventario. Devuelve los que no cupieron.
+func pick_up(id: String, count: int) -> int:
+	return inventory.add(id, count)
+
+
+## ¿Cabe al menos uno de estos objetos? (para que no vuelen hacia él si va lleno)
+func can_pick_up(id: String) -> bool:
+	for i in inventory.size():
+		var s := inventory.get_slot(i)
+		if s.is_empty() or (s["id"] == id and int(s["count"]) < ItemDB.max_stack(id)):
+			return true
+	return false
+
+
+func set_creative(enabled: bool) -> void:
+	creative = enabled
+	creative_changed.emit(enabled)
+	_refresh_held()
+
+
+func _fill_creative_inventory() -> void:
+	var slot := 0
+	for block in Blocks.HOTBAR:
+		creative_inventory.set_slot(slot, {"id": ItemDB.item_of_block(block), "count": 1})
+		slot += 1
+	for id in ItemDB.BLOCK_ITEMS:
+		if slot < creative_inventory.size() and creative_inventory.count_of(id) == 0:
+			creative_inventory.set_slot(slot, {"id": id, "count": 1})
+			slot += 1
 
 
 ## Cambia la skin del jugador (cuerpo y brazo). El futuro editor de personaje la usará.
@@ -618,3 +690,8 @@ func debug_pose(third_person: bool, pitch: float, yaw_degrees: float, up_meters:
 		_front_view = true  # cámara delante del personaje, mirándolo de frente
 	elif OS.get_cmdline_user_args().has("--side"):
 		_debug_camera_yaw = PI / 2.0  # cámara a su derecha, mirándolo de perfil
+
+
+## Tecla de movimiento pulsada (siempre "no" mientras hay una pantalla abierta).
+func _key(key: Key) -> bool:
+	return not ui_open and Input.is_key_pressed(key)

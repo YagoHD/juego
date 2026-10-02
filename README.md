@@ -32,6 +32,8 @@ Hecho en **Godot 4.7** con el módulo **godot_voxel** (de Zylann).
 | Alt o botón central (mantener) | Girar la cámara alrededor del personaje |
 | F | Volar (Espacio sube, Ctrl baja, Shift rápido) |
 | T (mantener) | Acelerar el tiempo (para ver el ciclo de día y noche) |
+| E | Inventario (clic: coger/soltar · clic derecho: la mitad o de uno en uno · Mayús+clic: mover rápido) |
+| C | Modo creativo (todos los bloques infinitos) / supervivencia |
 | Esc | Soltar el ratón (un clic lo recupera) |
 
 ## Cómo se hace la isla

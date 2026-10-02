@@ -33,6 +33,8 @@ var _hud: Label
 var _hotbar: Hotbar
 var _underwater: ColorRect
 var _day_night: DayNight
+var _inventory_screen: InventoryScreen
+var _world_id := ""  # huella del mundo (nombre de sus archivos de guardado)
 var _terrain: VoxelTerrain
 var _generator: IslandGenerator
 var _loading := true
@@ -67,6 +69,7 @@ func _save_world() -> void:
 	# Guarda en disco los bloques que el jugador ha cambiado.
 	if _terrain != null and not _loading:
 		_terrain.save_modified_blocks()
+		_save_player()
 
 
 # ------------------------------------------------------------------ mundo
@@ -125,7 +128,8 @@ func _make_world_stream() -> VoxelStreamSQLite:
 	# que el jugador construya. El nombre lleva una "huella" de los mapas y del generador:
 	# si cambian, se crea un mundo nuevo.
 	DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(WORLD_DIR))
-	var file_name := "isla_%s.sqlite" % _world_fingerprint()
+	_world_id = _world_fingerprint()
+	var file_name := "isla_%s.sqlite" % _world_id
 	var path := WORLD_DIR.path_join(file_name)
 	_world_is_new = not FileAccess.file_exists(path)
 	if _world_is_new:
@@ -149,7 +153,7 @@ func _delete_old_worlds(keep: String) -> void:
 	if dir == null:
 		return
 	for file in dir.get_files():
-		if file.begins_with("isla_") and file != keep:
+		if (file.begins_with("isla_") or file.begins_with("jugador_")) and not file.contains(keep.get_basename().trim_prefix("isla_")):
 			dir.remove(file)
 
 
@@ -196,6 +200,9 @@ func _build_player() -> void:
 	_player.near_view_voxels = NEAR_VIEW_VOXELS
 	_player.position = Vector3(SPAWN_VOXEL.x, ground + 4, SPAWN_VOXEL.y) * VOXEL_SIZE
 	add_child(_player)
+	_load_player()
+	_hotbar.bind(_player.active_inventory(), _player.creative)
+	_player.creative_changed.connect(func(on: bool) -> void: _hotbar.bind(_player.active_inventory(), on))
 
 
 # ------------------------------------------------------------------ pantalla de carga
@@ -290,6 +297,14 @@ func _build_hud() -> void:
 	_hotbar = Hotbar.new()
 	canvas.add_child(_hotbar)
 
+	# Pantalla de inventario (y de cofres), por encima del HUD.
+	var ui_layer := CanvasLayer.new()
+	ui_layer.layer = 10
+	add_child(ui_layer)
+	_inventory_screen = InventoryScreen.new()
+	ui_layer.add_child(_inventory_screen)
+	_inventory_screen.closed.connect(_on_screen_closed)
+
 	# Tinte azul cuando la cabeza está bajo el agua.
 	_underwater = ColorRect.new()
 	_underwater.color = Color(0.06, 0.30, 0.50, 0.42)
@@ -336,6 +351,17 @@ func _update_capture() -> void:
 			_player.global_position = Vector3(vx, ground + 2, vz) * VOXEL_SIZE
 		_player.debug_pose(OS.get_cmdline_user_args().has("--tp"), float(_arg("--pitch=", "0")),
 			float(_arg("--yaw=", "0")), float(_arg("--up=", "0")) + (0.01 if at != "" else 0.0))
+		var give := _arg("--give=")  # objetos para la foto: "stone:12,dirt:30"
+		if give != "":
+			_player.inventory.clear()
+			for entry in give.split(","):
+				var pair := entry.split(":")
+				_player.inventory.add(pair[0], int(pair[1]))
+		if _arg("--drop=") != "":  # soltar un objeto delante del jugador para verlo en el suelo
+			var forward := -_player.global_basis.z
+			ItemDrop.spawn(self, _player.global_position + forward * 1.6 + Vector3.UP, _arg("--drop="), 1)
+		if OS.get_cmdline_user_args().has("--inventory"):
+			open_inventory()
 		var time := _arg("--time=")  # hora del día para la foto, p. ej. "19.4" (atardecer)
 		if time != "":
 			_day_night.set_hour(float(time))
@@ -360,3 +386,74 @@ func _arg(prefix: String, default := "") -> String:
 		if a.begins_with(prefix):
 			return a.substr(prefix.length())
 	return default
+
+
+# ------------------------------------------------------------------ inventario y jugador guardado
+
+func _player_save_path() -> String:
+	return WORLD_DIR.path_join("jugador_%s.json" % _world_id)
+
+
+func _save_player() -> void:
+	if _player == null:
+		return
+	var data := {
+		"inventory": _player.inventory.to_data(),
+		"creative": _player.creative,
+		"hour": _day_night.hour,
+		"day": _day_night.day,
+	}
+	var file := FileAccess.open(_player_save_path(), FileAccess.WRITE)
+	if file != null:
+		file.store_string(JSON.stringify(data, "\t"))
+
+
+func _load_player() -> void:
+	if not FileAccess.file_exists(_player_save_path()):
+		return
+	var data: Variant = JSON.parse_string(FileAccess.get_file_as_string(_player_save_path()))
+	if not data is Dictionary:
+		return
+	var d: Dictionary = data
+	if d.get("inventory") is Array:
+		_player.inventory.from_data(d["inventory"])
+	_player.set_creative(bool(d.get("creative", false)))
+	_day_night.day = int(d.get("day", 1))
+	_day_night.set_hour(float(d.get("hour", DayNight.START_HOUR)))
+
+
+func _input(event: InputEvent) -> void:
+	# Abrir/cerrar el inventario (E) y cerrar cualquier pantalla con Esc. Se gestiona aquí, antes
+	# que el jugador, para que Esc no le suelte además el ratón.
+	if _loading or _player == null:
+		return
+	var key := event as InputEventKey
+	if key == null or not key.pressed or key.echo:
+		return
+	if _inventory_screen.visible and (key.keycode == KEY_ESCAPE or key.keycode == KEY_E):
+		_inventory_screen.close()
+		get_viewport().set_input_as_handled()
+	elif not _inventory_screen.visible and key.keycode == KEY_E:
+		open_inventory()
+		get_viewport().set_input_as_handled()
+
+
+func open_inventory() -> void:
+	var inv := _player.active_inventory()
+	var title := "Inventario (creativo: bloques infinitos)" if _player.creative else "Inventario"
+	var sections: Array[Dictionary] = [
+		{"title": title, "inventory": inv, "slots": range(9, inv.size()), "columns": 9},
+		{"title": "Barra", "inventory": inv, "slots": range(0, 9), "columns": 9},
+	]
+	_show_screen(sections)
+
+
+func _show_screen(sections: Array[Dictionary]) -> void:
+	_player.ui_open = true
+	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
+	_inventory_screen.open(sections)
+
+
+func _on_screen_closed() -> void:
+	_player.ui_open = false
+	_player._set_captured(true)

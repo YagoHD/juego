@@ -167,6 +167,7 @@ static func make_material(texture: Texture2D, on_top := false) -> StandardMateri
 	if on_top:
 		material.no_depth_test = true
 		material.render_priority = 10
+		material.disable_receive_shadows = true  # el propio cuerpo no le hace sombra
 	return material
 
 
