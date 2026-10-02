@@ -19,6 +19,8 @@ param(
     [string]$Shape = "", # receta dibujada en el suelo delante (p. ej. "rough_backpack")
     [switch]$Working,   # el personaje agachado trabajando
     [switch]$Journal,   # recoger el diario del capitán y abrirlo
+    [switch]$Pause,     # menú de pausa a la vista
+    [switch]$Help,      # ayuda de controles (F1)
     [int]$Page = 0,     # con -Journal: página izquierda (par)
     [string]$Learn = "", # con -Journal: recetas aprendidas, p. ej. "chest,belt"
     [int]$Wait = 90,
@@ -41,6 +43,8 @@ if ($Shape -ne "") { $gameArgs += "--shape=$Shape" }
 if ($Working) { $gameArgs += "--working" }
 if ($Journal) { $gameArgs += "--journal"; $gameArgs += "--page=$Page" }
 if ($Learn -ne "") { $gameArgs += "--learn=$Learn" }
+if ($Pause) { $gameArgs += "--pause" }
+if ($Help) { $gameArgs += "--help" }
 if ($At -ne "") { $gameArgs += "--at=$At" }
 $p = Start-Process -FilePath $Godot -ArgumentList $gameArgs -RedirectStandardOutput "$env:TEMP\capture_out.txt" -RedirectStandardError "$env:TEMP\capture_err.txt" -PassThru
 if (-not $p.WaitForExit(180000)) { $p.Kill(); Write-Output "TIMEOUT" }

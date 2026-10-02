@@ -40,7 +40,8 @@ Hecho en **Godot 4.7** con el módulo **godot_voxel** (de Zylann).
 | R (mantener) | Fabricar: junto a una forma que brilla, el personaje se agacha a trabajarla |
 | Clic derecho con una nota | Leerla y aprender una receta (se apunta en el diario) |
 | C | Modo creativo (todos los bloques infinitos) / supervivencia |
-| Esc | Soltar el ratón (un clic lo recupera) |
+| Esc | Menú de pausa: continuar, opciones (sensibilidad, campo de visión, volumen, invertir ratón, FPS), controles, guardar y salir |
+| F1 / F3 | Ver los controles / mostrar los FPS |
 
 ## Cómo se hace la isla
 

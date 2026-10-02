@@ -36,7 +36,7 @@ const SPRINT_DOUBLE_TAP := 0.3  # segundos máximos entre los dos toques de W
 const SPRINT_FOV_BOOST := 8.0   # grados que se abre la vista al correr
 const GRAVITY := 32.0 * B       # 32 bloques/s²
 const JUMP_VELOCITY := 9.0 * B  # salto de ~1,25 bloques
-const SENSITIVITY := 0.0025
+
 const REACH := 6.0 * B          # alcance: 6 bloques desde los ojos
 const STEP_HEIGHT := 1.1 * B    # sube solo escalones de 1 bloque; para 2 hay que saltar
 const STEP_FORWARD := 0.4 * B   # cuánto avanza al subir un escalón (para quedar bien encima)
@@ -64,7 +64,6 @@ var _camera_distance := THIRD_PERSON_DISTANCE
 var _zoomed_while_v := false
 var _sprinting := false
 var _last_w_press := -10.0
-var _base_fov := 75.0
 var _orbit := Vector2.ZERO       # giro libre de la cámara (x = alrededor, y = arriba/abajo)
 var _debug_camera_yaw := 0.0     # solo capturas de prueba (vista de perfil)
 var _spawn_point := Vector3.ZERO
@@ -191,11 +190,12 @@ func _input(event: InputEvent) -> void:
 			return
 		if _is_orbiting():
 			# Girar la cámara alrededor del personaje sin moverlo (para ver la skin).
-			_orbit.x -= motion.relative.x * SENSITIVITY
-			_orbit.y = clampf(_orbit.y - motion.relative.y * SENSITIVITY, -1.2, 1.2)
+			_orbit.x -= motion.relative.x * Settings.sensitivity
+			_orbit.y = clampf(_orbit.y - motion.relative.y * Settings.sensitivity, -1.2, 1.2)
 			return
-		rotate_y(-motion.relative.x * SENSITIVITY)
-		_pitch = clampf(_pitch - motion.relative.y * SENSITIVITY, -1.5, 1.5)
+		rotate_y(-motion.relative.x * Settings.sensitivity)
+		var dy := -motion.relative.y if Settings.invert_y else motion.relative.y
+		_pitch = clampf(_pitch - dy * Settings.sensitivity, -1.5, 1.5)
 		_head.rotation = Vector3(_pitch, 0.0, 0.0)
 
 
@@ -419,7 +419,7 @@ func _process(delta: float) -> void:
 
 	# Al correr la vista se abre un poco (sensación de velocidad, como en Minecraft).
 	var moving := Vector2(velocity.x, velocity.z).length() > SPEED * 1.1
-	var target_fov := _base_fov + (SPRINT_FOV_BOOST if _sprinting and moving else 0.0)
+	var target_fov := Settings.fov + (SPRINT_FOV_BOOST if _sprinting and moving else 0.0)
 	_camera.fov = lerpf(_camera.fov, target_fov, 1.0 - exp(-8.0 * delta))
 
 	_avatar.set_look_pitch(_pitch)

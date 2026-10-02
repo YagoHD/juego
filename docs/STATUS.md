@@ -73,6 +73,9 @@
   mapa sepia con naufragio, ruinas y "tú", recetas del capitán y "Mis notas" a lápiz con lo
   aprendido después.
 - **Q** tira objetos (Ctrl+Q el montón).
+- **Menú de pausa** (Esc, `scripts/ui/pause_menu.gd`): pausa el juego; opciones guardadas en
+  `user://ajustes.cfg` (`scripts/systems/settings.gd`). Pantalla limpia: arriba solo el reloj;
+  F1 muestra los controles, F3 los FPS.
 
 ## Variante del mapa y naufragio (2026-10-02)
 - Se compactaron ligeramente los campos de pradera y bosque al oeste y sur; la montaña, la

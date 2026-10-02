@@ -69,5 +69,17 @@ func _physics_process(_delta: float) -> bool:
 		5:
 			if _wait < 3: return false
 			print("V sin zoom cambia a vista de frente: %s" % ("OK" if player.get("_front_view") else "FALLO"))
+			_key(KEY_ESCAPE, true); _key(KEY_ESCAPE, false)
+			_step = 6; _wait = 0
+		6:
+			if _wait < 3: return false
+			var menu: PauseMenu = _main.get("_pause")
+			print("Esc abre el menú de pausa y para el juego: %s" % ("OK" if menu.visible and paused and player.ui_open else "FALLO"))
+			_key(KEY_ESCAPE, true); _key(KEY_ESCAPE, false)
+			_step = 7; _wait = 0
+		7:
+			if _wait < 3: return false
+			var menu: PauseMenu = _main.get("_pause")
+			print("Esc otra vez vuelve al juego: %s" % ("OK" if not menu.visible and not paused and not player.ui_open else "FALLO"))
 			return true
 	return false

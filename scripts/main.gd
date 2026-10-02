@@ -41,6 +41,9 @@ var _notice: Label             # mensajes cortos ("Has aprendido...")
 var _notice_time := 0.0
 var _journal: Journal
 var _ui_layer: CanvasLayer
+var _pause: PauseMenu
+var _help: Control             # ayuda de controles (F1)
+var _help_on := false
 var _hotbar: Hotbar
 var _underwater: ColorRect
 var _day_night: DayNight
@@ -58,6 +61,7 @@ var _world_is_new := false
 
 
 func _ready() -> void:
+	Settings.load_settings()
 	_build_world()
 	_build_far_terrain()
 	_build_environment()
@@ -284,6 +288,8 @@ func _finish_loading() -> void:
 		_loading_overlay = null
 	print("[main] Isla cargada en %.1f s. ¡A jugar!" % _elapsed)
 	_place_journal_if_lost()
+	if _arg("--capture=") == "":
+		_show_notice("F1: ver los controles  ·  Esc: pausa y opciones")
 	# Modo medición: "godot --headless --path . -- --quit-after-load" sale al terminar de cargar.
 	if OS.get_cmdline_user_args().has("--quit-after-load"):
 		get_tree().quit()
@@ -342,6 +348,34 @@ func _build_hud() -> void:
 	_inventory_screen.closed.connect(_on_screen_closed)
 	_inventory_screen.overflow.connect(_drop_in_front)
 
+	# Menú de pausa (Esc), por encima de todo.
+	var pause_layer := CanvasLayer.new()
+	pause_layer.layer = 20
+	add_child(pause_layer)
+	_pause = PauseMenu.new()
+	pause_layer.add_child(_pause)
+	_pause.resumed.connect(_on_screen_closed)
+	_pause.quit_requested.connect(func() -> void:
+		_save_world()
+		get_tree().quit())
+
+	# Ayuda de controles (F1), a la derecha.
+	var help := PanelContainer.new()
+	var help_style := PauseMenu.panel_style()
+	help_style.bg_color.a = 0.82
+	help_style.set_content_margin_all(14)
+	help.add_theme_stylebox_override("panel", help_style)
+	help.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	help.add_child(PauseMenu.controls_grid())
+	help.set_anchors_preset(Control.PRESET_CENTER_RIGHT)
+	help.grow_horizontal = Control.GROW_DIRECTION_BEGIN  # crece hacia la izquierda, según su contenido
+	help.grow_vertical = Control.GROW_DIRECTION_BOTH
+	help.offset_left = -16
+	help.offset_right = -16
+	help.visible = false
+	canvas.add_child(help)
+	_help = help
+
 	# Tinte azul cuando la cabeza está bajo el agua.
 	_underwater = ColorRect.new()
 	_underwater.color = Color(0.06, 0.30, 0.50, 0.42)
@@ -367,8 +401,15 @@ func _process(delta: float) -> void:
 	_prompt.text = _ground.prompt()
 	_notice_time -= delta
 	_notice.modulate.a = clampf(_notice_time, 0.0, 1.0)
-	_hud.text = "%s · FPS: %d\nClic izq. romper · Clic der. colocar · J diario · Q tirar · G dejar en el suelo · R (mantener) fabricar · 1-9 / rueda: objeto\nWASD mover (W+W correr) · Espacio saltar · F volar · V cámara (mantener V + ratón: distancia) · Alt girar cámara · T (mantener) acelerar el tiempo · Esc ratón" \
-		% [_day_night.get_clock_text(), Engine.get_frames_per_second()]
+	_hud.text = _day_night.get_clock_text()
+	if Settings.show_fps:
+		_hud.text += "  ·  %d FPS" % Engine.get_frames_per_second()
+	_help.visible = _help_on and not reading
+	if _help.visible:  # ajustada a su contenido, pegada a la derecha y centrada en alto
+		var help_size := _help.get_combined_minimum_size()
+		_help.offset_left = -16 - help_size.x
+		_help.offset_top = -help_size.y * 0.5
+		_help.offset_bottom = help_size.y * 0.5
 	_update_capture()
 
 
@@ -420,6 +461,10 @@ func _update_capture() -> void:
 			open_journal()
 			_journal._spread = int(_arg("--page=", "0"))
 			_journal.open()
+		if OS.get_cmdline_user_args().has("--pause"):  # menú de pausa a la vista (sin pausar: la foto debe salir)
+			_pause.visible = true
+		if OS.get_cmdline_user_args().has("--help"):
+			_help_on = true
 		if OS.get_cmdline_user_args().has("--inventory"):
 			open_inventory()
 		if OS.get_cmdline_user_args().has("--open-chest"):  # abrir el cofre de la playa del naufragio
@@ -508,6 +553,18 @@ func _input(event: InputEvent) -> void:
 			get_viewport().set_input_as_handled()
 	elif not _inventory_screen.visible and key.keycode == KEY_J:
 		open_journal()
+		get_viewport().set_input_as_handled()
+	elif key.keycode == KEY_F1:
+		_help_on = not _help_on
+		get_viewport().set_input_as_handled()
+	elif key.keycode == KEY_F3:
+		Settings.show_fps = not Settings.show_fps
+		Settings.save_settings()
+		get_viewport().set_input_as_handled()
+	elif key.keycode == KEY_ESCAPE and not _inventory_screen.visible:
+		_player.ui_open = true
+		Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
+		_pause.open()
 		get_viewport().set_input_as_handled()
 	elif _inventory_screen.visible and (key.keycode == KEY_ESCAPE or key.keycode == KEY_E):
 		_inventory_screen.close()
