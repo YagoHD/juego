@@ -103,9 +103,14 @@ func _edit_block(place: bool) -> void:
 		return
 	var tool := _terrain.get_voxel_tool()
 	tool.channel = VoxelBuffer.CHANNEL_TYPE
-	var from := _camera.global_position
-	var dir := -_camera.global_transform.basis.z
-	var hit := tool.raycast(from, dir, REACH)
+	# El VoxelTool trabaja en coordenadas de voxel (espacio local del terreno).
+	# Como el terreno está escalado, convertimos el rayo del mundo a ese espacio.
+	var world_from := _camera.global_position
+	var world_dir := -_camera.global_transform.basis.z
+	var from := _terrain.to_local(world_from)
+	var dir := (_terrain.to_local(world_from + world_dir) - from).normalized()
+	var max_distance := REACH / _terrain.scale.x
+	var hit := tool.raycast(from, dir, max_distance)
 	if hit == null:
 		return
 	if place:

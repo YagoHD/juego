@@ -2,6 +2,10 @@ extends Node3D
 ## Fase 2 — Mundo de cubos jugable: terreno blocky, jugador en primera persona,
 ## romper (clic izq.) y colocar (clic der.) bloques. Teclas 1/2/3 eligen bloque.
 
+# Tamaño de cada voxel en metros. 1.0 = estilo Minecraft; 0.5 = cada cubo se parte en 8
+# (estilo Cube World, personaje de ~4 cubos de alto). Baja este valor para más detalle.
+const VOXEL_SIZE := 0.5
+
 var _player: Player
 var _hud: Label
 
@@ -35,6 +39,7 @@ func _build_world() -> void:
 	terrain.mesher = mesher
 	terrain.generator = BlockyTerrainGenerator.new()
 	terrain.generate_collisions = true
+	terrain.scale = Vector3.ONE * VOXEL_SIZE  # voxels más pequeños (estilo Cube World)
 	terrain.add_to_group("voxel_terrain")
 	add_child(terrain)
 
