@@ -32,6 +32,7 @@ var _player: Player
 var _hud: Label
 var _hotbar: Hotbar
 var _underwater: ColorRect
+var _day_night: DayNight
 var _terrain: VoxelTerrain
 var _generator: IslandGenerator
 var _loading := true
@@ -253,39 +254,10 @@ func _finish_loading() -> void:
 # ------------------------------------------------------------------ ambiente y HUD
 
 func _build_environment() -> void:
-	var sun := DirectionalLight3D.new()
-	sun.rotation_degrees = Vector3(-48, -35, 0)
-	sun.light_color = Color(1.0, 0.96, 0.88)
-	sun.light_energy = 1.15
-	sun.shadow_enabled = true
-	sun.directional_shadow_max_distance = 250.0
-	add_child(sun)
-
-	var world_env := WorldEnvironment.new()
-	var env := Environment.new()
-	env.background_mode = Environment.BG_SKY
-	var sky := Sky.new()
-	var sky_mat := ProceduralSkyMaterial.new()
-	sky_mat.sky_top_color = Color(0.22, 0.48, 0.88)
-	sky_mat.sky_horizon_color = Color(0.68, 0.82, 0.95)
-	sky_mat.ground_horizon_color = Color(0.68, 0.82, 0.95)
-	sky_mat.ground_bottom_color = Color(0.20, 0.35, 0.55)
-	sky.sky_material = sky_mat
-	env.sky = sky
-	env.ambient_light_source = Environment.AMBIENT_SOURCE_SKY
-	env.tonemap_mode = Environment.TONE_MAPPER_FILMIC
-	# Niebla por distancia: nada hasta FOG_BEGIN y luego una bruma suave del color del horizonte.
-	env.fog_enabled = true
-	env.fog_mode = Environment.FOG_MODE_DEPTH
-	env.fog_depth_begin = FOG_BEGIN
-	env.fog_depth_end = FOG_END
-	env.fog_depth_curve = 1.2
-	env.fog_density = FOG_MAX
-	env.fog_light_color = Color(0.86, 0.89, 0.93)  # blanquecina, se distingue del cielo
-	env.fog_sky_affect = 0.6
-	env.fog_aerial_perspective = 0.0  # niebla de verdad, no solo un emborronado del color del cielo
-	world_env.environment = env
-	add_child(world_env)
+	# Sol, luna, cielo, luz ambiental, niebla y nubes: todo lo gestiona el ciclo de día y noche.
+	_day_night = DayNight.new()
+	add_child(_day_night)
+	_day_night.setup(self, FOG_BEGIN, FOG_END, FOG_MAX)
 
 
 func _build_hud() -> void:
@@ -336,8 +308,8 @@ func _process(_delta: float) -> void:
 		return
 	_hotbar.select(_player.get_hotbar_index())
 	_underwater.visible = _player.is_head_underwater()
-	_hud.text = "FPS: %d\nClic izq. romper · Clic der. colocar · 1-9 / rueda: bloque\nWASD mover (W+W correr) · Espacio saltar · F volar · V cámara (mantener V + ratón: distancia) · Alt girar cámara · Esc ratón" \
-		% Engine.get_frames_per_second()
+	_hud.text = "%s · FPS: %d\nClic izq. romper · Clic der. colocar · 1-9 / rueda: bloque\nWASD mover (W+W correr) · Espacio saltar · F volar · V cámara (mantener V + ratón: distancia) · Alt girar cámara · T (mantener) acelerar el tiempo · Esc ratón" \
+		% [_day_night.get_clock_text(), Engine.get_frames_per_second()]
 	_update_capture()
 
 
@@ -364,6 +336,9 @@ func _update_capture() -> void:
 			_player.global_position = Vector3(vx, ground + 2, vz) * VOXEL_SIZE
 		_player.debug_pose(OS.get_cmdline_user_args().has("--tp"), float(_arg("--pitch=", "0")),
 			float(_arg("--yaw=", "0")), float(_arg("--up=", "0")) + (0.01 if at != "" else 0.0))
+		var time := _arg("--time=")  # hora del día para la foto, p. ej. "19.4" (atardecer)
+		if time != "":
+			_day_night.set_hour(float(time))
 		var action := _arg("--action=")  # "nombre:t", p. ej. "voltereta:0.5"
 		if action != "":
 			var parts := action.split(":")

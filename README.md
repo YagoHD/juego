@@ -31,6 +31,7 @@ Hecho en **Godot 4.7** con el módulo **godot_voxel** (de Zylann).
 | Mantener V + ratón adelante/atrás (o rueda) | Acercar/alejar la cámara (como en Skyrim) |
 | Alt o botón central (mantener) | Girar la cámara alrededor del personaje |
 | F | Volar (Espacio sube, Ctrl baja, Shift rápido) |
+| T (mantener) | Acelerar el tiempo (para ver el ciclo de día y noche) |
 | Esc | Soltar el ratón (un clic lo recupera) |
 
 ## Cómo se hace la isla
