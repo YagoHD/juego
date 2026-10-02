@@ -14,6 +14,7 @@ var _ground_id := 0
 
 
 func _init() -> void:
+	Main.test_mode = true  # mundo de pruebas aparte: nunca toca el mundo guardado del jugador
 	_main = (load("res://scenes/main.tscn") as PackedScene).instantiate()
 	root.add_child(_main)
 
@@ -65,7 +66,7 @@ func _process(_delta: float) -> bool:
 			var drop := ItemDB.drop_of(_ground_id)
 			var got := player.inventory.count_of(drop)
 			print("Recogida automática (%s): %s" % [drop, "OK, %d en el inventario" % got if got >= 1 else "FALLO"])
-			player.debug_pose(false, -0.45, 0.0, 0.0)  # mirar al frente, a un bloque cercano
+			player.debug_pose(false, -0.8, 0.0, 0.0)  # mirar al frente y abajo, a un bloque cercano
 			_step = 3
 			_wait = 0
 		3:

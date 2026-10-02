@@ -1,7 +1,7 @@
 extends Node3D
 class_name PlayerAvatar
 ## Cuerpo del jugador, construido a partir de su skin (formato Minecraft, ver SkinModel y
-## docs/SKINS.md). Mide lo mismo que el jugador (1,4 m), mira hacia -Z y se anima solo:
+## docs/SKINS.md). Mide lo mismo que el jugador (SkinModel.BODY_HEIGHT), mira hacia -Z y se anima solo:
 ##   - andar: brazos y piernas alternos;
 ##   - reposo: respiración, balanceo suave del cuerpo y parpadeo;
 ##   - tras IDLE_ACTION_DELAY s quieto: una acción al azar (estirarse, sentadillas, salto,
@@ -12,7 +12,10 @@ class_name PlayerAvatar
 const LAYER := 1 << 1
 const IDLE_ACTION_DELAY := 15.0
 const ACTIONS := {"estirarse": 2.6, "sentadillas": 2.6, "salto": 1.1, "voltereta": 1.4}  # duración (s)
-const HIP_HEIGHT := 0.7   # centro de giro del cuerpo (para la voltereta)
+## Escala respecto al diseño original (personaje de 1,4 m): las distancias en metros de las
+## animaciones (rebotes, saltos...) se multiplican por K para que vayan con el tamaño.
+const K := SkinModel.BODY_HEIGHT / 1.4
+const HIP_HEIGHT := 0.7 * K   # centro de giro del cuerpo (para la voltereta)
 const SMOOTHING := 14.0   # rapidez con la que las articulaciones alcanzan su pose (más = más seco)
 
 var _root: Node3D          # "cadera": todo cuelga de aquí; se mueve y gira para las acciones
@@ -57,7 +60,7 @@ func build(texture: Texture2D, slim: bool) -> void:
 	# Bloque en la mano derecha (al final del brazo, un poco por delante).
 	_held = MeshInstance3D.new()
 	var box := BoxMesh.new()
-	box.size = Vector3.ONE * 0.15
+	box.size = Vector3.ONE * 0.15 * K
 	_held.mesh = box
 	_held.position = Vector3(0, -5.0, -1.5) * SkinModel.PIXEL  # en el antebrazo, junto a la mano
 	_held.layers = LAYER
@@ -100,7 +103,7 @@ func set_block(id: int) -> void:
 		_held.visible = id >= 0  # id < 0 = mano vacía
 		if id < 0:
 			return
-		_held.mesh = BlockTextures.make_block_mesh(id, 0.15)
+		_held.mesh = BlockTextures.make_block_mesh(id, 0.15 * K)
 		_held.material_override = BlockTextures.make_material(id == IslandGenerator.WATER)
 
 
@@ -172,14 +175,14 @@ func _process(delta: float) -> void:
 	var arm_swing := sin(phase - 0.25) * (0.6 + 0.4 * _run) * walk  # los brazos van un poco por detrás
 	var lift_l := maxf(0.0, cos(phase)) * walk                # la pierna izquierda avanza (se dobla)
 	var lift_r := maxf(0.0, -cos(phase)) * walk
-	var bounce := (absf(cos(phase)) - 0.5) * 0.035 * walk     # sube y baja dos veces por paso
+	var bounce := (absf(cos(phase)) - 0.5) * 0.035 * K * walk     # sube y baja dos veces por paso
 	var rest := 1.0 - walk
 	var breath := sin(_time * 2.2) * rest                     # ~3 respiraciones cada 8 s
 	var sway := sin(_time * 0.9) * rest                       # balanceo lento de lado a lado
 	var s := sin(_swing * PI)
 
 	var pose := {
-		"root_y": breath * 0.006 + bounce - 0.015 * walk,
+		"root_y": (breath * 0.006 - 0.015 * walk) * K + bounce,
 		# Al andar: inclinación hacia delante, giro de caderas con cada paso y vaivén lateral.
 		"root_rot": Vector3((-0.06 - 0.12 * _run) * walk, sin(phase) * 0.12 * walk, sway * 0.025 + sin(phase) * 0.03 * walk),
 		# La cabeza compensa el giro de caderas (mira al frente) y sigue hacia dónde se apunta.
@@ -256,7 +259,7 @@ func _blend_action(pose: Dictionary) -> void:
 			target["elbow_l"] = 0.0
 			target["head"] = Vector3(0.45 * up, 0.0, 0.0)
 			target["root_rot"] = Vector3(0.08 * up, 0.0, wobble * 0.5)
-			target["root_y"] = 0.02 * up
+			target["root_y"] = 0.02 * K * up
 		"sentadillas":
 			# Dos sentadillas de verdad: muslos horizontales, espinillas verticales y brazos al frente.
 			var p := 0.5 - 0.5 * cos(t * TAU * 2.0)
@@ -268,12 +271,12 @@ func _blend_action(pose: Dictionary) -> void:
 			target["arm_l"] = Vector3(1.5 * p, 0.0, 0.0)
 			target["elbow_r"] = 0.1
 			target["elbow_l"] = 0.1
-			target["root_y"] = -0.27 * p
+			target["root_y"] = -0.27 * K * p
 			target["root_rot"] = Vector3(-0.32 * p, 0.0, 0.0)
 		"salto":
-			_jump_pose(target, t, 0.55, 0.0)
+			_jump_pose(target, t, 0.55 * K, 0.0)
 		"voltereta":
-			_jump_pose(target, t, 0.9, TAU)
+			_jump_pose(target, t, 0.9 * K, TAU)
 	for key in pose:
 		pose[key] = _mix(pose[key], target[key], w)
 
@@ -292,7 +295,7 @@ func _jump_pose(target: Dictionary, t: float, height: float, spin: float) -> voi
 		crouch = sin((t - LAND) / (1.0 - LAND) * PI) * 0.8
 	var lift := sin(air * PI) * height
 	var tuck := sin(air * PI) if spin > 0.0 else 0.35 * sin(air * PI)  # piernas encogidas en el aire
-	target["root_y"] = lift - 0.17 * crouch
+	target["root_y"] = lift - 0.17 * K * crouch
 	target["root_rot"] = Vector3(smoothstep(0.1, 0.9, air) * spin - 0.25 * crouch, 0.0, 0.0)
 	var legs := 0.85 * crouch + 1.5 * tuck
 	var knees := -1.4 * crouch - 2.0 * tuck

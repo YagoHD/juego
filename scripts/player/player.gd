@@ -17,32 +17,35 @@ signal block_broken(cell: Vector3i, block_id: int)
 ##                         └─ Camera3D
 ##                              └─ HeldBlock (bloque en la mano; solo en primera persona)
 
-const SPEED := 4.3          # andando
-const SPRINT_SPEED := 6.6   # corriendo (doble toque de W)
+# Medidas y velocidades pensadas EN BLOQUES (como en Minecraft) y pasadas a metros con B.
+# El tamaño del personaje se cambia en SkinModel.PLAYER_HEIGHT_BLOCKS.
+const B := SkinModel.BLOCK_SIZE  # metros por bloque
+const BODY_HEIGHT := SkinModel.BODY_HEIGHT       # 1,8 bloques (como Steve)
+const BODY_RADIUS := 0.3 * B * SkinModel.PLAYER_HEIGHT_BLOCKS / 1.8  # 0,6 bloques de ancho
+const EYE_HEIGHT := BODY_HEIGHT * 0.9            # ojos a 1,62 bloques
+const SPEED := 4.3 * B          # andando: 4,3 bloques/s
+const SPRINT_SPEED := 5.6 * B   # corriendo (doble toque de W): 5,6 bloques/s
 const SPRINT_DOUBLE_TAP := 0.3  # segundos máximos entre los dos toques de W
 const SPRINT_FOV_BOOST := 8.0   # grados que se abre la vista al correr
-const BODY_HEIGHT := 1.4   # altura del personaje en metros (~2,8 bloques de 0,5 m)
-const BODY_RADIUS := 0.32
-const EYE_HEIGHT := 1.25   # altura de la cámara (los ojos)
-const JUMP_VELOCITY := 7.0  # salto de ~1 m: sube 2 bloques
-const GRAVITY := 24.0
+const GRAVITY := 32.0 * B       # 32 bloques/s²
+const JUMP_VELOCITY := 9.0 * B  # salto de ~1,25 bloques
 const SENSITIVITY := 0.0025
-const REACH := 8.0          # metros desde los ojos hasta el bloque más lejano editable
-const STEP_HEIGHT := 0.55  # sube solo escalones de hasta 1 bloque (0,5 m); para 2+ hay que saltar
-const STEP_FORWARD := 0.25 # cuánto avanza al subir un escalón (para quedar bien encima)
+const REACH := 6.0 * B          # alcance: 6 bloques desde los ojos
+const STEP_HEIGHT := 1.1 * B    # sube solo escalones de 1 bloque; para 2 hay que saltar
+const STEP_FORWARD := 0.4 * B   # cuánto avanza al subir un escalón (para quedar bien encima)
 const FLY_SPEED := 18.0
 const FLY_SPEED_FAST := 60.0
 const CAMERA_CATCH_UP := 14.0      # rapidez con la que la cámara alcanza al cuerpo tras un escalón
-const THIRD_PERSON_DISTANCE := 2.3 # distancia inicial de la cámara en tercera persona (m)
-const MIN_CAMERA_DISTANCE := 1.2
-const MAX_CAMERA_DISTANCE := 7.0
-const ZOOM_MOUSE_SPEED := 0.01  # metros por píxel de ratón (manteniendo V)
-const ZOOM_WHEEL_STEP := 0.4    # metros por paso de rueda (manteniendo V)
-const THIRD_PERSON_SHOULDER := 0.3  # desplazamiento a la derecha (vista "por encima del hombro")
-const SWIM_SPEED := 3.0        # velocidad horizontal en el agua
-const SWIM_UP_SPEED := 3.2     # nadar hacia arriba (Espacio con la cabeza bajo el agua)
-const WATER_GRAVITY := 5.0     # en el agua se hunde despacio...
-const MAX_SINK_SPEED := 2.5    # ...y sin pasar de esta velocidad
+const THIRD_PERSON_DISTANCE := 4.0 * B  # distancia inicial de la cámara en tercera persona (4 bloques)
+const MIN_CAMERA_DISTANCE := 1.5 * B
+const MAX_CAMERA_DISTANCE := 14.0 * B
+const ZOOM_MOUSE_SPEED := 0.02 * B  # por píxel de ratón (manteniendo V)
+const ZOOM_WHEEL_STEP := 0.8 * B    # por paso de rueda (manteniendo V)
+const THIRD_PERSON_SHOULDER := 0.6 * B  # desplazamiento a la derecha (vista "por encima del hombro")
+const SWIM_SPEED := 3.0 * B        # velocidad horizontal en el agua
+const SWIM_UP_SPEED := 4.0 * B     # nadar hacia arriba (Espacio con la cabeza bajo el agua)
+const WATER_GRAVITY := 6.0 * B     # en el agua se hunde despacio...
+const MAX_SINK_SPEED := 3.0 * B    # ...y sin pasar de esta velocidad
 
 ## Radio (en voxels) de terreno detallado alrededor del jugador. Lo fija main.gd.
 var near_view_voxels := 320
@@ -307,7 +310,7 @@ func _physics_process(delta: float) -> void:
 		_held.update_walk(0.0, delta)
 		return
 
-	var feet_wet := _in_water(global_position + Vector3.UP * 0.4)
+	var feet_wet := _in_water(global_position + Vector3.UP * BODY_HEIGHT * 0.28)
 	_head_underwater = _in_water(_head.global_position)
 
 	if feet_wet:

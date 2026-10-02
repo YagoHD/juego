@@ -10,7 +10,9 @@ class_name HeldBlock
 # la rotación de reposo lo apunta hacia delante y un poco hacia el centro de la pantalla.
 const REST_POSITION := Vector3(0.30, -0.22, -0.10)
 const REST_ROTATION := Vector3(1.32, 0.32, 0.10)
-const ARM_SCALE := 0.6  # el brazo de la skin a tamaño real queda enorme pegado a la cámara
+# El brazo de la skin a tamaño real queda enorme pegado a la cámara; se escala para que en
+# pantalla mida siempre lo mismo, sea cual sea el tamaño del personaje.
+const ARM_SCALE := 0.6 * 1.4 / SkinModel.BODY_HEIGHT
 const BLOCK_SIZE := 0.13
 const ELBOW_REST := 0.35  # codo un poco doblado (radianes)
 

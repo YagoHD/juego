@@ -1,4 +1,5 @@
 extends Node3D
+class_name Main
 ## Mundo jugable: la isla de la Beta (diseñada en tools/island_baker y guardada en disco),
 ## jugador en primera persona, romper (clic izq.) y colocar (clic der.) bloques.
 ##
@@ -25,6 +26,11 @@ const FOG_MAX := 0.9   # opacidad máxima de la niebla (1 = tapa del todo)
 const MAX_LOAD_SECONDS := 60.0  # tope de seguridad: entrar aunque no haya "terminado"
 
 const WORLD_DIR := "user://world"
+const TEST_WORLD_DIR := "user://world_test"
+
+## Modo prueba (pruebas automáticas y capturas): usa un mundo aparte que se crea limpio cada vez,
+## para no tocar nunca el mundo guardado del jugador.
+static var test_mode := false
 const AUTOSAVE_SECONDS := 60.0
 
 var _player: Player
@@ -128,10 +134,12 @@ func _make_world_stream() -> VoxelStreamSQLite:
 	# El mundo se guarda en un archivo: lo ya visitado se lee de ahí (rápido) y conserva lo
 	# que el jugador construya. El nombre lleva una "huella" de los mapas y del generador:
 	# si cambian, se crea un mundo nuevo.
-	DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(WORLD_DIR))
+	DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(_world_dir()))
+	if _is_test():
+		_clear_test_world()  # cada prueba empieza con el mundo recién creado
 	_world_id = _world_fingerprint()
 	var file_name := "isla_%s.sqlite" % _world_id
-	var path := WORLD_DIR.path_join(file_name)
+	var path := _world_dir().path_join(file_name)
 	_world_is_new = not FileAccess.file_exists(path)
 	if _world_is_new:
 		_delete_old_worlds(file_name)
@@ -151,7 +159,7 @@ func _world_fingerprint() -> String:
 
 
 func _delete_old_worlds(keep: String) -> void:
-	var dir := DirAccess.open(WORLD_DIR)
+	var dir := DirAccess.open(_world_dir())
 	if dir == null:
 		return
 	for file in dir.get_files():
@@ -400,7 +408,7 @@ func _arg(prefix: String, default := "") -> String:
 # ------------------------------------------------------------------ inventario y jugador guardado
 
 func _player_save_path() -> String:
-	return WORLD_DIR.path_join("jugador_%s.json" % _world_id)
+	return _world_dir().path_join("jugador_%s.json" % _world_id)
 
 
 func _save_player() -> void:
@@ -471,7 +479,7 @@ func _on_screen_closed() -> void:
 # ------------------------------------------------------------------ cofres
 
 func _chests_save_path() -> String:
-	return WORLD_DIR.path_join("jugador_%s_cofres.json" % _world_id)
+	return _world_dir().path_join("jugador_%s_cofres.json" % _world_id)
 
 
 func _on_block_used(cell: Vector3i, block_id: int) -> void:
@@ -497,3 +505,20 @@ func _on_block_broken(cell: Vector3i, block_id: int) -> void:
 		var stack := contents.get_slot(i)
 		if not stack.is_empty():
 			ItemDrop.spawn(self, center, stack["id"], int(stack["count"]))
+
+
+func _world_dir() -> String:
+	return TEST_WORLD_DIR if _is_test() else WORLD_DIR
+
+
+func _is_test() -> bool:
+	var args := OS.get_cmdline_user_args()
+	return test_mode or args.has("--quit-after-load") or _arg("--capture=") != ""
+
+
+func _clear_test_world() -> void:
+	var dir := DirAccess.open(TEST_WORLD_DIR)
+	if dir == null:
+		return
+	for file in dir.get_files():
+		dir.remove(file)

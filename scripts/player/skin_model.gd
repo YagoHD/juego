@@ -9,10 +9,15 @@ class_name SkinModel
 ## Ver docs/SKINS.md.
 ##
 ## Unidades: el modelo mide 32 "píxeles de skin" de alto; PIXEL lo convierte a metros para que
-## mida lo mismo que el jugador (1,4 m). El personaje mira hacia -Z y su derecha es +X.
+## mida lo mismo que el jugador (SkinModel.BODY_HEIGHT). El personaje mira hacia -Z y su derecha es +X.
 
 const TEXTURE_SIZE := 64
-const PIXEL := 1.4 / 32.0
+const BLOCK_SIZE := 0.5               # metros por bloque del mundo
+## Altura del personaje EN BLOQUES: 1,8 = como Steve en Minecraft (antes: 2,8). Es el único número
+## que hay que tocar para cambiar el tamaño del personaje: todo lo demás se ajusta solo.
+const PLAYER_HEIGHT_BLOCKS := 1.8
+const BODY_HEIGHT := PLAYER_HEIGHT_BLOCKS * BLOCK_SIZE
+const PIXEL := BODY_HEIGHT / 32.0      # 1 píxel de skin en metros (el modelo mide 32 px)
 const JOINT_ROW := 6          # brazos y piernas se doblan a 6 px de su extremo superior
 const JOINT_OVERLAP := 2.0    # px que el segmento inferior se mete en el superior (sin huecos al doblar)
 const JOINT_UNDERLAP := 1.0   # px que el segmento superior baja dentro del inferior

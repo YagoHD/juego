@@ -12,6 +12,7 @@ var _wait := 0
 
 
 func _init() -> void:
+	Main.test_mode = true  # mundo de pruebas aparte: nunca toca el mundo guardado del jugador
 	_main = (load("res://scenes/main.tscn") as PackedScene).instantiate()
 	root.add_child(_main)
 
