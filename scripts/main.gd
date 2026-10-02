@@ -17,9 +17,9 @@ const NEAR_VIEW_VOXELS := 320
 const FAR_HIDE_RADIUS := NEAR_VIEW_VOXELS * VOXEL_SIZE - 15.0
 
 # Niebla: limpia hasta FOG_BEGIN metros, y se va difuminando hasta FOG_END.
-const FOG_BEGIN := 450.0
-const FOG_END := 1600.0
-const FOG_MAX := 0.75  # opacidad máxima de la niebla (1 = tapa del todo)
+const FOG_BEGIN := 280.0
+const FOG_END := 1300.0
+const FOG_MAX := 0.9   # opacidad máxima de la niebla (1 = tapa del todo)
 
 # Punto de aparición (en voxels): la playa del pueblo junto a la bahía.
 const SPAWN_VOXEL := Vector2i(-560, 607)
@@ -73,11 +73,15 @@ func _save_world() -> void:
 func _build_world() -> void:
 	var library := VoxelBlockyLibrary.new()
 	library.add_model(VoxelBlockyModelEmpty.new())  # 0 AIR
+	# Todos los bloques comparten un material con el atlas de texturas (se dibujan más rápido);
+	# el agua lleva su propia versión translúcida.
+	var solid := BlockTextures.make_material()
+	var water := BlockTextures.make_material(true)
 	for id in range(1, Blocks.LAST_ID + 1):
 		if id == IslandGenerator.WATER:
-			library.add_model(_make_water())
+			library.add_model(_make_water(water))
 		else:
-			library.add_model(_make_cube(Blocks.color_of(id)))
+			library.add_model(_make_cube(id, solid))
 	library.bake()
 
 	var mesher := VoxelMesherBlocky.new()
@@ -105,7 +109,13 @@ func _build_world() -> void:
 
 func _build_far_terrain() -> void:
 	var far := FarTerrain.new()
-	far.build(_generator, Blocks.COLORS, VOXEL_SIZE, FAR_HIDE_RADIUS)
+	# Colores de lejos = color medio de la cara de arriba de cada textura, para que la isla lejana
+	# tenga el mismo tono que los bloques texturizados de cerca.
+	var colors := {}
+	for id in Blocks.COLORS:
+		colors[id] = BlockTextures.average_color(id, 0)
+	colors[IslandGenerator.WATER] = Blocks.color_of(IslandGenerator.WATER)
+	far.build(_generator, colors, VOXEL_SIZE, FAR_HIDE_RADIUS)
 	add_child(far)
 
 
@@ -156,23 +166,22 @@ func _build_sea() -> void:
 	add_child(water)
 
 
-func _make_cube(color: Color) -> VoxelBlockyModelCube:
+func _make_cube(id: int, material: Material) -> VoxelBlockyModelCube:
+	# Cubo con las texturas del atlas: arriba, lados y abajo según BlockTextures.FACES.
 	var cube := VoxelBlockyModelCube.new()
-	var material := StandardMaterial3D.new()
-	material.albedo_color = color
+	cube.atlas_size_in_tiles = BlockTextures.atlas_size_in_tiles()
+	cube.set_tile(VoxelBlockyModel.SIDE_POSITIVE_Y, BlockTextures.tile_of(id, 0))
+	cube.set_tile(VoxelBlockyModel.SIDE_NEGATIVE_Y, BlockTextures.tile_of(id, 2))
+	for side in [VoxelBlockyModel.SIDE_POSITIVE_X, VoxelBlockyModel.SIDE_NEGATIVE_X,
+			VoxelBlockyModel.SIDE_POSITIVE_Z, VoxelBlockyModel.SIDE_NEGATIVE_Z]:
+		cube.set_tile(side, BlockTextures.tile_of(id, 1))
 	cube.set_material_override(0, material)
 	return cube
 
 
-func _make_water() -> VoxelBlockyModelCube:
+func _make_water(material: Material) -> VoxelBlockyModelCube:
 	# Agua de ríos y lagos: translúcida, sin caras internas y atravesable.
-	var cube := VoxelBlockyModelCube.new()
-	var material := StandardMaterial3D.new()
-	material.albedo_color = Blocks.color_of(IslandGenerator.WATER)
-	material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-	material.roughness = 0.35  # poco brillo: si no, refleja tanto el cielo que parece hielo
-	material.metallic_specular = 0.25
-	cube.set_material_override(0, material)
+	var cube := _make_cube(IslandGenerator.WATER, material)
 	cube.transparency_index = 1
 	cube.set_mesh_collision_enabled(0, false)
 	return cube
@@ -270,11 +279,11 @@ func _build_environment() -> void:
 	env.fog_mode = Environment.FOG_MODE_DEPTH
 	env.fog_depth_begin = FOG_BEGIN
 	env.fog_depth_end = FOG_END
-	env.fog_depth_curve = 1.6
+	env.fog_depth_curve = 1.2
 	env.fog_density = FOG_MAX
-	env.fog_light_color = Color(0.70, 0.82, 0.95)
-	env.fog_sky_affect = 0.35
-	env.fog_aerial_perspective = 0.5
+	env.fog_light_color = Color(0.86, 0.89, 0.93)  # blanquecina, se distingue del cielo
+	env.fog_sky_affect = 0.6
+	env.fog_aerial_perspective = 0.0  # niebla de verdad, no solo un emborronado del color del cielo
 	world_env.environment = env
 	add_child(world_env)
 

@@ -39,9 +39,6 @@ func set_skin(texture: Texture2D, slim: bool) -> void:
 	add_child(_arm)
 
 	_block_mesh = MeshInstance3D.new()
-	var box := BoxMesh.new()
-	box.size = Vector3.ONE * BLOCK_SIZE
-	_block_mesh.mesh = box
 	# En la palma: al final del brazo y un poco por delante de él.
 	_block_mesh.position = Vector3(0.0, -6.5, -3.6) * SkinModel.PIXEL
 	_block_mesh.rotation = Vector3(-0.35, 0.6, 0.0)
@@ -49,14 +46,16 @@ func set_skin(texture: Texture2D, slim: bool) -> void:
 	_forearm = _arm.get_node("lower") as Node3D
 	_forearm.add_child(_block_mesh)
 	if _block_id != -1:
-		_block_mesh.material_override = _overlay_material(_block_id)
+		_show_block(_block_id)
 
 
-func _overlay_material(id: int) -> StandardMaterial3D:
-	var material := Blocks.make_material(id)
-	material.no_depth_test = true  # siempre por encima del mundo
-	material.render_priority = 11  # y por delante del brazo
-	return material
+func _show_block(id: int) -> void:
+	# Cubo con las texturas del bloque, dibujado siempre por encima del mundo y del brazo.
+	_block_mesh.mesh = BlockTextures.make_block_mesh(id, BLOCK_SIZE)
+	var material := BlockTextures.make_material(id == IslandGenerator.WATER)
+	material.no_depth_test = true
+	material.render_priority = 11
+	_block_mesh.material_override = material
 
 
 func set_block(id: int) -> void:
@@ -65,7 +64,7 @@ func set_block(id: int) -> void:
 	var first_time := _block_id == -1
 	_block_id = id
 	if _block_mesh != null:
-		_block_mesh.material_override = _overlay_material(id)
+		_show_block(id)
 	if not first_time:
 		_equip = 1.0
 

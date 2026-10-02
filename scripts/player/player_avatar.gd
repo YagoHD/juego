@@ -97,7 +97,8 @@ func _build_lids(texture: Texture2D) -> void:
 
 func set_block(id: int) -> void:
 	if _held != null:
-		_held.material_override = Blocks.make_material(id)
+		_held.mesh = BlockTextures.make_block_mesh(id, 0.15)
+		_held.material_override = BlockTextures.make_material(id == IslandGenerator.WATER)
 
 
 ## Hacia dónde mira (arriba/abajo), en radianes.

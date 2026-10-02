@@ -8,7 +8,7 @@ const STEP := 4                # píxeles del mapa por celda (4 px = 8 voxels = 
 const CANOPY_VOXELS := 7.0     # altura del manto de copas sobre el suelo
 const CANOPY_MIN_DENSITY := 20 # densidad de árboles (milésimas) para dibujar copas
 const SINK := 0.3              # se hunde un poco para no asomar entre los voxels cercanos
-const CANOPY_SHADE := 0.22     # cuánto se oscurecen las copas lejanas
+const CANOPY_SHADE := 0.12     # cuánto se oscurecen las copas lejanas (sombras entre árboles)
 const COLOR_JITTER := 0.12     # variación aleatoria de tono por vértice
 
 

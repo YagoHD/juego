@@ -30,14 +30,18 @@ func _ready() -> void:
 		add_child(slot)
 		_slots.append(slot)
 
-		var swatch := ColorRect.new()
-		swatch.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		var color := Blocks.color_of(Blocks.HOTBAR[i])
-		color.a = 1.0
-		swatch.color = color
-		swatch.position = Vector2(10, 10)
-		swatch.size = Vector2(SLOT_SIZE - 20, SLOT_SIZE - 20)
-		slot.add_child(swatch)
+		# Icono: la textura de la cara de arriba del bloque, con los píxeles nítidos.
+		var icon := TextureRect.new()
+		icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		var region := AtlasTexture.new()
+		region.atlas = BlockTextures.atlas()
+		region.region = BlockTextures.icon_region(Blocks.HOTBAR[i])
+		icon.texture = region
+		icon.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+		icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		icon.position = Vector2(10, 10)
+		icon.size = Vector2(SLOT_SIZE - 20, SLOT_SIZE - 20)
+		slot.add_child(icon)
 
 		var number := Label.new()
 		number.mouse_filter = Control.MOUSE_FILTER_IGNORE

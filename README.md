@@ -66,3 +66,15 @@ La isla de la Beta está **diseñada**, no es aleatoria:
 - `tools/test_step_up.gd` — comprueba que el jugador sube 1 bloque solo y se para ante 2.
 - `tools/bench_generator.gd` — mide cuánto tarda el generador por tipo de bloque.
 - `tools/capture.ps1` — arranca el juego, coloca la cámara y guarda una captura (para revisar el aspecto).
+
+## Texturas de los bloques
+
+Cada bloque tiene texturas de 16×16 (arriba, lados y abajo) reunidas en un atlas
+([`block_textures.gd`](scripts/world/block_textures.gd)). Se generan por código
+([`block_painter.gd`](scripts/world/block_painter.gd)), pero cualquiera se puede **pintar a mano**:
+guarda un PNG de 16×16 en `assets/textures/blocks/` con el nombre de la textura
+(`grass_top.png`, `grass_side.png`, `dirt.png`, `stone.png`, `sand.png`, `snow.png`, `log_top.png`,
+`log_side.png`, `leaves.png`, `pine_leaves.png`, `water.png`, `corrupt_top.png`,
+`corrupt_side.png`, `dead_log_top.png`, `dead_log_side.png`, `wheat_top.png`, `wheat_side.png`)
+y el juego la usará. Para ver el atlas actual: `assets/textures/blocks_atlas_x8.png`
+(se regenera con `tools/export_textures.gd`).
