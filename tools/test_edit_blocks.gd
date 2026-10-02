@@ -45,9 +45,14 @@ func _process(_delta: float) -> bool:
 			var ground: Vector3i = target["voxel"]
 			var above: Vector3i = target["place"]
 			_ground_id = tool.get_voxel(ground)
+			var overlaps: bool = player._overlaps_body(above)
 			player._edit_block(true)
-			var placed_inside := tool.get_voxel(above) != IslandGenerator.AIR
-			print("Colocar dentro de uno mismo: %s" % ("FALLO, se colocó" if placed_inside else "OK, no se coloca"))
+			var placed := tool.get_voxel(above) != IslandGenerator.AIR
+			# La regla: solo se coloca si el bloque no se solapa con el cuerpo del jugador.
+			print("No colocar dentro de uno mismo (se solapa=%s, colocado=%s): %s" % [
+				overlaps, placed, "OK" if placed != overlaps else "FALLO"])
+			if placed:
+				tool.set_voxel(above, IslandGenerator.AIR)  # deshacer, para seguir la prueba igual
 			player._edit_block(false)
 			var removed := tool.get_voxel(ground) == IslandGenerator.AIR
 			print("Romper el suelo (bloque %d): %s" % [_ground_id, "OK, quitado" if removed else "FALLO, sigue ahí"])

@@ -162,13 +162,15 @@ func _quick_move(section: int, index: int) -> void:
 	var slot := inv.get_slot(index)
 	if slot.is_empty():
 		return
-	var target: Inventory
-	var target_slots: Array
-	if _sections.size() > 1:
-		var other: Dictionary = _sections[(section + 1) % _sections.size()]
-		target = other["inventory"]
-		target_slots = other["slots"]
-	else:
+	# Destino: el otro inventario que haya en pantalla (cofre <-> jugador), con todos sus huecos;
+	# si solo está el del jugador, entre la barra y la mochila.
+	var target: Inventory = null
+	var target_slots: Array = []
+	for other in _sections:
+		if other["inventory"] != inv and (target == null or other["inventory"] == target):
+			target = other["inventory"]
+			target_slots.append_array(other["slots"])
+	if target == null:
 		target = inv
 		target_slots = range(9, inv.size()) if index < 9 else range(0, 9)
 	var left := _add_to_slots(target, target_slots, slot["id"], int(slot["count"]))

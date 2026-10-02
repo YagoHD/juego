@@ -19,13 +19,14 @@ param(
     [string]$Godot = "$env:USERPROFILE\Desktop\godot.windows.editor.x86_64.exe"
 )
 $project = Resolve-Path (Join-Path $PSScriptRoot "..")
-$gameArgs = @("--path", "`"$project`"", "--", "--capture=$Out", "--pitch=$Pitch", "--yaw=$Yaw", "--up=$Up", "--wait=$Wait")
+$gameArgs = @("--path", "`"$project`"", "--", "--capture=$Out", "--pitch=$Pitch", "--up=$Up", "--wait=$Wait")
 if ($ThirdPerson) { $gameArgs += "--tp" }
 if ($Front) { $gameArgs += "--front" }
 if ($Side) { $gameArgs += "--side" }
 if ($Swing -ge 0) { $gameArgs += "--swing=$Swing" }
 if ($Action -ne "") { $gameArgs += "--action=$Action" }
 if ($Time -ne "") { $gameArgs += "--time=$Time" }
+if ($PSBoundParameters.ContainsKey("Yaw")) { $gameArgs += "--yaw=$Yaw" }
 if ($Give -ne "") { $gameArgs += "--give=$Give" }
 if ($Drop -ne "") { $gameArgs += "--drop=$Drop" }
 if ($Inventory) { $gameArgs += "--inventory" }

@@ -15,6 +15,9 @@ const COLORS := {
 	IslandGenerator.CORRUPT_SOIL: Color(0.30, 0.22, 0.32),
 	IslandGenerator.DEAD_WOOD: Color(0.22, 0.18, 0.17),
 	IslandGenerator.WHEAT: Color(0.90, 0.76, 0.30),
+	IslandGenerator.CHEST: Color(0.55, 0.37, 0.19),
+	IslandGenerator.PLANKS: Color(0.66, 0.50, 0.31),
+	IslandGenerator.CLOTH: Color(0.86, 0.82, 0.72),
 }
 
 const NAMES := {
@@ -30,6 +33,9 @@ const NAMES := {
 	IslandGenerator.CORRUPT_SOIL: "Tierra corrupta",
 	IslandGenerator.DEAD_WOOD: "Madera muerta",
 	IslandGenerator.WHEAT: "Trigo",
+	IslandGenerator.CHEST: "Cofre",
+	IslandGenerator.PLANKS: "Tablones",
+	IslandGenerator.CLOTH: "Tela",
 }
 
 ## Bloques de la barra (teclas 1-9, en este orden).
@@ -39,7 +45,7 @@ const HOTBAR: Array[int] = [
 	IslandGenerator.LEAVES, IslandGenerator.WATER, IslandGenerator.WHEAT,
 ]
 
-const LAST_ID := IslandGenerator.WHEAT
+const LAST_ID := IslandGenerator.CLOTH
 
 
 static func color_of(id: int) -> Color:

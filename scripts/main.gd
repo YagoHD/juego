@@ -21,8 +21,7 @@ const FOG_BEGIN := 280.0
 const FOG_END := 1300.0
 const FOG_MAX := 0.9   # opacidad máxima de la niebla (1 = tapa del todo)
 
-# Punto de aparición (en voxels): la playa del pueblo junto a la bahía.
-const SPAWN_VOXEL := Vector2i(-560, 607)
+# El punto de aparición lo decide el naufragio (Structures.spawn_voxel): la playa junto al barco.
 const MAX_LOAD_SECONDS := 60.0  # tope de seguridad: entrar aunque no haya "terminado"
 
 const WORLD_DIR := "user://world"
@@ -34,6 +33,7 @@ var _hotbar: Hotbar
 var _underwater: ColorRect
 var _day_night: DayNight
 var _inventory_screen: InventoryScreen
+var _chests := ChestStorage.new()
 var _world_id := ""  # huella del mundo (nombre de sus archivos de guardado)
 var _terrain: VoxelTerrain
 var _generator: IslandGenerator
@@ -70,6 +70,7 @@ func _save_world() -> void:
 	if _terrain != null and not _loading:
 		_terrain.save_modified_blocks()
 		_save_player()
+		_chests.save_to(_chests_save_path())
 
 
 # ------------------------------------------------------------------ mundo
@@ -145,6 +146,7 @@ func _world_fingerprint() -> String:
 	# usa su copia importada, que puede ir por detrás) + la del propio generador.
 	var text := _generator.get_maps_fingerprint()
 	text += FileAccess.get_md5("res://scripts/world/island_generator.gd")
+	text += FileAccess.get_md5("res://scripts/world/structures.gd")
 	return text.md5_text().substr(0, 12)
 
 
@@ -195,12 +197,16 @@ func _make_water(material: Material) -> VoxelBlockyModelCube:
 func _build_player() -> void:
 	# El jugador existe desde el principio (sus observadores cargan el terreno a su alrededor),
 	# pero flota quieto hasta que hay suelo con colisión debajo.
-	var ground := _generator.get_ground_height(SPAWN_VOXEL.x, SPAWN_VOXEL.y)
+	var ground := _generator.get_ground_height(Structures.spawn_voxel().x, Structures.spawn_voxel().y)
 	_player = Player.new()
 	_player.near_view_voxels = NEAR_VIEW_VOXELS
-	_player.position = Vector3(SPAWN_VOXEL.x, ground + 4, SPAWN_VOXEL.y) * VOXEL_SIZE
+	_player.position = Vector3(Structures.spawn_voxel().x, ground + 4, Structures.spawn_voxel().y) * VOXEL_SIZE
 	add_child(_player)
+	_player.rotation.y = Structures.spawn_yaw()  # mirando al barco naufragado
 	_load_player()
+	_chests.load_from(_chests_save_path())
+	_player.block_used.connect(_on_block_used)
+	_player.block_broken.connect(_on_block_broken)
 	_hotbar.bind(_player.active_inventory(), _player.creative)
 	_player.creative_changed.connect(func(on: bool) -> void: _hotbar.bind(_player.active_inventory(), on))
 
@@ -244,7 +250,7 @@ func _update_loading() -> void:
 
 func _near_spawn_area() -> AABB:
 	var r := NEAR_VIEW_VOXELS * 0.8
-	return AABB(Vector3(SPAWN_VOXEL.x - r, 0, SPAWN_VOXEL.y - r), Vector3(2 * r, 256, 2 * r))
+	return AABB(Vector3(Structures.spawn_voxel().x - r, 0, Structures.spawn_voxel().y - r), Vector3(2 * r, 256, 2 * r))
 
 
 func _finish_loading() -> void:
@@ -350,7 +356,7 @@ func _update_capture() -> void:
 			var ground := _generator.get_ground_height(vx, vz)
 			_player.global_position = Vector3(vx, ground + 2, vz) * VOXEL_SIZE
 		_player.debug_pose(OS.get_cmdline_user_args().has("--tp"), float(_arg("--pitch=", "0")),
-			float(_arg("--yaw=", "0")), float(_arg("--up=", "0")) + (0.01 if at != "" else 0.0))
+			float(_arg("--yaw=", str(rad_to_deg(_player.rotation.y)))), float(_arg("--up=", "0")) + (0.01 if at != "" else 0.0))
 		var give := _arg("--give=")  # objetos para la foto: "stone:12,dirt:30"
 		if give != "":
 			_player.inventory.clear()
@@ -457,3 +463,34 @@ func _show_screen(sections: Array[Dictionary]) -> void:
 func _on_screen_closed() -> void:
 	_player.ui_open = false
 	_player._set_captured(true)
+
+
+# ------------------------------------------------------------------ cofres
+
+func _chests_save_path() -> String:
+	return WORLD_DIR.path_join("jugador_%s_cofres.json" % _world_id)
+
+
+func _on_block_used(cell: Vector3i, block_id: int) -> void:
+	if block_id != IslandGenerator.CHEST:
+		return
+	var chest := _chests.get_or_create(cell)
+	var inv := _player.active_inventory()
+	var sections: Array[Dictionary] = [
+		{"title": "Cofre", "inventory": chest, "slots": range(0, chest.size()), "columns": 9},
+		{"title": "Inventario", "inventory": inv, "slots": range(9, inv.size()), "columns": 9},
+		{"title": "Barra", "inventory": inv, "slots": range(0, 9), "columns": 9},
+	]
+	_show_screen(sections)
+
+
+func _on_block_broken(cell: Vector3i, block_id: int) -> void:
+	if block_id != IslandGenerator.CHEST:
+		return
+	# Al romper un cofre, su contenido cae al suelo.
+	var contents := _chests.remove(cell)
+	var center := (Vector3(cell) + Vector3(0.5, 0.5, 0.5)) * VOXEL_SIZE
+	for i in contents.size():
+		var stack := contents.get_slot(i)
+		if not stack.is_empty():
+			ItemDrop.spawn(self, center, stack["id"], int(stack["count"]))

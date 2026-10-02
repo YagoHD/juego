@@ -26,6 +26,9 @@ const FACES := {
 	IslandGenerator.CORRUPT_SOIL: ["corrupt_top", "corrupt_side", "dirt"],
 	IslandGenerator.DEAD_WOOD: ["dead_log_top", "dead_log_side", "dead_log_top"],
 	IslandGenerator.WHEAT: ["wheat_top", "wheat_side", "dirt"],
+	IslandGenerator.CHEST: ["chest_top", "chest_side", "chest_top"],
+	IslandGenerator.PLANKS: ["planks", "planks", "planks"],
+	IslandGenerator.CLOTH: ["cloth", "cloth", "cloth"],
 }
 
 static var _atlas: ImageTexture

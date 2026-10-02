@@ -26,6 +26,10 @@ static func paint(name: String) -> Image:
 		"corrupt_side": _corrupt_side(img, salt)
 		"wheat_top": _wheat_top(img, salt)
 		"wheat_side": _wheat_side(img, salt)
+		"planks": _planks(img, salt, Blocks.color_of(IslandGenerator.PLANKS))
+		"chest_top": _chest(img, salt, false)
+		"chest_side": _chest(img, salt, true)
+		"cloth": _cloth(img, salt)
 		_: img.fill(Color.MAGENTA)
 	return img
 
@@ -233,3 +237,51 @@ static func _wheat_side(img: Image, salt: int) -> void:
 		var top := int(_rand(x, 15, salt) * 4.0)  # tallos de distinta altura
 		for y in range(top, S - 2):
 			img.set_pixel(x, y, _shade(base, (_rand(x, y, salt) - 0.5) * 0.2 - 0.02 * (y - top)))
+
+
+static func _planks(img: Image, salt: int, base: Color) -> void:
+	# Tablas horizontales de 4 px con juntas oscuras, vetas y algún clavo.
+	for y in S:
+		var board := y / 4
+		var tone := (_rand(board, 40, salt) - 0.5) * 0.18
+		for x in S:
+			var g := tone + (_rand(x, y, salt) - 0.5) * 0.08
+			if _rand(x / 3, y, salt + 1) > 0.8:
+				g -= 0.08  # veta
+			var c := _shade(base, g)
+			if y % 4 == 3:
+				c = base.darkened(0.38)  # junta entre tablas
+			img.set_pixel(x, y, c)
+		# Extremo de la tabla desplazado en cada fila (como un suelo de madera).
+		var seam := (board * 7 + 3) % S
+		if y % 4 != 3:
+			img.set_pixel(seam, y, base.darkened(0.3))
+	for board in 4:
+		img.set_pixel((board * 5 + 2) % S, board * 4 + 1, Color(0.32, 0.3, 0.3))  # clavos
+
+
+static func _chest(img: Image, salt: int, side: bool) -> void:
+	var wood := Blocks.color_of(IslandGenerator.CHEST)
+	_planks(img, salt, wood)
+	var band := Color(0.38, 0.36, 0.34)
+	for i in S:  # bandas de hierro en el borde
+		img.set_pixel(i, 0, band)
+		img.set_pixel(i, S - 1, band.darkened(0.2))
+		img.set_pixel(0, i, band)
+		img.set_pixel(S - 1, i, band.darkened(0.2))
+	if side:
+		for x in S:  # junta de la tapa
+			img.set_pixel(x, 5, wood.darkened(0.5))
+		var gold := Color(0.85, 0.7, 0.3)  # cerradura
+		for y in range(4, 9):
+			for x in range(7, 9):
+				img.set_pixel(x, y, gold if y != 7 else gold.darkened(0.45))
+
+
+static func _cloth(img: Image, salt: int) -> void:
+	var base := Blocks.color_of(IslandGenerator.CLOTH)
+	for y in S:
+		for x in S:
+			var weave := 0.04 if (x + y) % 2 == 0 else -0.04  # trama de la lona
+			var dirt := (_smooth(x, y, 4, salt) - 0.5) * 0.18
+			img.set_pixel(x, y, _shade(base, weave + dirt + (_rand(x, y, salt) - 0.5) * 0.05))

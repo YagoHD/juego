@@ -22,6 +22,9 @@ const PINE_LEAVES := 9
 const CORRUPT_SOIL := 10
 const DEAD_WOOD := 11
 const WHEAT := 12
+const CHEST := 13
+const PLANKS := 14
+const CLOTH := 15
 
 const MAP_DIR := "res://assets/island/"
 const MAP_HALF := 1024.0      # los mapas cubren [-MAP_HALF, MAP_HALF] voxels en X y Z
@@ -50,8 +53,10 @@ func _init() -> void:
 		_surface = surface_img.get_data()
 		_hasher_update(_surface)
 	_fingerprint = _hasher.finish().hex_encode()
+	# Las estructuras se colocan con las alturas de los mapas, así que van después de cargarlos.
 	if _n > 1:
 		_voxels_per_px = 2.0 * MAP_HALF / float(_n - 1)
+	Structures.build(self)
 
 
 func _get_used_channels_mask() -> int:
@@ -151,9 +156,11 @@ func _generate_block(out_buffer: VoxelBuffer, origin_in_voxels: Vector3i, lod: i
 	# --- 1. Salidas rápidas: la mayoría de bloques son aire puro o roca maciza.
 	var span := _chunk_height_range(origin_in_voxels, size)
 	if origin_in_voxels.y > span.y + MAX_TREE_HEIGHT + 4:
+		Structures.stamp(out_buffer, origin_in_voxels)  # el mástil del naufragio puede caer aquí
 		return  # todo aire (el buffer ya viene vacío)
 	if origin_in_voxels.y + size.y <= span.x - DIRT_DEPTH - 2:
 		out_buffer.fill(STONE, VoxelBuffer.CHANNEL_TYPE)  # todo roca, de una vez
+		Structures.stamp(out_buffer, origin_in_voxels)
 		return
 
 	# --- 2. Terreno y agua: cada columna se rellena por tramos, no voxel a voxel.
@@ -188,6 +195,9 @@ func _generate_block(out_buffer: VoxelBuffer, origin_in_voxels: Vector3i, lod: i
 			if base + MAX_TREE_HEIGHT < origin_in_voxels.y or base > origin_in_voxels.y + size.y:
 				continue  # el árbol no toca este bloque
 			_stamp_tree(out_buffer, origin_in_voxels, size, wx, wz, base, kind)
+
+	# --- 4. Estructuras fabricadas a mano (el naufragio...), por encima de todo lo anterior.
+	Structures.stamp(out_buffer, origin_in_voxels)
 
 
 func _fill_run(buffer: VoxelBuffer, origin: Vector3i, size: Vector3i, x: int, z: int, id: int, from_y: int, to_y: int) -> void:

@@ -19,6 +19,9 @@ const BLOCK_ITEMS := {
 	"dead_wood": IslandGenerator.DEAD_WOOD,
 	"wheat": IslandGenerator.WHEAT,
 	"water": IslandGenerator.WATER,
+	"chest": IslandGenerator.CHEST,
+	"planks": IslandGenerator.PLANKS,
+	"cloth": IslandGenerator.CLOTH,
 }
 
 ## Qué objeto suelta cada bloque al romperlo ("" = nada). La hierba suelta tierra, como en
@@ -35,6 +38,9 @@ const DROPS := {
 	IslandGenerator.CORRUPT_SOIL: "corrupt_soil",
 	IslandGenerator.DEAD_WOOD: "dead_wood",
 	IslandGenerator.WHEAT: "wheat",
+	IslandGenerator.CHEST: "chest",
+	IslandGenerator.PLANKS: "planks",
+	IslandGenerator.CLOTH: "cloth",
 }
 
 static var _icons := {}

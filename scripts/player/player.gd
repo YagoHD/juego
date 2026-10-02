@@ -2,6 +2,9 @@ extends CharacterBody3D
 class_name Player
 
 signal creative_changed(enabled: bool)
+## Clic derecho sobre un bloque que se usa (un cofre...) en vez de colocar encima.
+signal block_used(cell: Vector3i, block_id: int)
+signal block_broken(cell: Vector3i, block_id: int)
 ## Jugador: camina, salta, vuela, mira con el ratón y rompe/coloca bloques.
 ## Cámara en primera o tercera persona (tecla V). Encuentra el VoxelTerrain por el grupo
 ## "voxel_terrain".
@@ -473,6 +476,11 @@ func _edit_block(place: bool) -> void:
 	var tool := _terrain.get_voxel_tool()
 	tool.channel = VoxelBuffer.CHANNEL_TYPE
 	if place:
+		var used: Vector3i = target["voxel"]
+		var used_id := tool.get_voxel(used)
+		if used_id == IslandGenerator.CHEST:
+			block_used.emit(used, used_id)  # abrir el cofre en vez de colocar encima
+			return
 		var cell: Vector3i = target["place"]
 		var id := get_current_block()
 		if id < 0:
@@ -493,6 +501,7 @@ func _edit_block(place: bool) -> void:
 		var drop := ItemDB.drop_of(broken)
 		if not creative and drop != "":
 			ItemDrop.spawn(get_parent(), center - Vector3.UP * size * 0.4, drop, 1)
+		block_broken.emit(cell, broken)
 
 
 func _spawn_break_particles(center: Vector3, block_id: int) -> void:
