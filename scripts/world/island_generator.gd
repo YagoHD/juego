@@ -1,8 +1,8 @@
 extends VoxelGeneratorScript
 class_name IslandGenerator
-## Genera una isla grande de costa irregular rodeada de mar: fondo marino, playa de arena,
-## praderas con colinas orgánicas, bosque de árboles y una montaña nevada desplazada.
-## Trabaja en coordenadas de voxel centradas en (0,0).
+## Genera la isla a partir de un MAPA DE ALTURAS (res://assets/island/heightmap.png):
+## la imagen define la forma (isla, montaña, bahía, tierras altas) y aquí se le añade
+## ruido fino y biomas (arena/hierba/bosque/roca/nieve). Centrado en (0,0) en voxels.
 
 # IDs de bloque (el índice debe coincidir con la librería en main.gd).
 const AIR := 0
@@ -14,32 +14,30 @@ const SNOW := 5
 const WOOD := 6
 const LEAVES := 7
 
+const HEIGHTMAP_PATH := "res://assets/island/heightmap.png"
+
 # Alturas en voxels (el mundo va a la mitad por VOXEL_SIZE=0.5).
 const OCEAN_FLOOR := 6
-const SEA_LEVEL := 24          # nivel del mar (coincide con el plano de agua en main.gd)
-const LAND_HEIGHT := 48.0
-const SNOW_LINE := 78
+const SEA_LEVEL := 24
+const PEAK := 170             # altura del punto más alto (gris 255 del mapa)
+const SNOW_LINE := 92
 const DIRT_DEPTH := 3
 
-const ISLAND_RADIUS := 820.0   # radio base de la isla en voxels (~410 m)
-const MOUNTAIN_CENTER := Vector2(260.0, -200.0)
-const MOUNTAIN_RADIUS := 320.0
-const MOUNTAIN_HEIGHT := 115.0
+# La imagen cubre el mundo en voxels [-MAP_HALF, MAP_HALF] en X y Z.
+const MAP_HALF := 860.0
 
-const TREE_DENSITY := 0.022    # probabilidad de árbol por columna de hierba
-const TREE_MARGIN := 3         # columnas extra alrededor del chunk para no cortar copas
+const TREE_DENSITY := 0.022
+const TREE_MARGIN := 3
 
-var _continent := FastNoiseLite.new()
 var _hills := FastNoiseLite.new()
 var _detail := FastNoiseLite.new()
-var _mountain := FastNoiseLite.new()  # crestas/riscos del macizo (ridged)
+var _mountain := FastNoiseLite.new()
+
+var _hmap: Image
+var _hmap_w := 0
+var _hmap_h := 0
 
 func _init() -> void:
-	_continent.noise_type = FastNoiseLite.TYPE_SIMPLEX
-	_continent.frequency = 0.0022
-	_continent.fractal_type = FastNoiseLite.FRACTAL_FBM
-	_continent.fractal_octaves = 4
-
 	_hills.noise_type = FastNoiseLite.TYPE_PERLIN
 	_hills.frequency = 0.011
 	_hills.fractal_type = FastNoiseLite.FRACTAL_FBM
@@ -53,32 +51,53 @@ func _init() -> void:
 	_mountain.fractal_type = FastNoiseLite.FRACTAL_RIDGED
 	_mountain.fractal_octaves = 4
 
+	var tex := load(HEIGHTMAP_PATH) as Texture2D
+	if tex != null:
+		_hmap = tex.get_image()
+		if _hmap != null:
+			if _hmap.is_compressed():
+				_hmap.decompress()
+			_hmap_w = _hmap.get_width()
+			_hmap_h = _hmap.get_height()
+	if _hmap == null:
+		push_error("No se pudo cargar el mapa de alturas: " + HEIGHTMAP_PATH)
+
 func _get_used_channels_mask() -> int:
 	return 1 << VoxelBuffer.CHANNEL_TYPE
 
+func _sample_height01(wx: int, wz: int) -> float:
+	if _hmap == null:
+		return 0.0
+	var u: float = (float(wx) + MAP_HALF) / (2.0 * MAP_HALF)
+	var v: float = (float(wz) + MAP_HALF) / (2.0 * MAP_HALF)
+	if u < 0.0 or u > 1.0 or v < 0.0 or v > 1.0:
+		return 0.0  # fuera del mapa = mar
+	var fx: float = u * float(_hmap_w - 1)
+	var fy: float = v * float(_hmap_h - 1)
+	var x0: int = floori(fx)
+	var y0: int = floori(fy)
+	var x1: int = mini(x0 + 1, _hmap_w - 1)
+	var y1: int = mini(y0 + 1, _hmap_h - 1)
+	var tx: float = fx - x0
+	var ty: float = fy - y0
+	var c00: float = _hmap.get_pixel(x0, y0).r
+	var c10: float = _hmap.get_pixel(x1, y0).r
+	var c01: float = _hmap.get_pixel(x0, y1).r
+	var c11: float = _hmap.get_pixel(x1, y1).r
+	return lerpf(lerpf(c00, c10, tx), lerpf(c01, c11, tx), ty)
+
 func _height_at(wx: int, wz: int) -> int:
-	var dist: float = sqrt(float(wx * wx + wz * wz))
-	var n: float = dist / ISLAND_RADIUS
-	var falloff: float = clampf(1.0 - n, 0.0, 1.0)
-	falloff = pow(falloff, 1.8)
+	var g: float = _sample_height01(wx, wz)
+	var height: float = OCEAN_FLOOR + g * float(PEAK - OCEAN_FLOOR)
 
-	var cont: float = _continent.get_noise_2d(wx, wz) * 0.5 + 0.5
-	var land_mask: float = clampf(falloff * (0.45 + 0.8 * cont), 0.0, 1.0)
+	var land: float = clampf((g - 0.11) / 0.12, 0.0, 1.0)  # 0 en la costa, 1 tierra adentro
+	height += (_hills.get_noise_2d(wx, wz) * 0.5 + 0.5) * 12.0 * land
+	height += _detail.get_noise_2d(wx, wz) * 2.0 * land
 
-	var height: float = OCEAN_FLOOR + land_mask * LAND_HEIGHT
-	var land_amount: float = clampf(land_mask * 2.0, 0.0, 1.0)
-	var hills: float = _hills.get_noise_2d(wx, wz) * 0.5 + 0.5
-	height += hills * 16.0 * land_amount
-	height += _detail.get_noise_2d(wx, wz) * 2.5 * land_amount
-
-	# Macizo escarpado (no un cono): la forma base decae con la distancia, pero el ruido
-	# "ridged" añade crestas y riscos, y un poco de erosión rompe la silueta.
-	var mdist: float = (Vector2(wx, wz) - MOUNTAIN_CENTER).length()
-	var mbase: float = clampf(1.0 - mdist / MOUNTAIN_RADIUS, 0.0, 1.0)
-	mbase = smoothstep(0.0, 1.0, mbase)
+	# Crestas y riscos solo en las zonas altas (la montaña del mapa).
+	var high: float = clampf((g - 0.62) / 0.38, 0.0, 1.0)
 	var ridge: float = clampf(_mountain.get_noise_2d(wx, wz) * 0.5 + 0.5, 0.0, 1.0)
-	var massif: float = mbase * (0.3 + 1.1 * ridge)
-	height += massif * MOUNTAIN_HEIGHT
+	height += high * ridge * 26.0
 
 	return int(roundf(height))
 
@@ -95,14 +114,13 @@ func _generate_block(out_buffer: VoxelBuffer, origin_in_voxels: Vector3i, lod: i
 			var height: int = _height_at(wx, wz)
 			var is_beach: bool = height <= SEA_LEVEL + 1
 			var is_snow: bool = height >= SNOW_LINE
-			var is_rock: bool = height >= SNOW_LINE - 18  # roca pelada alta bajo la nieve
+			var is_rock: bool = height >= SNOW_LINE - 18
 			for y in size.y:
 				var wy: int = origin_in_voxels.y + y
 				if wy >= height:
 					continue
 				var block_id: int = STONE
 				if wy == height - 1:
-					# Capa superior.
 					if is_beach:
 						block_id = SAND
 					elif is_snow:
@@ -112,7 +130,6 @@ func _generate_block(out_buffer: VoxelBuffer, origin_in_voxels: Vector3i, lod: i
 					else:
 						block_id = GRASS
 				elif wy >= height - 1 - DIRT_DEPTH:
-					# Subsuelo.
 					if is_beach:
 						block_id = SAND
 					elif is_rock:
@@ -121,7 +138,7 @@ func _generate_block(out_buffer: VoxelBuffer, origin_in_voxels: Vector3i, lod: i
 						block_id = DIRT
 				out_buffer.set_voxel(block_id, x, y, z, VoxelBuffer.CHANNEL_TYPE)
 
-	# --- Árboles (incluye margen para no cortar copas entre chunks) ---
+	# --- Árboles (con margen para no cortar copas entre chunks) ---
 	for lx in range(-TREE_MARGIN, size.x + TREE_MARGIN):
 		for lz in range(-TREE_MARGIN, size.z + TREE_MARGIN):
 			var wx: int = origin_in_voxels.x + lx
@@ -131,20 +148,17 @@ func _generate_block(out_buffer: VoxelBuffer, origin_in_voxels: Vector3i, lod: i
 				_stamp_tree(out_buffer, origin_in_voxels, size, wx, wz, base)
 
 func _tree_base(wx: int, wz: int) -> int:
-	# Devuelve la altura de la base del árbol, o -1 si no hay árbol aquí.
 	var height: int = _height_at(wx, wz)
 	if height <= SEA_LEVEL + 1 or height >= SNOW_LINE - 18:
-		return -1  # ni en la playa ni en la roca/nieve alta
+		return -1
 	if _hash01(wx, wz) < TREE_DENSITY:
 		return height
 	return -1
 
 func _stamp_tree(buffer: VoxelBuffer, origin: Vector3i, size: Vector3i, wx: int, wz: int, base: int) -> void:
-	var trunk_h: int = 4 + int(_hash01(wx * 7 + 1, wz * 7 + 3) * 3.0)  # 4..6
-	# Tronco
+	var trunk_h: int = 4 + int(_hash01(wx * 7 + 1, wz * 7 + 3) * 3.0)
 	for i in trunk_h:
 		_set_if_air(buffer, origin, size, wx, base + i, wz, WOOD)
-	# Copa (esfera de hojas en lo alto)
 	var cy: int = base + trunk_h
 	for dx in range(-2, 3):
 		for dy in range(-2, 3):
