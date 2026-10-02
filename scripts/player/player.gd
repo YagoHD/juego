@@ -12,7 +12,7 @@ const REACH := 8.0
 var _camera: Camera3D
 var _terrain: VoxelTerrain
 var _pitch := 0.0
-var _current_block := BlockyTerrainGenerator.GRASS
+var _current_block := IslandGenerator.GRASS
 var _captured := true
 
 
@@ -34,6 +34,7 @@ func _ready() -> void:
 
 	# El VoxelViewer hace que el terreno cargue chunks alrededor del jugador.
 	var viewer := VoxelViewer.new()
+	viewer.view_distance = 256  # en voxels; sube para ver más lejos (más coste)
 	_camera.add_child(viewer)
 
 	var terrains := get_tree().get_nodes_in_group("voxel_terrain")
@@ -123,7 +124,7 @@ func _edit_block(place: bool) -> void:
 	else:
 		# Un poco hacia dentro = la celda del bloque golpeado.
 		var voxel_pos := _world_to_voxel(hit_point - hit_normal * half_voxel)
-		tool.set_voxel(voxel_pos, BlockyTerrainGenerator.AIR)
+		tool.set_voxel(voxel_pos, IslandGenerator.AIR)
 
 
 func _world_to_voxel(world_pos: Vector3) -> Vector3i:

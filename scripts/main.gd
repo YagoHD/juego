@@ -10,9 +10,11 @@ var _player: Player
 var _hud: Label
 
 const BLOCK_NAMES := {
-	BlockyTerrainGenerator.GRASS: "Hierba",
-	BlockyTerrainGenerator.DIRT: "Tierra",
-	BlockyTerrainGenerator.STONE: "Piedra",
+	IslandGenerator.GRASS: "Hierba",
+	IslandGenerator.DIRT: "Tierra",
+	IslandGenerator.STONE: "Piedra",
+	IslandGenerator.SAND: "Arena",
+	IslandGenerator.SNOW: "Nieve",
 }
 
 
@@ -30,6 +32,8 @@ func _build_world() -> void:
 	library.add_model(_make_cube(Color(0.37, 0.65, 0.33)))         # 1 GRASS
 	library.add_model(_make_cube(Color(0.55, 0.40, 0.26)))         # 2 DIRT
 	library.add_model(_make_cube(Color(0.50, 0.50, 0.52)))         # 3 STONE
+	library.add_model(_make_cube(Color(0.85, 0.78, 0.55)))         # 4 SAND
+	library.add_model(_make_cube(Color(0.95, 0.96, 0.98)))         # 5 SNOW
 	library.bake()
 
 	var mesher := VoxelMesherBlocky.new()
@@ -37,11 +41,30 @@ func _build_world() -> void:
 
 	var terrain := VoxelTerrain.new()
 	terrain.mesher = mesher
-	terrain.generator = BlockyTerrainGenerator.new()
+	terrain.generator = IslandGenerator.new()
 	terrain.generate_collisions = true
 	terrain.scale = Vector3.ONE * VOXEL_SIZE  # voxels más pequeños (estilo Cube World)
 	terrain.add_to_group("voxel_terrain")
 	add_child(terrain)
+
+	_build_sea()
+
+
+func _build_sea() -> void:
+	# Plano de agua translúcido al nivel del mar (mundo = SEA_LEVEL * VOXEL_SIZE).
+	var water := MeshInstance3D.new()
+	var plane := PlaneMesh.new()
+	plane.size = Vector2(4000, 4000)
+	water.mesh = plane
+	water.position = Vector3(0, IslandGenerator.SEA_LEVEL * VOXEL_SIZE, 0)
+
+	var mat := StandardMaterial3D.new()
+	mat.albedo_color = Color(0.18, 0.40, 0.62, 0.65)
+	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	mat.metallic = 0.2
+	mat.roughness = 0.1
+	water.material_override = mat
+	add_child(water)
 
 
 func _make_cube(color: Color) -> VoxelBlockyModelCube:
