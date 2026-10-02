@@ -25,6 +25,8 @@ static func _flat(id: String, size: float) -> Mesh:
 	var n := ItemPainter.S
 	var px := size / n
 	var half := n * 0.5
+	# Los objetos de mano deben tener volumen visible; la ropa sigue siendo una pieza fina.
+	var depth := px * (0.8 if id in ["shirt", "pants", "belt", "cloth"] else 2.6)
 	var st := SurfaceTool.new()
 	st.begin(Mesh.PRIMITIVE_TRIANGLES)
 	for y in n:
@@ -38,8 +40,8 @@ static func _flat(id: String, size: float) -> Mesh:
 			var x1 := x0 + px
 			var y1 := (half - y) * px  # en la imagen la y crece hacia abajo
 			var y0 := y1 - px
-			var z0 := -px * 0.5
-			var z1 := px * 0.5
+			var z0 := -depth * 0.5
+			var z1 := depth * 0.5
 			_quad(st, c, Vector3.BACK, [Vector3(x0, y0, z1), Vector3(x1, y0, z1), Vector3(x1, y1, z1), Vector3(x0, y1, z1)])
 			_quad(st, c, Vector3.FORWARD, [Vector3(x1, y0, z0), Vector3(x0, y0, z0), Vector3(x0, y1, z0), Vector3(x1, y1, z0)])
 			if not _opaque(img, x - 1, y):

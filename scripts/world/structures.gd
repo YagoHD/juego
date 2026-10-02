@@ -35,6 +35,7 @@ static func build(gen: IslandGenerator) -> void:
 	_by_chunk.clear()
 	_chest_loot.clear()
 	_build_shipwreck(gen)
+	_build_ruins(gen)
 
 
 ## Escribe en el buffer los voxels de estructuras que caen dentro de este chunk.
@@ -61,6 +62,33 @@ static func spawn_yaw() -> float:
 
 # ------------------------------------------------------------------ el naufragio
 
+static func _build_ruins(gen: IslandGenerator) -> void:
+	# Restos de un muro antiguo en la colina del noroeste. La piedra musgosa es
+	# cosechable y también se puede usar como bloque de construcción.
+	var center := Vector2(-548.0, -691.0)
+	for row in 2:
+		var z := int(center.y) + (row * 2 - 1) * 5
+		for i in 15:
+			var x := int(center.x) - 7 + i
+			if _hash(i, row, 71) < (0.18 if i % 5 != 0 else 0.55):
+				continue  # huecos de derrumbe, con algún extremo más roto
+			var ground := gen.get_ground_height(x, z)
+			if ground <= IslandGenerator.SEA_LEVEL:
+				continue
+			var height := 1 + int(_hash(i, row, 73) * 5.0)
+			for y in height:
+				if y > 2 and _hash(i, y, row + 79) < 0.28:
+					continue
+				_put(Vector3i(x, ground + y, z), IslandGenerator.MOSSY_STONE)
+
+	# Piedras caídas y cubiertas de musgo junto a la base de los muros.
+	for i in 20:
+		var x := int(center.x + (_hash(i, 5, 83) - 0.5) * 24.0)
+		var z := int(center.y + (_hash(i, 6, 83) - 0.5) * 16.0)
+		var ground := gen.get_ground_height(x, z)
+		if ground > IslandGenerator.SEA_LEVEL and _hash(i, 7, 83) > 0.3:
+			_put(Vector3i(x, ground, z), IslandGenerator.MOSSY_STONE)
+
 static func _build_shipwreck(gen: IslandGenerator) -> void:
 	# Orilla: desde el pueblo hacia el centro de la bahía, el primer punto que ya es agua.
 	var village := Vector2(-560, 607)
@@ -80,6 +108,7 @@ static func _build_shipwreck(gen: IslandGenerator) -> void:
 	var ship_basis := Basis(Vector3.UP, -yaw) * Basis(Vector3.RIGHT, SHIP_ROLL)
 	var to_local := ship_basis.inverse()
 	var origin := Vector3(center.x, base_y, center.y)
+	var mast_x := SHIP_LENGTH * MAST_AT
 	var reach := int(SHIP_LENGTH * 0.6) + 4
 	for x in range(-reach, reach + 1):
 		for z in range(-reach, reach + 1):
@@ -91,13 +120,30 @@ static func _build_shipwreck(gen: IslandGenerator) -> void:
 				if id >= 0:
 					_put(cell, id)
 
+	# Tres cuadernas partidas que sobresalen de la cubierta: rompen la silueta de caja
+	# y hacen que el casco se lea como un barco abierto por el naufragio.
+	var rib_positions: Array[float] = [0.24, 0.49, 0.73]
+	for rib in 3:
+		var rib_x := SHIP_LENGTH * rib_positions[rib]
+		for z in range(-4, 5):
+			if _hash(rib, z, 53) < 0.22:
+				continue
+			var rib_local := Vector3(rib_x, SHIP_DEPTH + 0.7 - absf(float(z)) * 0.10, z)
+			_put(_ship_cell(rib_local, ship_basis, origin), IslandGenerator.WOOD)
+
+	# El palo mayor está partido y cae sobre la proa en una diagonal irregular.
+	for i in 10:
+		var spar_local := Vector3(mast_x + i * 0.72, SHIP_DEPTH + 4.2 - i * 0.43, 0.0)
+		_put(_ship_cell(spar_local, ship_basis, origin), IslandGenerator.WOOD)
+
 	# Cofre dentro del casco, sobre el fondo, a 2/5 de la eslora.
 	var chest_local := Vector3(SHIP_LENGTH * 0.4 - SHIP_LENGTH * 0.5, 1.5, 0.0)
 	var hull_chest := Vector3i((ship_basis * chest_local + origin).floor())
 	_put(hull_chest, IslandGenerator.CHEST)
 	_chest_loot[hull_chest] = [
 		{"id": "planks", "count": 24}, {"id": "cloth", "count": 8}, {"id": "rope", "count": 4},
-		{"id": "wood", "count": 6},
+		{"id": "wood", "count": 6}, {"id": "sticks", "count": 4},
+		{"id": "stone_knife", "count": 1},
 		{"id": "wheat", "count": 5}, {"id": "backpack", "count": 1}, {"id": "shirt", "count": 1},
 	]
 
@@ -110,21 +156,25 @@ static func _build_shipwreck(gen: IslandGenerator) -> void:
 		_put(Vector3i(int(p.x), h, int(p.y)), IslandGenerator.WOOD)
 	var sail_center := mast_start + mast_dir * 11.0 + mast_dir.orthogonal() * 3.5
 	for sx in range(-4, 5):
-		for sz in range(-3, 4):
-			if _hash(sx, sz, 7) > 0.85:
+		var half_span := 3 - int(abs(sx) / 2)
+		for sz in range(-half_span, half_span + 1):
+			if _hash(sx, sz, 7) > (0.68 if abs(sz) == half_span else 0.88):
 				continue  # vela rota: le faltan trozos
 			var p := sail_center + mast_dir * sx + mast_dir.orthogonal() * sz
 			var h := gen.get_ground_height(int(p.x), int(p.y))
 			_put(Vector3i(int(p.x), h, int(p.y)), IslandGenerator.CLOTH)
 
-	# Tablones sueltos repartidos por la orilla.
-	for i in 14:
-		var along := (_hash(i, 1, 3) - 0.5) * 40.0
+	# Restos en pequeños grupos, con huecos entre ellos, en vez de tablones aislados en fila.
+	for i in 9:
+		var along := (_hash(i, 1, 3) - 0.5) * 38.0
 		var inland := _hash(i, 2, 3) * 10.0
-		var p := shore + dir.orthogonal() * along - dir * inland
-		var h := gen.get_ground_height(int(p.x), int(p.y))
-		if h > IslandGenerator.SEA_LEVEL:
-			_put(Vector3i(int(p.x), h, int(p.y)), IslandGenerator.PLANKS)
+		for piece in 3:
+			var p := shore + dir.orthogonal() * (along + (_hash(i, piece, 31) - 0.5) * 4.0) \
+				- dir * (inland + (_hash(i, piece, 37) - 0.5) * 3.0)
+			var h := gen.get_ground_height(int(p.x), int(p.y))
+			if h > IslandGenerator.SEA_LEVEL:
+				var debris_id := IslandGenerator.DRIFTWOOD if _hash(i, piece, 41) > 0.55 else IslandGenerator.PLANKS
+				_put(Vector3i(int(p.x), h, int(p.y)), debris_id)
 
 	# Cofre medio enterrado en la arena.
 	var buried := shore - dir * 6.0 + dir.orthogonal() * 7.0
@@ -134,6 +184,7 @@ static func _build_shipwreck(gen: IslandGenerator) -> void:
 	_chest_loot[beach_chest] = [
 		{"id": "planks", "count": 10}, {"id": "cloth", "count": 3}, {"id": "rope", "count": 2},
 		{"id": "chest", "count": 1}, {"id": "pants", "count": 1}, {"id": "belt", "count": 1},
+		{"id": "berries", "count": 6},
 	]
 
 	# El jugador aparece en la playa, unos metros tierra adentro, mirando al barco.
@@ -174,6 +225,10 @@ static func _ship_voxel(p: Vector3, cell: Vector3i) -> int:
 	if p.y > SHIP_DEPTH - 0.5:
 		return -1 if broken > 0.55 else IslandGenerator.PLANKS  # cubierta medio hundida
 	return AIR  # interior hueco (aunque esté bajo la arena)
+
+
+static func _ship_cell(local: Vector3, ship_basis: Basis, origin: Vector3) -> Vector3i:
+	return Vector3i((ship_basis * local + origin).floor())
 
 
 static func _put(cell: Vector3i, id: int) -> void:

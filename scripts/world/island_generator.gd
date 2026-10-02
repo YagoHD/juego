@@ -25,6 +25,8 @@ const WHEAT := 12
 const CHEST := 13
 const PLANKS := 14
 const CLOTH := 15
+const MOSSY_STONE := 16
+const DRIFTWOOD := 17
 
 const MAP_DIR := "res://assets/island/"
 const MAP_HALF := 1024.0      # los mapas cubren [-MAP_HALF, MAP_HALF] voxels en X y Z

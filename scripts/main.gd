@@ -144,8 +144,8 @@ func _make_world_stream() -> VoxelStreamSQLite:
 	var file_name := "isla_%s.sqlite" % _world_id
 	var path := _world_dir().path_join(file_name)
 	_world_is_new = not FileAccess.file_exists(path)
-	if _world_is_new:
-		_delete_old_worlds(file_name)
+	# Las huellas distintas crean mapas separados. Conservamos los anteriores para que cambiar
+	# los mapas o volver a una versión anterior no borre construcciones, inventario ni cofres.
 	var stream := VoxelStreamSQLite.new()
 	stream.database_path = ProjectSettings.globalize_path(path)
 	stream.save_generator_output = true
@@ -159,15 +159,6 @@ func _world_fingerprint() -> String:
 	text += FileAccess.get_md5("res://scripts/world/island_generator.gd")
 	text += FileAccess.get_md5("res://scripts/world/structures.gd")
 	return text.md5_text().substr(0, 12)
-
-
-func _delete_old_worlds(keep: String) -> void:
-	var dir := DirAccess.open(_world_dir())
-	if dir == null:
-		return
-	for file in dir.get_files():
-		if (file.begins_with("isla_") or file.begins_with("jugador_")) and not file.contains(keep.get_basename().trim_prefix("isla_")):
-			dir.remove(file)
 
 
 func _build_sea() -> void:

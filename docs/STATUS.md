@@ -60,6 +60,28 @@
   con grosor en la mano y en el suelo (`scripts/items/item_mesh.gd`).
 - **Cofres** (clic derecho) y **naufragio** en la playa con botín (`scripts/world/structures.gd`).
 
+## Variante del mapa y naufragio (2026-10-02)
+- Se compactaron ligeramente los campos de pradera y bosque al oeste y sur; la montaña, la
+  meseta corrupta, las ruinas y el pueblo mantienen sus coordenadas de diseño.
+- El naufragio ahora tiene cuadernas rotas sobre la cubierta, un palo partido que cae sobre la
+  proa, una vela rasgada con forma irregular y restos de madera agrupados en la playa.
+- Antes de modificarlo se guardaron los mapas, el horneador y las estructuras originales en
+  `docs/mapa-original.zip`.
+- Los cambios de huella crean un archivo de mundo nuevo y ya no borran los guardados anteriores;
+  los datos del mapa anterior siguen en `user://world/` y se cargan si se restaura su versión.
+- Se renovaron las texturas procedurales de hierba, tierra, piedra, arena, nieve, madera, hojas,
+  corrupción y tablones. El atlas ampliado está en `assets/textures/blocks_atlas_x8.png` y la
+  versión anterior quedó guardada en `docs/texturas-originales.zip`.
+- Segunda variante más compacta: la tierra ocupa un 57,4 % del mapa horneado, frente al 64,0 %
+  de la versión anterior a la compactación; se mantienen el pico, el lago y el pinar de montaña.
+- Bloques nuevos: piedra musgosa (usada en los restos de las ruinas del noroeste) y madera de
+  deriva (usada entre los restos del naufragio). Ambos se pueden recoger y colocar.
+- Objetos nuevos: manojo de trigo, manojo de palitos, cuchillo de piedra y bayas silvestres.
+  El trigo cosechado es un objeto 3D, mientras que el trigo plantado sigue siendo un bloque.
+  Los objetos no bloque tienen más grosor al sostenerse y al caer.
+- `tools/export_items.gd` genera una hoja de vista previa de iconos en `assets/textures/`.
+  El estado previo a esta segunda variante está en `docs/variante-previa-nuevos-items.zip`.
+
 ## Siguiente (propuestas, a decidir con el usuario)
 1. **Más contenido fabricado a mano**: (el naufragio ya existe)
    casas y muelles del pueblo, ruinas, puentes del río, la roca de la torre. Opciones: estructuras

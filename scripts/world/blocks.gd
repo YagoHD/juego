@@ -18,6 +18,8 @@ const COLORS := {
 	IslandGenerator.CHEST: Color(0.55, 0.37, 0.19),
 	IslandGenerator.PLANKS: Color(0.66, 0.50, 0.31),
 	IslandGenerator.CLOTH: Color(0.86, 0.82, 0.72),
+	IslandGenerator.MOSSY_STONE: Color(0.38, 0.43, 0.34),
+	IslandGenerator.DRIFTWOOD: Color(0.40, 0.34, 0.25),
 }
 
 const NAMES := {
@@ -36,6 +38,8 @@ const NAMES := {
 	IslandGenerator.CHEST: "Cofre",
 	IslandGenerator.PLANKS: "Tablones",
 	IslandGenerator.CLOTH: "Tela",
+	IslandGenerator.MOSSY_STONE: "Piedra musgosa",
+	IslandGenerator.DRIFTWOOD: "Madera de deriva",
 }
 
 ## Bloques de la barra (teclas 1-9, en este orden).
@@ -45,7 +49,7 @@ const HOTBAR: Array[int] = [
 	IslandGenerator.LEAVES, IslandGenerator.WATER, IslandGenerator.WHEAT,
 ]
 
-const LAST_ID := IslandGenerator.CLOTH
+const LAST_ID := IslandGenerator.DRIFTWOOD
 
 
 static func color_of(id: int) -> Color:

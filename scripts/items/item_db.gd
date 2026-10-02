@@ -17,11 +17,13 @@ const BLOCK_ITEMS := {
 	"pine_leaves": IslandGenerator.PINE_LEAVES,
 	"corrupt_soil": IslandGenerator.CORRUPT_SOIL,
 	"dead_wood": IslandGenerator.DEAD_WOOD,
-	"wheat": IslandGenerator.WHEAT,
+	"wheat_crop": IslandGenerator.WHEAT,
 	"water": IslandGenerator.WATER,
 	"chest": IslandGenerator.CHEST,
 	"planks": IslandGenerator.PLANKS,
 	"cloth": IslandGenerator.CLOTH,
+	"mossy_stone": IslandGenerator.MOSSY_STONE,
+	"driftwood": IslandGenerator.DRIFTWOOD,
 }
 
 ## Qué objeto suelta cada bloque al romperlo ("" = nada). La hierba suelta tierra, como en
@@ -41,12 +43,18 @@ const DROPS := {
 	IslandGenerator.CHEST: "chest",
 	IslandGenerator.PLANKS: "planks",
 	IslandGenerator.CLOTH: "cloth",
+	IslandGenerator.MOSSY_STONE: "mossy_stone",
+	IslandGenerator.DRIFTWOOD: "driftwood",
 }
 
 ## Objetos que no son bloques. "wear": hueco de equipo donde se lleva; "pockets": huecos de
 ## barra que añade; "storage": huecos de inventario que añade.
 const OTHER_ITEMS := {
 	"rope": {"name": "Cuerda", "stack": 64},
+	"wheat": {"name": "Manojo de trigo", "stack": 32},
+	"sticks": {"name": "Manojo de palitos", "stack": 32},
+	"stone_knife": {"name": "Cuchillo de piedra", "stack": 1},
+	"berries": {"name": "Bayas silvestres", "stack": 24},
 	"shirt": {"name": "Camiseta", "stack": 1, "wear": "shirt", "pockets": 2},
 	"pants": {"name": "Pantalón", "stack": 1, "wear": "pants", "pockets": 2},
 	"belt": {"name": "Cinturón", "stack": 1, "wear": "belt", "pockets": 2},

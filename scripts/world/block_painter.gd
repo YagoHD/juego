@@ -27,6 +27,8 @@ static func paint(name: String) -> Image:
 		"wheat_top": _wheat_top(img, salt)
 		"wheat_side": _wheat_side(img, salt)
 		"planks": _planks(img, salt, Blocks.color_of(IslandGenerator.PLANKS))
+		"mossy_stone": _mossy_stone(img, salt)
+		"driftwood": _driftwood(img, salt)
 		"chest_top": _chest(img, salt, false)
 		"chest_side": _chest(img, salt, true)
 		"cloth": _cloth(img, salt)
@@ -80,110 +82,193 @@ static func _noise_fill(img: Image, base: Color, grain: float, blotch: float, sa
 
 static func _dirt(img: Image, salt: int) -> void:
 	var base := Blocks.color_of(IslandGenerator.DIRT)
-	_noise_fill(img, base, 0.18, 0.16, salt)
-	for i in 7:  # guijarros: manchas de 2 px más oscuras o más claras
+	_noise_fill(img, base, 0.15, 0.18, salt)
+	# Grumos de tierra y piedrecillas cálidas, agrupados para que no parezca ruido uniforme.
+	for i in 11:
 		var x := int(_rand(i, 1, salt) * S)
 		var y := int(_rand(i, 2, salt) * S)
-		var c := base.darkened(0.3) if i % 2 == 0 else base.lightened(0.18)
+		var c := base.darkened(0.28) if i % 3 == 0 else base.lightened(0.12)
 		img.set_pixel(x, y, c)
-		img.set_pixel((x + 1) % S, y, c)
+		if i % 2 == 0:
+			img.set_pixel((x + 1) % S, y, c)
+		if i % 4 == 0:
+			img.set_pixel(x, (y + 1) % S, c.darkened(0.08))
 
 
 static func _grass_top(img: Image, salt: int) -> void:
 	var base := Blocks.color_of(IslandGenerator.GRASS)
-	_noise_fill(img, base, 0.16, 0.14, salt)
-	for i in 22:  # briznas claras y oscuras
-		var x := int(_rand(i, 3, salt) * S)
-		var y := int(_rand(i, 4, salt) * S)
-		img.set_pixel(x, y, base.lightened(0.16) if i % 3 != 0 else base.darkened(0.2))
+	_noise_fill(img, base, 0.11, 0.22, salt)
+	# Matas legibles a tamaño real: dos píxeles de luz y una sombra corta al pie.
+	for tuft in 9:
+		var x := int(_rand(tuft, 3, salt) * S)
+		var y := int(_rand(tuft, 4, salt) * S)
+		var leaf := base.lightened(0.22) if tuft % 3 != 0 else base.darkened(0.24)
+		img.set_pixel(x, y, leaf)
+		img.set_pixel(posmod(x + 1, S), y, leaf.lightened(0.03))
+		img.set_pixel(x, posmod(y + 1, S), leaf.darkened(0.08))
+		if tuft % 2 == 0:
+			img.set_pixel(posmod(x + 1, S), posmod(y + 1, S), leaf.darkened(0.12))
 
 
 static func _grass_side(img: Image, salt: int) -> void:
 	_dirt(img, salt + 1)
 	var base := Blocks.color_of(IslandGenerator.GRASS)
 	for x in S:
-		var depth := 3 + int(_rand(x, 9, salt) * 3.0)  # la hierba cuelga irregular por el borde
+		var depth := 2 + int(_rand(x, 9, salt) * 4.0)  # la hierba cuelga irregular por el borde
 		for y in depth:
-			var g := (_rand(x, y, salt) - 0.5) * 0.16
-			img.set_pixel(x, y, _shade(base.darkened(0.05 * y), g))
+			var g := (_rand(x, y, salt) - 0.5) * 0.13
+			img.set_pixel(x, y, _shade(base.darkened(0.035 * y), g))
+		if x % 5 == 1:
+			img.set_pixel(x, depth, base.darkened(0.16))
 
 
 static func _stone(img: Image, salt: int) -> void:
 	var base := Blocks.color_of(IslandGenerator.STONE)
-	_noise_fill(img, base, 0.12, 0.28, salt)
-	# Grietas: dos trazos quebrados más oscuros.
+	_noise_fill(img, base, 0.10, 0.22, salt)
+	# Facetas minerales pequeñas, en tonos fríos y cálidos.
+	for i in 18:
+		var x := int(_rand(i, 2, salt) * S)
+		var y := int(_rand(i, 3, salt) * S)
+		var fleck := base.lightened(0.15) if i % 3 != 0 else base.darkened(0.19)
+		img.set_pixel(x, y, fleck)
+		if i % 4 == 0:
+			img.set_pixel(posmod(x + 1, S), y, fleck)
+	# Dos grietas cortas e irregulares, separadas de los destellos de mineral.
 	for c in 2:
 		var x := int(_rand(c, 5, salt) * S)
 		var y := int(_rand(c, 6, salt) * S)
-		for step in 7:
-			img.set_pixel(posmod(x, S), posmod(y, S), base.darkened(0.32))
+		for step in 5:
+			img.set_pixel(posmod(x, S), posmod(y, S), base.darkened(0.30))
+			if step % 2 == 0:
+				img.set_pixel(posmod(x + 1, S), posmod(y, S), base.darkened(0.20))
 			x += 1
 			y += int(_rand(c, step + 10, salt) * 3.0) - 1
 
 
+static func _mossy_stone(img: Image, salt: int) -> void:
+	var stone := Blocks.color_of(IslandGenerator.STONE)
+	var moss := Blocks.color_of(IslandGenerator.MOSSY_STONE)
+	_noise_fill(img, stone, 0.09, 0.20, salt)
+	for y in S:
+		for x in S:
+			var patch := _smooth(x, y, 4, salt + 11)
+			if patch > 0.57 and _rand(x, y, salt + 12) > 0.28:
+				var shade := (patch - 0.55) * 0.48 + (_rand(x, y, salt + 13) - 0.5) * 0.16
+				img.set_pixel(x, y, _shade(moss, shade))
+	# Pale flecks on the rock and tiny bright moss tips.
+	for i in 12:
+		var x := int(_rand(i, 30, salt) * S)
+		var y := int(_rand(i, 31, salt) * S)
+		var c := moss.lightened(0.2) if i % 2 == 0 else stone.lightened(0.16)
+		img.set_pixel(x, y, c)
+
+
+static func _driftwood(img: Image, salt: int) -> void:
+	var base := Blocks.color_of(IslandGenerator.DRIFTWOOD)
+	_noise_fill(img, base, 0.18, 0.12, salt)
+	# Sun-bleached grain and a few deep splits make this read differently from fresh planks.
+	for y in S:
+		for x in S:
+			if _rand(x, y, salt + 20) > 0.78:
+				img.set_pixel(x, y, base.lightened(0.20))
+	for split in 4:
+		var x := int(_rand(split, 32, salt) * S)
+		var y := int(_rand(split, 33, salt) * S)
+		for step in 5:
+			img.set_pixel(posmod(x, S), posmod(y, S), base.darkened(0.28))
+			x += 1
+			y += int(_rand(split, step + 34, salt) * 3.0) - 1
+
+
 static func _sand(img: Image, salt: int) -> void:
 	var base := Blocks.color_of(IslandGenerator.SAND)
-	_noise_fill(img, base, 0.1, 0.08, salt)
-	for i in 10:
-		img.set_pixel(int(_rand(i, 7, salt) * S), int(_rand(i, 8, salt) * S), base.darkened(0.2))
+	_noise_fill(img, base, 0.08, 0.08, salt)
+	# Ondas de arena suaves con algún grano oscuro, en vez de manchas de piedra.
+	for y in S:
+		var ripple := 0.5 + 0.5 * sin(float(y) * 0.78 + _smooth(0, y, 8, salt) * 2.0)
+		if ripple > 0.88:
+			for x in S:
+				if _rand(x, y, salt + 2) > 0.35:
+					img.set_pixel(x, y, base.lightened(0.08))
+	for i in 12:
+		var x := int(_rand(i, 7, salt) * S)
+		var y := int(_rand(i, 8, salt) * S)
+		img.set_pixel(x, y, base.darkened(0.16))
+		if i % 3 == 0:
+			img.set_pixel(posmod(x + 1, S), y, base.lightened(0.1))
 
 
 static func _snow(img: Image, salt: int) -> void:
 	var base := Blocks.color_of(IslandGenerator.SNOW)
 	for y in S:
 		for x in S:
-			var g := (_rand(x, y, salt) - 0.5) * 0.05 - _smooth(x, y, 8, salt) * 0.06
+			var g := (_rand(x, y, salt) - 0.5) * 0.045 - _smooth(x, y, 8, salt) * 0.055
 			var c := _shade(base, g)
-			c.b = minf(c.b + 0.02, 1.0)  # un toque azulado
+			c.b = minf(c.b + 0.035, 1.0)  # sombra fría de nieve compactada
 			img.set_pixel(x, y, c)
+	for i in 9:
+		var x := int(_rand(i, 17, salt) * S)
+		var y := int(_rand(i, 18, salt) * S)
+		img.set_pixel(x, y, Color(0.78, 0.86, 0.95))
+		if i % 3 == 0:
+			img.set_pixel(posmod(x + 1, S), y, Color(0.88, 0.93, 0.98))
 
 
 static func _log_side(img: Image, salt: int, base: Color) -> void:
-	# Corteza: franjas verticales de distinto tono con surcos oscuros.
+	# Corteza en bandas anchas, con surcos finos y vetas claras quebradas.
 	for x in S:
-		var column := (_rand(x, 0, salt) - 0.5) * 0.22
-		var groove := x % 4 == 0 or _rand(x, 1, salt) > 0.85
+		var band := sin(float(x) * 0.72 + _smooth(x, 0, 8, salt) * 3.0) * 0.08
+		var column := (_rand(x, 0, salt) - 0.5) * 0.12 + band
+		var groove := x % 5 == 0 or _rand(x, 1, salt) > 0.9
 		for y in S:
-			var g := column + (_rand(x, y, salt) - 0.5) * 0.1
-			if groove and _rand(x, y + 20, salt) > 0.2:
-				g -= 0.28
+			var g := column + (_rand(x, y, salt) - 0.5) * 0.08
+			if groove and _rand(x, y + 20, salt) > 0.25:
+				g -= 0.24
+			elif x % 5 == 1 and _rand(x, y + 40, salt) > 0.76:
+				g += 0.13
 			img.set_pixel(x, y, _shade(base, g))
 
 
 static func _log_top(img: Image, salt: int, bark: Color, wood: Color) -> void:
-	# Anillos concéntricos y la corteza alrededor.
+	# Anillos ligeramente irregulares: veta de madera clara y corteza gruesa alrededor.
 	for y in S:
 		for x in S:
-			var dx := x - 7.5
-			var dy := y - 7.5
-			var r := sqrt(dx * dx + dy * dy)
+			var dx := float(x) - 7.5
+			var dy := float(y) - 7.5
+			var r := sqrt(dx * dx * 0.92 + dy * dy * 1.08) + (_rand(x, y, salt) - 0.5) * 0.35
 			var c: Color
-			if maxf(absf(dx), absf(dy)) > 6.6:
+			if maxf(absf(dx), absf(dy)) > 6.4:
 				c = bark
 			else:
-				c = wood.darkened(0.16) if int(r) % 3 == 0 else wood
-			img.set_pixel(x, y, _shade(c, (_rand(x, y, salt) - 0.5) * 0.08))
+				c = wood.darkened(0.22) if int(r) % 3 == 0 else wood.lightened(0.025)
+			img.set_pixel(x, y, _shade(c, (_rand(x, y, salt) - 0.5) * 0.07))
 
 
 static func _leaves(img: Image, salt: int, base: Color) -> void:
 	for y in S:
 		for x in S:
 			var clump := _smooth(x, y, 4, salt)
-			var g := (clump - 0.5) * 0.4 + (_rand(x, y, salt) - 0.5) * 0.2
-			if _rand(x, y, salt + 3) > 0.9:
+			var g := (clump - 0.5) * 0.34 + (_rand(x, y, salt) - 0.5) * 0.13
+			if _rand(x, y, salt + 3) > 0.93:
 				g -= 0.35  # huecos oscuros entre las hojas
 			img.set_pixel(x, y, _shade(base, g))
+	for i in 10:
+		var x := int(_rand(i, 21, salt) * S)
+		var y := int(_rand(i, 22, salt) * S)
+		img.set_pixel(x, y, base.lightened(0.2))
 
 
 static func _pine(img: Image, salt: int, base: Color) -> void:
-	# Agujas: trazos diagonales cortos.
-	_noise_fill(img, base, 0.14, 0.18, salt)
-	for i in 18:
+	# Agujas agrupadas en ramilletes diagonales, con sombras profundas entre ramas.
+	_noise_fill(img, base, 0.10, 0.22, salt)
+	for i in 15:
 		var x := int(_rand(i, 11, salt) * S)
 		var y := int(_rand(i, 12, salt) * S)
-		var c := base.lightened(0.18) if i % 2 == 0 else base.darkened(0.25)
-		for k in 3:
+		var c := base.lightened(0.2) if i % 2 == 0 else base.darkened(0.27)
+		for k in 4:
 			img.set_pixel(posmod(x + k, S), posmod(y + k, S), c)
+			if k < 3 and i % 3 == 0:
+				img.set_pixel(posmod(x + k, S), posmod(y + k + 1, S), c.darkened(0.08))
 
 
 static func _water(img: Image, salt: int) -> void:
@@ -199,15 +284,20 @@ static func _water(img: Image, salt: int) -> void:
 static func _corrupt(img: Image, salt: int) -> void:
 	var base := Blocks.color_of(IslandGenerator.CORRUPT_SOIL)
 	_noise_fill(img, base, 0.16, 0.2, salt)
-	# Venas violetas que brillan un poco.
-	var vein := Color(0.62, 0.30, 0.85)
-	for v in 2:
+	# Grietas violetas ramificadas: el brillo queda rodeado por un borde oscuro.
+	var vein := Color(0.64, 0.34, 0.88)
+	for v in 3:
 		var x := int(_rand(v, 13, salt) * S)
-		var y := 0
+		var y := int(_rand(v, 14, salt) * 5.0)
 		while y < S:
-			img.set_pixel(posmod(x, S), y, vein.darkened(_rand(x, y, salt) * 0.3))
+			img.set_pixel(posmod(x, S), y, vein.darkened(_rand(x, y, salt) * 0.22))
+			if _rand(x, y, salt + 5) > 0.65:
+				img.set_pixel(posmod(x + 1, S), y, vein.darkened(0.34))
+			if _rand(x, y, salt + 6) > 0.88:
+				var branch := x + (1 if _rand(x, y, salt + 7) > 0.5 else -1)
+				img.set_pixel(posmod(branch, S), y, vein.lightened(0.08))
 			x += int(_rand(v, y + 30, salt) * 3.0) - 1
-			y += 1
+			y += 1 + int(_rand(v, y + 31, salt) * 2.0)
 
 
 static func _corrupt_side(img: Image, salt: int) -> void:
@@ -240,24 +330,27 @@ static func _wheat_side(img: Image, salt: int) -> void:
 
 
 static func _planks(img: Image, salt: int, base: Color) -> void:
-	# Tablas horizontales de 4 px con juntas oscuras, vetas y algún clavo.
+	# Tablas anchas con veta suave, juntas finas y nudos ocasionales.
 	for y in S:
 		var board := y / 4
-		var tone := (_rand(board, 40, salt) - 0.5) * 0.18
+		var tone := (_rand(board, 40, salt) - 0.5) * 0.15
 		for x in S:
-			var g := tone + (_rand(x, y, salt) - 0.5) * 0.08
-			if _rand(x / 3, y, salt + 1) > 0.8:
-				g -= 0.08  # veta
+			var g := tone + (_rand(x, y, salt) - 0.5) * 0.06
+			if _rand(x / 3, y, salt + 1) > 0.78:
+				g -= 0.07  # veta
 			var c := _shade(base, g)
 			if y % 4 == 3:
-				c = base.darkened(0.38)  # junta entre tablas
+				c = base.darkened(0.28)  # junta entre tablas
 			img.set_pixel(x, y, c)
 		# Extremo de la tabla desplazado en cada fila (como un suelo de madera).
 		var seam := (board * 7 + 3) % S
 		if y % 4 != 3:
-			img.set_pixel(seam, y, base.darkened(0.3))
-	for board in 4:
-		img.set_pixel((board * 5 + 2) % S, board * 4 + 1, Color(0.32, 0.3, 0.3))  # clavos
+			img.set_pixel(seam, y, base.darkened(0.24))
+	for board in 3:
+		var kx := (board * 5 + 4) % S
+		var ky := board * 4 + 1
+		img.set_pixel(kx, ky, base.darkened(0.25))
+		img.set_pixel(posmod(kx + 1, S), ky, base.lightened(0.08))
 
 
 static func _chest(img: Image, salt: int, side: bool) -> void:

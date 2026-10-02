@@ -57,7 +57,8 @@ func _show_item(id: String) -> void:
 	_block_mesh.visible = id != ""
 	if id == "":
 		return
-	_block_mesh.mesh = ItemMesh.make(id, BLOCK_SIZE)
+	var held_size := BLOCK_SIZE * (1.6 if ItemDB.block_of(id) < 0 else 1.0)
+	_block_mesh.mesh = ItemMesh.make(id, held_size)
 	var material := ItemMesh.make_material(id)
 	material.no_depth_test = true
 	material.render_priority = 11
