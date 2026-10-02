@@ -57,8 +57,8 @@ var _world_id := ""  # huella del mundo (nombre de sus archivos de guardado)
 var _terrain: VoxelTerrain
 var _generator: IslandGenerator
 var _loading := true
-var _loading_label: Label
-var _loading_overlay: CanvasLayer
+var _title: TitleScreen
+var _waiting_play := false   # el mundo ya está listo; la pantalla de título espera a "Jugar"
 var _elapsed := 0.0
 var _world_is_new := false
 
@@ -255,31 +255,49 @@ func _loading_title() -> String:
 
 
 func _build_loading_overlay() -> void:
-	_loading_overlay = CanvasLayer.new()
-	_loading_overlay.layer = 100  # por encima de todo
-	add_child(_loading_overlay)
-
-	var bg := ColorRect.new()
-	bg.color = Color(0.06, 0.08, 0.12)
-	bg.set_anchors_preset(Control.PRESET_FULL_RECT)
-	_loading_overlay.add_child(bg)
-
-	_loading_label = Label.new()
-	_loading_label.text = _loading_title()
-	_loading_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	_loading_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	_loading_label.set_anchors_preset(Control.PRESET_FULL_RECT)
-	_loading_label.add_theme_font_size_override("font_size", 28)
-	_loading_overlay.add_child(_loading_label)
+	# Pantalla de título: tapa el mundo mientras se prepara y, al estar listo, espera a "Jugar".
+	_title = TitleScreen.new()
+	add_child(_title)
+	_title.set_status(_loading_title())
+	_title.play_pressed.connect(_enter_game)
+	_title.quit_pressed.connect(func() -> void: get_tree().quit())
+	_player.ui_open = true
+	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 
 
 func _update_loading() -> void:
+	if _waiting_play:
+		if OS.get_cmdline_user_args().has("--title"):  # captura de la pantalla de título
+			_capture_frames += 1
+			if _capture_frames == 60:
+				get_viewport().get_texture().get_image().save_png(_arg("--capture="))
+				print("[captura] guardada en ", _arg("--capture="))
+				get_tree().quit()
+		return
 	_elapsed += get_process_delta_time()
-	_loading_label.text = "%s\n\n%.0f s" % [_loading_title(), _elapsed]
+	_title.set_status("%s   %.0f s" % [_loading_title(), _elapsed])
 
 	# Listo cuando la zona detallada alrededor del punto de aparición ya está dibujada.
 	var near_ready := _terrain.is_area_meshed(_near_spawn_area())
 	if (near_ready and _elapsed > 0.5) or _elapsed > MAX_LOAD_SECONDS:
+		if _auto_enter():
+			_finish_loading()
+		else:
+			_waiting_play = true
+			_title.set_ready()
+			Sfx.play("aprender", null, -8.0)
+
+
+## Pruebas, capturas y mediciones entran solas, sin esperar a "Jugar".
+func _auto_enter() -> bool:
+	if OS.get_cmdline_user_args().has("--title"):
+		return false
+	return _is_test() or _arg("--capture=") != "" or OS.get_cmdline_user_args().has("--quit-after-load") \
+		or DisplayServer.get_name() == "headless"
+
+
+func _enter_game() -> void:
+	if _waiting_play:
 		_finish_loading()
 
 
@@ -290,9 +308,11 @@ func _near_spawn_area() -> AABB:
 
 func _finish_loading() -> void:
 	_loading = false
-	if _loading_overlay != null:
-		_loading_overlay.queue_free()
-		_loading_overlay = null
+	if _title != null:
+		_title.queue_free()
+		_title = null
+	_player.ui_open = false
+	_player._set_captured(true)
 	print("[main] Isla cargada en %.1f s. ¡A jugar!" % _elapsed)
 	_place_journal_if_lost()
 	if _arg("--capture=") == "":

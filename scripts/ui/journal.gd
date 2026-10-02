@@ -18,7 +18,7 @@ var _pages: Array[Dictionary] = []
 var _left: Control
 var _right: Control
 var _paper: Texture2D
-var _map: Texture2D
+static var _map: Texture2D
 var _prev: Button
 var _next: Button
 
@@ -309,7 +309,7 @@ func _page_map(box: VBoxContainer) -> void:
 	holder.custom_minimum_size = Vector2(side, side)
 	box.add_child(holder)
 	var map := TextureRect.new()
-	map.texture = _map_texture()
+	map.texture = sepia_map()
 	map.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	map.size = Vector2(side, side)
 	holder.add_child(map)
@@ -411,8 +411,8 @@ func _make_paper() -> Texture2D:
 	return tex
 
 
-## El mapa de la isla, en tonos sepia (se genera una vez).
-func _map_texture() -> Texture2D:
+## El mapa de la isla, en tonos sepia (se genera una vez; también sale en la pantalla de título).
+static func sepia_map() -> Texture2D:
 	if _map != null:
 		return _map
 	var res: Resource = load("res://assets/island/preview.png")

@@ -22,6 +22,7 @@ param(
     [switch]$Pause,     # menú de pausa a la vista
     [switch]$Help,      # ayuda de controles (F1)
     [string]$Cracks = "", # grietas en el bloque apuntado (avance 0..1)
+    [switch]$Title,     # foto de la pantalla de título (mundo ya cargado)
     [int]$Page = 0,     # con -Journal: página izquierda (par)
     [string]$Learn = "", # con -Journal: recetas aprendidas, p. ej. "chest,belt"
     [int]$Wait = 90,
@@ -47,6 +48,7 @@ if ($Learn -ne "") { $gameArgs += "--learn=$Learn" }
 if ($Pause) { $gameArgs += "--pause" }
 if ($Help) { $gameArgs += "--help" }
 if ($Cracks -ne "") { $gameArgs += "--cracks=$Cracks" }
+if ($Title) { $gameArgs += "--title" }
 if ($At -ne "") { $gameArgs += "--at=$At" }
 $p = Start-Process -FilePath $Godot -ArgumentList $gameArgs -RedirectStandardOutput "$env:TEMP\capture_out.txt" -RedirectStandardError "$env:TEMP\capture_err.txt" -PassThru
 if (-not $p.WaitForExit(180000)) { $p.Kill(); Write-Output "TIMEOUT" }

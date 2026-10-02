@@ -290,6 +290,8 @@ func _refresh() -> void:
 	for view in _slot_views:
 		var inv: Inventory = _sections[view["section"]]["inventory"]
 		_show_stack(view["icon"], view["count"], inv.get_slot(view["index"]))
+		var stack := inv.get_slot(view["index"])
+		(view["panel"] as Control).tooltip_text = "" if stack.is_empty() else ItemDB.display_name(stack["id"])  # nombre al pasar el ratón
 	_cursor_view.visible = not _cursor.is_empty()
 	_show_stack(_cursor_view.get_node("icon"), _cursor_view.get_node("count"), _cursor)
 
