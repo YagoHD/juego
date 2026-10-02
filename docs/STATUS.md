@@ -19,11 +19,21 @@
 - `tests/voxel_test/` genera terreno suave (Transvoxel) por ruido con cámara libre y FPS.
 - Resultado: **59 FPS** (limitado por V-Sync a 60 Hz) → rendimiento sobrado. VOXEL_SIZE=0.5.
 
-## Toca ahora (Fase 2)
-- Cambiar de meshing **suave (Transvoxel)** a **blocky (cubos)** con `VoxelTerrain` +
-  `VoxelMesherBlocky` + una `VoxelBlockyLibrary` de tipos de bloque.
-- Jugador en primera persona con colisión y raycast.
-- **Colocar y romper bloques** (clic izq. romper, clic der. colocar).
+## Fase 2 — SUPERADA ✅
+- Terreno **blocky** (cubos) con `VoxelTerrain` + `VoxelMesherBlocky` + `VoxelBlockyLibrary`.
+- Generador por ruido con hierba/tierra/piedra (`scripts/world/blocky_terrain_generator.gd`).
+- Voxels pequeños estilo Cube World: `VOXEL_SIZE = 0.5` (terreno escalado), personaje ~4 cubos.
+- Jugador FPS con física, salto, mirar con ratón (`scripts/player/player.gd`).
+- **Romper/colocar** con raycast de física (apunta al cubo correcto aun con voxels escalados).
+  Clic izq. romper · clic der. colocar · teclas 1/2/3 eligen bloque.
+- HUD con FPS, bloque actual y controles; punto de mira que no roba clics.
+
+## Toca ahora (elegir siguiente sistema)
+Candidatos según el diseño (ver DESIGN.md):
+1. **Más tipos de bloque + inventario/selección** (ampliar la paleta y cómo se eligen).
+2. **La isla**: dar forma al terreno a mano/semilla (playa, bosque, montaña, lago, río, mar).
+3. **Supervivencia**: recoger recursos, construir, cama, ciclo día/noche, sueño/fatiga.
+4. **Pulido del jugador**: velocidad, alcance, animaciones, sonido de pasos/romper.
 
 ## Siguiente (según el diseño)
 - Supervivencia (recursos, base, cama, sueño/fatiga).
