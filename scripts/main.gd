@@ -466,6 +466,11 @@ func _update_capture() -> void:
 			open_journal()
 			_journal._spread = int(_arg("--page=", "0"))
 			_journal.open()
+		if _arg("--cracks=") != "":  # grietas en el bloque apuntado, con ese avance (0..1)
+			var t := _player._target()
+			if t.has("voxel"):
+				_player.debug_cracks = true
+				_player._cracks.show_on(_terrain.to_global(Vector3(t["voxel"])), VOXEL_SIZE, float(_arg("--cracks=")))
 		if OS.get_cmdline_user_args().has("--pause"):  # menú de pausa a la vista (sin pausar: la foto debe salir)
 			_pause.visible = true
 		if OS.get_cmdline_user_args().has("--help"):

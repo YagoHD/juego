@@ -11,6 +11,9 @@ var _main: Node
 var _step := 0
 var _wait := 0
 var _ground_id := 0
+var _hold_target := {}
+var _hold_block := 0
+var _hold_start := 0
 
 
 func _init() -> void:
@@ -109,6 +112,34 @@ func _process(_delta: float) -> bool:
 			print("Apuntar a la cuerda del suelo la recuadra: %s" % ("OK" if target.has("item") and highlight.visible else "FALLO"))
 			player._edit_block(false)
 			print("Clic izquierdo la recoge: %s" % ("OK" if player.inventory.count_of("rope") == 3 else "FALLO"))
+			player.inventory.clear()
+			_step = 6
+			_wait = 0
+		6:
+			# Romper manteniendo el clic: el bloque aguanta un rato y muestra grietas.
+			if _wait < 33:
+				return false  # que desaparezca del todo la cuerda recogida
+			if _wait == 33:
+				_hold_target = player._target()
+				_hold_block = tool.get_voxel(_hold_target["voxel"])
+				var press := InputEventMouseButton.new()
+				press.button_index = MOUSE_BUTTON_LEFT
+				press.pressed = true
+				_hold_start = Time.get_ticks_msec()
+				Input.parse_input_event(press)
+				return false
+			if _wait == 40:
+				var cracks: BlockCracks = player.get("_cracks")
+				var still := tool.get_voxel(_hold_target["voxel"]) == _hold_block
+				print("Al poco de mantener el clic, el bloque sigue y tiene grietas: %s" % ("OK" if still and cracks.visible else "FALLO (sigue=%s, grietas=%s)" % [still, cracks.visible]))
+			if Time.get_ticks_msec() - _hold_start < int((Blocks.hardness(_hold_block) + 0.5) * 1000.0):
+				return false
+			var gone := tool.get_voxel(_hold_target["voxel"]) != _hold_block
+			print("Manteniendo %.1f s se rompe: %s" % [Blocks.hardness(_hold_block), "OK" if gone else "FALLO"])
+			var release := InputEventMouseButton.new()
+			release.button_index = MOUSE_BUTTON_LEFT
+			release.pressed = false
+			Input.parse_input_event(release)
 			return true
 	return false
 

@@ -91,6 +91,12 @@ var _work_swing := 0.0
 var _crouch := 0.0           # 0..1: cuánto baja la vista al agacharse
 var _step_distance := 0.0     # metros andados desde el último paso (para el sonido)
 var _was_in_air := false
+var _breaking := false        # manteniendo el clic izquierdo sobre un bloque
+var _break_cell := Vector3i(0, -99999, 0)
+var _break_progress := 0.0   # 0..1
+var _break_swing := 0.0
+var _cracks: BlockCracks
+var debug_cracks := false
 ## true mientras hay una pantalla abierta (inventario, cofre...): no se mueve ni mira.
 var ui_open := false
 var _captured := true
@@ -160,6 +166,8 @@ func _ready() -> void:
 
 	_highlight = _make_highlight()
 	add_child(_highlight)
+	_cracks = BlockCracks.new()
+	add_child(_cracks)
 
 	var terrains := get_tree().get_nodes_in_group("voxel_terrain")
 	if terrains.size() > 0:
@@ -214,7 +222,10 @@ func _unhandled_input(event: InputEvent) -> void:
 		var zooming := Input.is_key_pressed(KEY_V)
 		match button.button_index:
 			MOUSE_BUTTON_LEFT:
-				_edit_block(false)
+				if creative:
+					_edit_block(false)  # en creativo se rompe al momento
+				else:
+					_start_breaking()
 			MOUSE_BUTTON_RIGHT:
 				_edit_block(true)
 			MOUSE_BUTTON_WHEEL_UP:
@@ -428,6 +439,7 @@ func _process(delta: float) -> void:
 
 	_avatar.set_look_pitch(_pitch)
 	_update_highlight()
+	_update_breaking(delta)
 
 
 func _wait_for_ground() -> void:
@@ -1030,3 +1042,66 @@ func _play_step(feet_wet: bool, volume_db: float) -> void:
 	if not feet_wet and _tool != null:
 		material = Sfx.material_of(_tool.get_voxel(_world_to_voxel(global_position - Vector3.UP * 0.1)))
 	Sfx.play("paso_" + material, null, volume_db, 0.12)
+
+
+# ------------------------------------------------------------------ romper manteniendo el clic
+
+## Clic izquierdo en supervivencia: un objeto del suelo se coge al momento; un bloque empieza a
+## romperse y hay que mantener el clic (cuánto, según el bloque y la herramienta de la mano).
+func _start_breaking() -> void:
+	var target := _target()
+	if target.has("item"):
+		_edit_block(false)
+		return
+	_breaking = true
+	_break_swing = 0.0
+
+
+## Segundos para romper este bloque con lo que se lleva en la mano.
+func break_time(block_id: int) -> float:
+	var t := Blocks.hardness(block_id)
+	var held := active_inventory().get_slot(_hotbar_index)
+	if not held.is_empty():
+		t /= ItemDB.tool_speed(held["id"], block_id)
+	return t
+
+
+func _update_breaking(delta: float) -> void:
+	if debug_cracks:
+		return  # solo capturas: grietas fijas
+	if _breaking and (ui_open or not _captured or not Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT)):
+		_breaking = false
+	var target := _target() if _breaking else {}
+	if not target.has("voxel") or _tool == null:
+		_reset_breaking()
+		return
+	var cell: Vector3i = target["voxel"]
+	var block := _tool.get_voxel(cell)
+	if block == IslandGenerator.AIR:
+		_reset_breaking()
+		return
+	if cell != _break_cell:
+		_break_cell = cell
+		_break_progress = 0.0
+	var size := _terrain.scale.x
+	var corner := _terrain.to_global(Vector3(cell))
+	_break_progress += delta / maxf(break_time(block), 0.01)
+	_break_swing -= delta
+	if _break_swing <= 0.0 and _break_progress < 1.0:
+		_break_swing = 0.27
+		_held.swing()
+		_avatar.swing()
+		Sfx.play("paso_" + Sfx.material_of(block), corner + Vector3.ONE * size * 0.5, -2.0, 0.15)  # golpecito
+	if _break_progress >= 1.0:
+		_edit_block(false)
+		_break_progress = 0.0
+		_break_cell = Vector3i(0, -99999, 0)
+		_break_swing = 0.15  # breve pausa antes de empezar el siguiente
+	_cracks.show_on(corner, size, _break_progress)
+
+
+func _reset_breaking() -> void:
+	_break_progress = 0.0
+	_break_cell = Vector3i(0, -99999, 0)
+	if _cracks != null:
+		_cracks.visible = false

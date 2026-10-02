@@ -58,6 +58,14 @@ func _run(p: Player) -> void:
 		and (thrown[0] as ItemDrop).pickup_delay >= 2.0)
 	p._throw_held(true)
 	_check("Ctrl+Q tira el montón entero", p.inventory.count_of("stone") == 0)
+	p.inventory.clear()
+	p._hotbar_index = 0
+	var by_hand := p.break_time(IslandGenerator.WOOD)
+	p.inventory.set_slot(0, {"id": "stone_axe", "count": 1})
+	var with_axe := p.break_time(IslandGenerator.WOOD)
+	_check("Tronco: %.1f s a mano, %.1f s con hacha" % [by_hand, with_axe], by_hand > 2.0 and with_axe < by_hand / 3.0)
+	p.inventory.set_slot(0, {"id": "stone_knife", "count": 1})
+	_check("El cuchillo corta hojas más rápido", p.break_time(IslandGenerator.LEAVES) < Blocks.hardness(IslandGenerator.LEAVES))
 	print("RESULTADO: ", "TODO OK" if _fails == 0 else "%d FALLOS" % _fails)
 	quit()
 

@@ -73,6 +73,9 @@
   mapa sepia con naufragio, ruinas y "tú", recetas del capitán y "Mis notas" a lápiz con lo
   aprendido después.
 - **Q** tira objetos (Ctrl+Q el montón).
+- **Romper lleva tiempo** (supervivencia): `Blocks.HARDNESS` (hojas 0,3 s ... piedra 3 s), grietas en
+  6 etapas (`scripts/player/block_cracks.gd`); `ItemDB.tool_speed`: hacha x4 en madera, cuchillo
+  x3 en hojas/tela/trigo. En creativo, al momento.
 - **Sonido** (`scripts/systems/sfx.gd`): todo generado por código (sin archivos): pasos según el
   suelo, romper por material, colocar, recoger, tirar, trabajar, fabricado, aprender, páginas,
   cofre, clics; ambiente: olas cerca del mar, pájaros de día, grillos de noche.

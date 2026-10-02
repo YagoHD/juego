@@ -25,7 +25,7 @@ Hecho en **Godot 4.7** con el módulo **godot_voxel** (de Zylann).
 | WASD / ratón | Moverse / mirar |
 | W dos veces rápido (y mantener) | Correr |
 | Espacio | Saltar (los escalones de 1 bloque se suben solos) |
-| Clic izquierdo / derecho | Romper / colocar bloque |
+| Clic izquierdo (mantener) / derecho | Romper (tarda según el bloque; hacha y cuchillo aceleran) / colocar bloque |
 | 1–9 o rueda del ratón | Elegir bloque |
 | V | Cámara: primera persona → tercera por detrás → tercera de frente |
 | Mantener V + ratón adelante/atrás (o rueda) | Acercar/alejar la cámara (como en Skyrim) |

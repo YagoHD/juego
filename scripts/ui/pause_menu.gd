@@ -11,7 +11,7 @@ const CONTROLS := [
 	["W A S D", "Andar (W dos veces: correr)"],
 	["Espacio", "Saltar · nadar hacia arriba"],
 	["Ratón", "Mirar"],
-	["Clic izquierdo", "Romper bloque · coger un objeto del suelo"],
+	["Clic izquierdo", "Romper bloque (mantener) · coger un objeto del suelo"],
 	["Mayús + clic izq.", "Coger todo un montón del suelo"],
 	["Clic derecho", "Colocar bloque · abrir cofre · leer nota"],
 	["1-9 / rueda", "Elegir hueco de la barra"],

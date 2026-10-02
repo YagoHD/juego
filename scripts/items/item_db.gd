@@ -114,6 +114,24 @@ static func teaches(id: String) -> String:
 	return OTHER_ITEMS.get(id, {}).get("teaches", "")
 
 
+## Cuántas veces más rápido rompe este bloque con este objeto en la mano (1 = como a mano).
+static func tool_speed(item_id: String, block_id: int) -> float:
+	var woody := [IslandGenerator.WOOD, IslandGenerator.DEAD_WOOD, IslandGenerator.DRIFTWOOD, IslandGenerator.PLANKS, IslandGenerator.CHEST]
+	var soft := [IslandGenerator.LEAVES, IslandGenerator.PINE_LEAVES, IslandGenerator.CLOTH, IslandGenerator.WHEAT]
+	match item_id:
+		"stone_axe":
+			if woody.has(block_id):
+				return 4.0
+			if soft.has(block_id):
+				return 2.0
+		"stone_knife":
+			if soft.has(block_id):
+				return 3.0
+			if woody.has(block_id):
+				return 1.3
+	return 1.0
+
+
 ## Objeto que se obtiene al romper un bloque ("" si no suelta nada).
 static func drop_of(block_id: int) -> String:
 	return DROPS.get(block_id, "")

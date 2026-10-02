@@ -52,6 +52,22 @@ const HOTBAR: Array[int] = [
 const LAST_ID := IslandGenerator.DRIFTWOOD
 
 
+## Segundos que se tarda en romper cada bloque a mano (las herramientas lo aceleran, ver
+## ItemDB.tool_speed). El agua y los que no están se rompen al momento.
+const HARDNESS := {
+	IslandGenerator.LEAVES: 0.3, IslandGenerator.PINE_LEAVES: 0.3, IslandGenerator.WHEAT: 0.1,
+	IslandGenerator.CLOTH: 0.35, IslandGenerator.SNOW: 0.4, IslandGenerator.SAND: 0.55,
+	IslandGenerator.DIRT: 0.6, IslandGenerator.GRASS: 0.7, IslandGenerator.CORRUPT_SOIL: 0.9,
+	IslandGenerator.DRIFTWOOD: 1.6, IslandGenerator.DEAD_WOOD: 1.8, IslandGenerator.PLANKS: 1.8,
+	IslandGenerator.CHEST: 1.8, IslandGenerator.WOOD: 2.4,
+	IslandGenerator.MOSSY_STONE: 2.6, IslandGenerator.STONE: 3.0,
+}
+
+
+static func hardness(id: int) -> float:
+	return HARDNESS.get(id, 0.0)
+
+
 static func color_of(id: int) -> Color:
 	return COLORS.get(id, Color.MAGENTA)
 
