@@ -71,3 +71,21 @@ nivel del mar y aparecías "buceando" con la pantalla azul. Se volvió al mapa a
 - Hacha: 2 palitos y cuerda en línea, piedra encima de la cuerda (Atar). — desmontando el hacha del cofre de la playa
 - Antorcha x2: palito con tela encima (Atar). — en el diario
 - Sobre la mesa: mochila de marinero y pico de piedra. — ruinas
+
+## Supervivencia de verdad (3 de octubre)
+
+- **Árboles**: de muchas formas (arbustos, robles, inclinados, gigantes 2x2, pinos, muertos) y
+  **caen con física** al talarlos: crujen, vuelcan, la copa se rompe y el tronco queda tumbado.
+  Los pinos dan **resina**.
+- **Cosas del suelo que no son cubos**, se recogen con la mano: **hierba alta** (fibra, a veces
+  semillas o un insecto), **flores**, **piedrecitas** (piedra, a veces pedernal), **palos** y
+  **conchas**.
+- **Progresión**: fibra → cuerda; piedra + piedra → **piedra afilada**; palo + piedra afilada +
+  cuerda → cuchillo / hacha; tronco + hacha → **tablas** (largas y finas); 2 troncos + 2 tablas →
+  **mesa de trabajo**; palo + resina → antorcha; anillo de 8 piedras + palo + fibra encima →
+  **hoguera**. Todo eso está en el diario.
+- **Hoguera**: clic derecho para ponerla; con **pedernal** se intenta encender (puede fallar);
+  con palos o troncos se le echa leña; con insectos, bayas o semillas, se asan.
+- **Nada regalado**: los cofres del barco casi no traen nada; **cada mañana el mar trae cajas a
+  la orilla** con restos al azar.
+- El cofre tiene la cerradura solo delante.

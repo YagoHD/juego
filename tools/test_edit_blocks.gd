@@ -38,7 +38,7 @@ func _process(_delta: float) -> bool:
 			var ground_items: GroundCrafting = _main.get("_ground")
 			print("El diario del capitán está en el suelo al empezar: %s" % ("OK" if ground_items.has_item("captain_journal") and not player.has_journal else "FALLO"))
 			player.pick_up("captain_journal", 1)
-			print("Recogerlo enseña lo básico (cuerda, tablones, palitos): %s" % ("OK" if player.has_journal and player.known_recipes.has("rope") and player.known_recipes.has("sticks") else "FALLO"))
+			print("Recogerlo enseña lo básico (cuerda, piedra afilada, hoguera): %s" % ("OK" if player.has_journal and player.known_recipes.has("rope") and player.known_recipes.has("sharp_rock") and player.known_recipes.has("campfire") else "FALLO"))
 			player.set_creative(false)
 			player.inventory.clear()
 			player.inventory.add("stone", 3)
