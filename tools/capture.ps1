@@ -28,6 +28,7 @@ param(
     [switch]$Craft,     # inventario de rodillas y vista de fabricar
     [switch]$Showcase,  # modelos voxelizados delante
     [switch]$Campfire,  # hoguera encendida delante
+    [string]$Textures = "", # paquete de texturas ("16x16")
     [int]$Page = 0,     # con -Journal: página izquierda (par)
     [string]$Learn = "", # con -Journal: recetas aprendidas, p. ej. "chest,belt"
     [int]$Wait = 90,
@@ -59,6 +60,7 @@ if ($Torches) { $gameArgs += "--torches" }
 if ($Craft) { $gameArgs += "--craft" }
 if ($Showcase) { $gameArgs += "--showcase" }
 if ($Campfire) { $gameArgs += "--campfire" }
+if ($Textures -ne "") { $gameArgs += "--textures=$Textures" }
 if ($At -ne "") { $gameArgs += "--at=$At" }
 $p = Start-Process -FilePath $Godot -ArgumentList $gameArgs -RedirectStandardOutput "$env:TEMP\capture_out.txt" -RedirectStandardError "$env:TEMP\capture_err.txt" -PassThru
 if (-not $p.WaitForExit(180000)) { $p.Kill(); Write-Output "TIMEOUT" }

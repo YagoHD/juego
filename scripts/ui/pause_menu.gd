@@ -129,6 +129,12 @@ func _build_options() -> Control:
 	_invert_check.focus_mode = Control.FOCUS_NONE
 	_invert_check.toggled.connect(func(on: bool) -> void: Settings.invert_y = on)
 	box.add_child(_invert_check)
+	var pack_check := CheckBox.new()
+	pack_check.text = "Texturas 16x16 (paquete CC0; al volver a entrar)"
+	pack_check.button_pressed = Settings.texture_pack == "16x16"
+	pack_check.focus_mode = Control.FOCUS_NONE
+	pack_check.toggled.connect(func(on: bool) -> void: Settings.texture_pack = "16x16" if on else "")
+	box.add_child(pack_check)
 	_fps_check = CheckBox.new()
 	_fps_check.text = "Mostrar FPS (también con F3)"
 	_fps_check.button_pressed = Settings.show_fps

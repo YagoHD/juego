@@ -68,6 +68,8 @@ var _world_is_new := false
 
 func _ready() -> void:
 	Settings.load_settings()
+	if _arg("--textures=") != "":  # capturas: probar un paquete de texturas
+		Settings.texture_pack = _arg("--textures=")
 	UiTheme.apply_cursor()
 	_sfx = Sfx.new()
 	add_child(_sfx)

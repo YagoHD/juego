@@ -11,6 +11,9 @@ class_name BlockTextures
 const TILE := 16
 const COLUMNS := 8
 const OVERRIDE_DIR := "res://assets/textures/blocks/"
+## Paquetes de texturas que se eligen en Opciones (los PNG con el nombre de cada cara; lo que
+## falte se pinta como siempre). Se aplican al empezar la partida.
+const PACKS := {"16x16": "res://assets/third_party/textures_16x16/"}
 
 ## Texturas de cada bloque: [arriba, lados, abajo].
 const FACES := {
@@ -196,6 +199,8 @@ static func _texture(name: String) -> Image:
 		turned.rotate_90(CLOCKWISE)
 		return turned
 	var path := OVERRIDE_DIR + name + ".png"
+	if not ResourceLoader.exists(path) and PACKS.has(Settings.texture_pack):
+		path = String(PACKS[Settings.texture_pack]) + name + ".png"
 	if ResourceLoader.exists(path):
 		var tex := load(path) as Texture2D
 		if tex != null:
@@ -205,8 +210,30 @@ static func _texture(name: String) -> Image:
 			img.convert(Image.FORMAT_RGBA8)
 			if img.get_width() != TILE or img.get_height() != TILE:
 				img.resize(TILE, TILE, Image.INTERPOLATE_NEAREST)
+			# Huecos transparentes (hojas): se rellenan con su propio color oscurecido, porque los
+			# bloques son opacos.
+			_fill_holes(img)
 			return img
 	return BlockPainter.paint(name)
+
+
+static func _fill_holes(img: Image) -> void:
+	var sum := Color(0, 0, 0)
+	var n := 0
+	for y in img.get_height():
+		for x in img.get_width():
+			var c := img.get_pixel(x, y)
+			if c.a > 0.5:
+				sum += c
+				n += 1
+	if n == 0 or n == img.get_width() * img.get_height():
+		return
+	var fill := (sum / n).darkened(0.35)
+	fill.a = 1.0
+	for y in img.get_height():
+		for x in img.get_width():
+			if img.get_pixel(x, y).a <= 0.5:
+				img.set_pixel(x, y, fill)
 
 
 ## Atlas como imagen normal (sin mipmaps), para guardarlo y verlo.
