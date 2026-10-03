@@ -79,7 +79,7 @@ const DECOR := [IslandGenerator.TALL_GRASS, IslandGenerator.FLOWER_RED, IslandGe
 
 
 static func is_decor(id: int) -> bool:
-	return DECOR.has(id)
+	return DECOR.has(id) or PrefabLibrary.is_soft(id)
 
 
 ## Segundos que se tarda en romper cada bloque a mano (las herramientas lo aceleran, ver
@@ -99,7 +99,7 @@ const HARDNESS := {
 
 static func hardness(id: int) -> float:
 	if PrefabLibrary.is_prefab(id):
-		return {"wood": 2.0, "rock": 2.6, "leaves": 0.25, "mushroom": 0.05}.get(PrefabLibrary.kind(id), 0.5)
+		return {"wood": 2.0, "rock": 2.6, "leaves": 0.25, "mushroom": 0.05, "crop": 0.05}.get(PrefabLibrary.kind(id), 0.5)
 	return HARDNESS.get(id, 0.0)
 
 

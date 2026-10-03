@@ -31,6 +31,7 @@ const TEST_WORLD_DIR := "user://world_test"
 ## Modo prueba (pruebas automáticas y capturas): usa un mundo aparte que se crea limpio cada vez,
 ## para no tocar nunca el mundo guardado del jugador.
 static var test_mode := false
+static var keep_test_world := false  # pruebas de guardar y cargar: no borrar el mundo de pruebas
 const AUTOSAVE_SECONDS := 60.0
 
 var _player: Player
@@ -171,7 +172,8 @@ func _make_world_stream() -> VoxelStreamSQLite:
 	# si cambian, se crea un mundo nuevo.
 	DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(_world_dir()))
 	if _is_test():
-		_clear_test_world()  # cada prueba empieza con el mundo recién creado
+		if not keep_test_world:
+			_clear_test_world()  # cada prueba empieza con el mundo recién creado
 	_world_id = _world_fingerprint()
 	var file_name := "isla_%s.sqlite" % _world_id
 	var path := _world_dir().path_join(file_name)
@@ -249,7 +251,6 @@ func _build_player() -> void:
 	_player.position = Vector3(Structures.spawn_voxel().x, ground + 4, Structures.spawn_voxel().y) * VOXEL_SIZE
 	add_child(_player)
 	_player.rotation.y = Structures.spawn_yaw()  # mirando al barco naufragado
-	_load_player()
 	_chests.load_from(_chests_save_path())
 	_ground = GroundCrafting.new()
 	add_child(_ground)
@@ -262,6 +263,11 @@ func _build_player() -> void:
 	fish_school.generator = _generator
 	fish_school.voxel_size = VOXEL_SIZE
 	_player.fish = fish_school
+	var farming := Farming.new()
+	farming.name = "Farming"
+	add_child(farming)
+	farming.terrain = _terrain
+	_player.farm = farming
 	_needs = Needs.new()
 	add_child(_needs)
 	_needs.player = _player
@@ -276,6 +282,7 @@ func _build_player() -> void:
 		_player.ui_open = false
 		_player._set_captured(true))
 	_player.ground = _ground
+	_load_player()  # después de crear hambre, cultivos... (la partida guardada los rellena)
 	_ground.load_from(_ground_save_path())
 	_player.notice.connect(_show_notice)
 	_player.sleep_requested.connect(_sleep)
@@ -647,6 +654,7 @@ func _save_player() -> void:
 		"objectives": _objectives.to_data(),
 		"drift_day": _last_drift_day,
 		"needs": _needs.to_data(),
+		"farm": _player.farm.to_data() if _player.farm != null else {},
 		"spawn": [_player.get_spawn_point().x, _player.get_spawn_point().y, _player.get_spawn_point().z],
 		"hour": _day_night.hour,
 		"day": _day_night.day,
@@ -671,6 +679,8 @@ func _load_player() -> void:
 	_last_drift_day = int(d.get("drift_day", 1))
 	if d.get("needs") is Dictionary:
 		_needs.from_data(d["needs"])
+	if d.get("farm") is Dictionary and _player.farm != null:
+		_player.farm.from_data(d["farm"])
 	var spawn: Array = d.get("spawn", [])
 	if spawn.size() == 3:
 		_player.set_spawn_point(Vector3(float(spawn[0]), float(spawn[1]), float(spawn[2])))

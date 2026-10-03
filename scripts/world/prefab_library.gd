@@ -7,7 +7,7 @@ const DIR := "res://assets/models/prefabs/"
 const NAMES := ["palm_tall", "palm_bend", "palm_short", "rock_a", "rock_d", "rock_tall",
 	"bush", "stump", "mushrooms_red", "mushrooms_tan",
 	# Nuevos, siempre al final:
-	"oak_k", "fat_k", "pine_k", "log_fallen", "bush_large"]
+	"oak_k", "fat_k", "pine_k", "log_fallen", "bush_large", "wheat_a", "wheat_b"]
 const FIRST_ID := 64
 
 static var _loaded := false
@@ -66,6 +66,18 @@ static func index_of(prefab_name: String) -> int:
 	return NAMES.find(prefab_name)
 
 
+## Id del primer trozo de un prefab (para los de un solo bloque, como los cultivos).
+static func first_id(prefab_name: String) -> int:
+	load_all()
+	var i := NAMES.find(prefab_name)
+	return _first[i] if i >= 0 else -1
+
+
+## Trozos que se atraviesan (hojas, setas, cultivos): se apuntan como la hierba.
+static func is_soft(id: int) -> bool:
+	return is_prefab(id) and kind(id) in ["leaves", "mushroom", "crop"]
+
+
 ## Piezas de un prefab: [[celda respecto a la base, id], ...].
 static func pieces(index: int) -> Array:
 	load_all()
@@ -104,7 +116,7 @@ static func make_model(id: int) -> VoxelBlockyModelMesh:
 	model.set_material_override(0, material())
 	model.culls_neighbors = false
 	model.transparency_index = 3
-	if kind(id) == "leaves" or kind(id) == "mushroom":
+	if kind(id) in ["leaves", "mushroom", "crop"]:
 		model.set_mesh_collision_enabled(0, false)
 		model.collision_aabbs = []
 	else:

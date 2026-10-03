@@ -78,6 +78,7 @@ const OTHER_ITEMS := {
 	"spear": {"name": "Lanza", "stack": 1},
 	"raw_fish": {"name": "Pescado crudo", "stack": 16},
 	"cooked_fish": {"name": "Pescado asado", "stack": 16},
+	"flatbread": {"name": "Torta de pan", "stack": 16},
 	"wheat": {"name": "Manojo de trigo", "stack": 32},
 	"sticks": {"name": "Palo", "stack": 32},
 	"stone_knife": {"name": "Cuchillo de piedra", "stack": 1},
@@ -173,6 +174,10 @@ static func tool_speed(item_id: String, block_id: int) -> float:
 static func drops_for(block_id: int, rng: RandomNumberGenerator) -> Array:
 	var roll := rng.randf()
 	if PrefabLibrary.is_prefab(block_id):
+		if PrefabLibrary.prefab_of(block_id) == "wheat_a":  # trigo verde: solo devuelve la semilla
+			return [["seeds", 1]]
+		if PrefabLibrary.prefab_of(block_id) == "wheat_b":  # trigo maduro
+			return [["wheat", 2 + int(roll < 0.5)], ["seeds", 1 + int(rng.randf() < 0.5)]]
 		if PrefabLibrary.prefab_of(block_id) in ["bush", "bush_large"]:  # los arbustos dan bayas (o fibra)
 			if roll < 0.55: return [["berries", 1 + int(rng.randf() < 0.4)]]
 			return [["fiber", 1]] if roll < 0.8 else []

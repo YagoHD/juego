@@ -30,6 +30,8 @@ const LIST := [
 	["pine_k", "tree_pineTallA_detailed", 8.0, "tree"],
 	["log_fallen", "log_large", 2.4, "trunk"],
 	["bush_large", "plant_bushLarge", 1.8, "bush"],
+	["wheat_a", "crops_wheatStageA", 0.42, "crop"],
+	["wheat_b", "crops_wheatStageB", 0.48, "crop"],
 ]
 
 var _palette := {}   # Color -> índice
@@ -76,6 +78,8 @@ func _recolor(c: Color, kind: String) -> Color:
 			return Color.from_hsv(0.27, 0.55, v * 0.85)
 		"trunk":
 			return Color.from_hsv(0.075, 0.5, v * 0.8)
+		"crop":
+			return c  # los colores del cultivo, tal cual
 		"tree":
 			if greenish or c.b > c.r:
 				return Color.from_hsv(0.25 + (v - 0.5) * 0.05, 0.6, v * 0.9)  # hojas
@@ -110,7 +114,8 @@ func _voxelize(obj: String, height: float) -> Dictionary:
 			for j in steps + 1 - i:
 				var p := a + (b - a) * (float(i) / steps) + (c - a) * (float(j) / steps)
 				# Centrado: el eje del modelo cae en el centro del bloque (0, 0).
-				var cell := Vector3i(((p + Vector3(0.25, 0.0, 0.25)) / voxel).floor())
+				# (+1 mm en altura: que el redondeo no deje la base un bloque por debajo del suelo)
+				var cell := Vector3i(((p + Vector3(0.25, 0.001, 0.25)) / voxel).floor())
 				if not cells.has(cell):
 					cells[cell] = t[3]
 	return cells
@@ -146,6 +151,8 @@ func _cut(prefab_name: String, cells: Dictionary, default_kind: String) -> Prefa
 			kind = "leaves" if green * 2 > sub.size() else "wood"
 		elif default_kind == "bush":
 			kind = "leaves"
+		elif default_kind == "crop":
+			kind = "crop"
 		p.kinds.append(kind)
 		p.colors.append(avg)
 	return p

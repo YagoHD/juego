@@ -44,6 +44,7 @@ static func paint(id: String) -> Image:
 		"bedroll": _bedroll(img)
 		"spear": _spear(img)
 		"raw_fish": _fish(img, false)
+		"flatbread": _flatbread(img)
 		"cooked_fish": _fish(img, true)
 		_: img.fill(Color.MAGENTA)
 	_outline(img)
@@ -426,3 +427,15 @@ static func _fish(img: Image, cooked: bool) -> void:
 	_rect(img, 12, 7, 12, 9, Color(0, 0, 0, 0))
 	img.set_pixel(5, 7, Color(0.1, 0.1, 0.1))     # ojo
 	_rect(img, 4, 10, 10, 10, c.lightened(0.2))
+
+
+static func _flatbread(img: Image) -> void:
+	# Torta redonda y tostada, con marcas de la brasa.
+	var c := Color(0.85, 0.66, 0.38)
+	for y in S:
+		for x in S:
+			var d := Vector2(x - 7.5, (y - 8.0) * 1.3).length()
+			if d < 6.5:
+				img.set_pixel(x, y, c.darkened(0.1 if d > 5.0 else 0.0))
+	for p in [Vector2i(5, 7), Vector2i(9, 6), Vector2i(7, 10), Vector2i(10, 9)]:
+		img.set_pixel(p.x, p.y, c.darkened(0.45))

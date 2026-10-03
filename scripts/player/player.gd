@@ -90,6 +90,7 @@ var ground: GroundCrafting   # objetos dejados en el suelo (lo pone main.gd)
 var has_journal := false     # lleva el diario del capitán
 var needs: Needs             # hambre y sed (lo pone main.gd)
 var fish: FishSchool         # peces del mar (lo pone main.gd)
+var farm: Farming           # cultivos (lo pone main.gd)
 var _working := false        # agachado fabricando
 var _work_swing := 0.0
 var _crouch := 0.0           # 0..1: cuánto baja la vista al agacharse
@@ -567,6 +568,8 @@ func _edit_block(place: bool) -> void:
 		return
 	var target := _target()
 	var at_campfire: bool = target.has("item") and (target["item"] as PlacedItem).campfire != null
+	if place and _try_plant(target):
+		return
 	if place and not at_campfire and _try_eat():
 		return
 	if place and _try_drink():
@@ -1337,3 +1340,19 @@ func _spear_fish() -> bool:
 		notice.emit("¡Has pescado un pez!")
 		return true
 	return false
+
+
+## Con semillas en la mano, clic derecho sobre la cara de arriba de hierba o tierra: se plantan.
+func _try_plant(target: Dictionary) -> bool:
+	var stack := active_inventory().get_slot(_hotbar_index)
+	if farm == null or stack.is_empty() or stack["id"] != "seeds" or not target.has("voxel") or target.has("decor"):
+		return false
+	var normal: Vector3 = target.get("normal", Vector3.ZERO)
+	if normal.y < 0.7 or not Farming.can_plant_on(_tool.get_voxel(target["voxel"])):
+		return false
+	if farm.plant(target["place"]):
+		if not creative:
+			inventory.take(_hotbar_index, 1)
+		Sfx.play("colocar", null, -6.0)
+		notice.emit("Has plantado trigo. Tardará unos minutos en madurar.")
+	return true
