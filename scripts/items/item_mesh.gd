@@ -4,7 +4,7 @@ class_name ItemMesh
 ## Kit, voxelizados); el resto (cuerda, ropa...) es su icono con grosor, un prisma por píxel.
 
 ## Objetos con modelo de cubitos (res://assets/models/voxel/<nombre>.res).
-const VOXEL_MODELS := {"stone_axe": "tool_axe", "stone_pick": "tool_pickaxe"}
+const VOXEL_MODELS := {"stone_axe": "tool_axe", "stone_pick": "tool_pickaxe", "raw_fish": "fish"}
 
 static var _voxel_cache := {}
 

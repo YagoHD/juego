@@ -256,6 +256,12 @@ func _build_player() -> void:
 	_ground.player = _player
 	_ground.crafted.connect(func(recipe_id: String) -> void: _objectives.mark("hecho_" + recipe_id))
 	_objectives.player = _player
+	var fish_school := FishSchool.new()
+	add_child(fish_school)
+	fish_school.player = _player
+	fish_school.generator = _generator
+	fish_school.voxel_size = VOXEL_SIZE
+	_player.fish = fish_school
 	_needs = Needs.new()
 	add_child(_needs)
 	_needs.player = _player

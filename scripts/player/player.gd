@@ -89,6 +89,7 @@ var known_recipes: Array = GroundRecipes.KNOWN_AT_START.duplicate()
 var ground: GroundCrafting   # objetos dejados en el suelo (lo pone main.gd)
 var has_journal := false     # lleva el diario del capitán
 var needs: Needs             # hambre y sed (lo pone main.gd)
+var fish: FishSchool         # peces del mar (lo pone main.gd)
 var _working := false        # agachado fabricando
 var _work_swing := 0.0
 var _crouch := 0.0           # 0..1: cuánto baja la vista al agacharse
@@ -239,7 +240,9 @@ func _unhandled_input(event: InputEvent) -> void:
 		var zooming := Input.is_key_pressed(KEY_V)
 		match button.button_index:
 			MOUSE_BUTTON_LEFT:
-				if creative:
+				if _spear_fish():
+					pass
+				elif creative:
 					_edit_block(false)  # en creativo se rompe al momento
 				else:
 					_start_breaking()
@@ -1317,3 +1320,20 @@ func _try_drink() -> bool:
 		Sfx.play("paso_agua", null, 0.0, 0.2)
 		notice.emit("Bebes agua del río. Fresca.")
 	return true
+
+
+## Con la lanza en la mano, clic izquierdo: lanzazo; si hay un pez cerca y delante, se pesca.
+func _spear_fish() -> bool:
+	var stack := active_inventory().get_slot(_hotbar_index)
+	if fish == null or stack.is_empty() or stack["id"] != "spear":
+		return false
+	_held.swing()
+	_avatar.swing()
+	Sfx.play("tirar", null, -4.0)
+	if fish.try_spear(_camera.global_position, -_camera.global_transform.basis.z):
+		Sfx.play("paso_agua", null, 0.0, 0.2)
+		if pick_up("raw_fish", 1) > 0:
+			ItemDrop.spawn(get_parent(), global_position + Vector3.UP, "raw_fish", 1)
+		notice.emit("¡Has pescado un pez!")
+		return true
+	return false

@@ -42,6 +42,9 @@ static func paint(id: String) -> Image:
 		"board": _board(img)
 		"campfire": _campfire(img)
 		"bedroll": _bedroll(img)
+		"spear": _spear(img)
+		"raw_fish": _fish(img, false)
+		"cooked_fish": _fish(img, true)
 		_: img.fill(Color.MAGENTA)
 	_outline(img)
 	return img
@@ -401,3 +404,25 @@ static func _bedroll(img: Image) -> void:
 	_rect(img, 2, 5, 13, 5, c.lightened(0.15))
 	for x in [5, 10]:
 		_rect(img, x, 4, x, 12, Color(0.45, 0.3, 0.16))
+
+
+static func _spear(img: Image) -> void:
+	# Palo largo en diagonal con punta de piedra atada.
+	var wood := Color(0.62, 0.45, 0.26)
+	_line(img, Vector2i(1, 15), Vector2i(11, 5), wood)
+	_line(img, Vector2i(2, 15), Vector2i(12, 5), wood.darkened(0.2))
+	var stone := Color(0.58, 0.58, 0.62)
+	_rect(img, 11, 2, 13, 4, stone)
+	_rect(img, 12, 1, 14, 2, stone.lightened(0.2))
+	_rect(img, 10, 5, 11, 6, Color(0.8, 0.66, 0.42))  # atadura
+
+
+static func _fish(img: Image, cooked: bool) -> void:
+	var c := Color(0.55, 0.62, 0.72) if not cooked else Color(0.75, 0.48, 0.25)
+	for x in range(3, 12):
+		var h := int(sin(float(x - 3) / 9.0 * PI) * 3.5)
+		_rect(img, x, 8 - h, x, 8 + h, c)
+	_rect(img, 12, 5, 14, 11, c.darkened(0.15))   # cola
+	_rect(img, 12, 7, 12, 9, Color(0, 0, 0, 0))
+	img.set_pixel(5, 7, Color(0.1, 0.1, 0.1))     # ojo
+	_rect(img, 4, 10, 10, 10, c.lightened(0.2))

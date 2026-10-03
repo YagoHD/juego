@@ -12,7 +12,7 @@ const THIRST_MINUTES := 25.0
 const FOOD := {
 	"berries": 10.0, "roasted_berries": 20.0, "insect": 5.0, "roasted_insect": 16.0,
 	"mushroom": 7.0, "roasted_mushroom": 18.0, "seeds": 2.0, "roasted_seeds": 8.0,
-	"wheat": 3.0,
+	"wheat": 3.0, "raw_fish": 6.0, "cooked_fish": 32.0,
 }
 const DRINK := 30.0
 
