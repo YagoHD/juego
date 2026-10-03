@@ -131,7 +131,7 @@ func _cut(prefab_name: String, cells: Dictionary, default_kind: String) -> Prefa
 		if sub.size() < 2:
 			continue  # una mota suelta: fuera
 		p.cells.append(b)
-		p.meshes.append(_piece_mesh(sub))
+		p.meshes.append(_piece_mesh(sub, cells, b * N))
 		var green := 0
 		var avg := Color(0, 0, 0)
 		for col: Color in sub.values():
@@ -151,9 +151,9 @@ func _cut(prefab_name: String, cells: Dictionary, default_kind: String) -> Prefa
 	return p
 
 
-## Malla de un trozo: cubitos de 1/N, solo caras que dan al aire dentro del trozo (en el borde
-## del bloque se dibujan siempre: si se rompe el vecino, no queda un agujero).
-func _piece_mesh(sub: Dictionary) -> ArrayMesh:
+## Malla de un trozo: cubitos de 1/N, solo las caras que dan al aire en el modelo entero (las que
+## tocan otro trozo no se dibujan: muchas menos caras; si se rompe el vecino se ve el hueco).
+func _piece_mesh(sub: Dictionary, all_cells: Dictionary, offset: Vector3i) -> ArrayMesh:
 	var faces := [
 		[Vector3i.UP, 1.0, [Vector3(0, 1, 1), Vector3(1, 1, 1), Vector3(1, 1, 0), Vector3(0, 1, 0)]],
 		[Vector3i.DOWN, 0.6, [Vector3(0, 0, 0), Vector3(1, 0, 0), Vector3(1, 0, 1), Vector3(0, 0, 1)]],
@@ -169,7 +169,7 @@ func _piece_mesh(sub: Dictionary) -> ArrayMesh:
 		var base := Vector3(c) * size
 		var color: Color = sub[c]
 		for f in faces:
-			if sub.has(c + (f[0] as Vector3i)):
+			if all_cells.has(offset + c + (f[0] as Vector3i)):
 				continue
 			var shade := color * float(f[1])
 			shade.a = 1.0
