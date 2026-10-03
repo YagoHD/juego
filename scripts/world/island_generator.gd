@@ -32,6 +32,13 @@ const LOG_X := 19        # tronco tumbado a lo largo de X (árbol talado)
 const LOG_Z := 20        # tronco tumbado a lo largo de Z
 const DEAD_LOG_X := 21
 const DEAD_LOG_Z := 22
+# Decoración pequeña (no cubos, sin choque): se recoge con la mano.
+const TALL_GRASS := 23
+const FLOWER_RED := 24
+const FLOWER_YELLOW := 25
+const PEBBLES := 26
+const GROUND_STICKS := 27
+const SHELL := 28
 
 const MAP_DIR := "res://assets/island/"
 const MAP_HALF := 1024.0      # los mapas cubren [-MAP_HALF, MAP_HALF] voxels en X y Z
@@ -170,6 +177,7 @@ func _generate_block(out_buffer: VoxelBuffer, origin_in_voxels: Vector3i, lod: i
 		Structures.stamp(out_buffer, origin_in_voxels)
 		return
 
+	var decor: Array[Vector4i] = []  # (x, y local, z, id): se pone al final, donde quede aire
 	# --- 2. Terreno y agua: cada columna se rellena por tramos, no voxel a voxel.
 	for x in size.x:
 		for z in size.z:
@@ -189,6 +197,11 @@ func _generate_block(out_buffer: VoxelBuffer, origin_in_voxels: Vector3i, lod: i
 			_fill_run(out_buffer, origin_in_voxels, size, x, z, sub, sub_start, height - 1)
 			_fill_run(out_buffer, origin_in_voxels, size, x, z, top, height - 1, height)
 			_fill_run(out_buffer, origin_in_voxels, size, x, z, WATER, height, water_top)
+			if water_top <= height and height > SEA_LEVEL:
+				var d := _decor_at(wx, wz, top)
+				var ly := height - origin_in_voxels.y
+				if d != AIR and ly >= 0 and ly < size.y:
+					decor.append(Vector4i(x, ly, z, d))
 
 	# --- 3. Árboles (con margen para no cortar copas entre chunks).
 	for lx in range(-TREE_MARGIN, size.x + TREE_MARGIN):
@@ -203,6 +216,11 @@ func _generate_block(out_buffer: VoxelBuffer, origin_in_voxels: Vector3i, lod: i
 				continue  # el árbol no toca este bloque
 			_stamp_tree(out_buffer, origin_in_voxels, size, wx, wz, base, kind)
 
+	# --- 3b. Decoración del suelo (después de los árboles, para no ocupar el pie de un tronco).
+	for d in decor:
+		if out_buffer.get_voxel(d.x, d.y, d.z, VoxelBuffer.CHANNEL_TYPE) == AIR:
+			out_buffer.set_voxel(d.w, d.x, d.y, d.z, VoxelBuffer.CHANNEL_TYPE)
+
 	# --- 4. Estructuras fabricadas a mano (el naufragio...), por encima de todo lo anterior.
 	Structures.stamp(out_buffer, origin_in_voxels)
 
@@ -215,6 +233,30 @@ func _fill_run(buffer: VoxelBuffer, origin: Vector3i, size: Vector3i, x: int, z:
 	var b := mini(to_y - origin.y, size.y)
 	if b > a:
 		buffer.fill_area(id, Vector3i(x, a, z), Vector3i(x + 1, b, z + 1), VoxelBuffer.CHANNEL_TYPE)
+
+
+## Qué cosa pequeña hay en el suelo de esta columna (AIR si nada), según el suelo.
+func _decor_at(wx: int, wz: int, top: int) -> int:
+	var h := _hash01(wx * 3 + 11, wz * 5 + 7)
+	if h > 0.14:
+		return AIR  # descarte barato: casi todas las columnas están vacías
+	if _tree_kind(wx, wz) != 0:
+		return AIR  # aquí nace un árbol
+	match top:
+		GRASS:
+			if h < 0.10: return TALL_GRASS
+			if h < 0.112: return FLOWER_RED
+			if h < 0.124: return FLOWER_YELLOW
+			if h < 0.13: return PEBBLES
+			if h < 0.137: return GROUND_STICKS
+		SAND:
+			if h < 0.012: return SHELL
+			if h < 0.018: return PEBBLES
+			if h < 0.023: return GROUND_STICKS
+		STONE, MOSSY_STONE, DIRT:
+			if h < 0.03: return PEBBLES
+			if h < 0.034: return GROUND_STICKS
+	return AIR
 
 
 # Tipos de árbol: 0 ninguno, 1 frondoso, 2 pino, 3 muerto.

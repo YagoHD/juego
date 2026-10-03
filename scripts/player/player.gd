@@ -96,6 +96,7 @@ var _break_cell := Vector3i(0, -99999, 0)
 var _break_progress := 0.0   # 0..1
 var _break_swing := 0.0
 var _cracks: BlockCracks
+var _loot_rng := RandomNumberGenerator.new()
 var debug_cracks := false
 var _place_ghost: MeshInstance3D   # dónde caería el objeto de la mano al dejarlo (G)
 var _place_ghost_id := ""
@@ -528,11 +529,16 @@ func _target() -> Dictionary:
 	query.exclude = [get_rid()]  # en tercera persona el rayo pasa junto al propio jugador
 	var result := get_world_3d().direct_space_state.intersect_ray(query)
 	if result.is_empty():
-		return {}
+		var only_decor := _decor_hit(from, forward, REACH + _spring.spring_length)
+		return {} if only_decor.is_empty() else _decor_target(only_decor["cell"])
 	var hit_point: Vector3 = result.position
 	if hit_point.distance_to(_head.global_position) > REACH:
 		return {}  # demasiado lejos de los ojos del personaje
 	var hit_normal: Vector3 = result.normal
+	# La hierba, flores, piedrecitas... no chocan: se buscan aparte, y gana lo que esté más cerca.
+	var decor := _decor_hit(from, forward, from.distance_to(hit_point))
+	if not decor.is_empty():
+		return _decor_target(decor["cell"])
 	if result.collider is PlacedItem:
 		return {"item": result.collider, "point": hit_point, "normal": hit_normal}
 	var half_voxel: float = _terrain.scale.x * 0.5
@@ -585,10 +591,18 @@ func _edit_block(place: bool) -> void:
 		var center := _terrain.to_global(Vector3(cell)) + Vector3.ONE * size * 0.5
 		_spawn_break_particles(center, broken)
 		Sfx.play("romper_" + Sfx.material_of(broken), center)
-		# En supervivencia, el bloque roto cae al suelo como objeto.
-		var drop := ItemDB.drop_of(broken)
-		if not creative and drop != "":
-			ItemDrop.spawn(get_parent(), center - Vector3.UP * size * 0.4, drop, 1)
+		# En supervivencia, el bloque roto cae al suelo como objeto (la hierba, con suerte).
+		if not creative:
+			for d in ItemDB.drops_for(broken, _loot_rng):
+				ItemDrop.spawn(get_parent(), center - Vector3.UP * size * 0.4, d[0], d[1])
+		# Lo que crecía encima (hierba, flores...) se queda sin suelo: cae también.
+		var above := cell + Vector3i.UP
+		var above_id := tool.get_voxel(above)
+		if Blocks.is_decor(above_id):
+			tool.set_voxel(above, IslandGenerator.AIR)
+			if not creative:
+				for d in ItemDB.drops_for(above_id, _loot_rng):
+					ItemDrop.spawn(get_parent(), center + Vector3.UP * size * 0.6, d[0], d[1])
 		TreeFelling.try_fell(get_parent(), _terrain, cell, broken, global_position)  # ¿se cae el árbol?
 		block_broken.emit(cell, broken)
 
@@ -1193,3 +1207,52 @@ func eye_position() -> Vector3:
 ## ¿Puede arrodillarse ahora? (no en el agua, ni en el aire, ni volando)
 func can_kneel() -> bool:
 	return is_on_floor() and not _flying and not _in_water(global_position + Vector3.UP * BODY_HEIGHT * 0.28)
+
+
+# ------------------------------------------------------------------ decoración del suelo
+
+## La decoración no tiene choque (se atraviesa): se busca recorriendo el rayo bloque a bloque.
+## Devuelve {"cell", "dist"} de la primera que encuentre antes de max_dist (o de un bloque sólido).
+func _decor_hit(from: Vector3, dir: Vector3, max_dist: float) -> Dictionary:
+	if _tool == null:
+		return {}
+	var vs := _terrain.scale.x
+	var p := _terrain.to_local(from)
+	var cell := Vector3i(p.floor())
+	var step := Vector3i(int(signf(dir.x)), int(signf(dir.y)), int(signf(dir.z)))
+	var t_max := Vector3(INF, INF, INF)
+	var t_delta := Vector3(INF, INF, INF)
+	for axis in 3:
+		if absf(dir[axis]) > 0.000001:
+			var boundary := float(cell[axis] + (1 if dir[axis] > 0.0 else 0))
+			t_max[axis] = (boundary - p[axis]) / dir[axis]
+			t_delta[axis] = absf(1.0 / dir[axis])
+	var t := 0.0
+	var max_t := minf(max_dist, REACH + _spring.spring_length) / vs
+	while t <= max_t:
+		var id := _tool.get_voxel(cell)
+		if Blocks.is_decor(id):
+			if _terrain.to_global(Vector3(cell) + Vector3.ONE * 0.5).distance_to(_head.global_position) <= REACH + 0.3:
+				return {"cell": cell, "dist": t * vs}
+			return {}
+		if id != IslandGenerator.AIR and id != IslandGenerator.WATER:
+			return {}
+		if t_max.x <= t_max.y and t_max.x <= t_max.z:
+			t = t_max.x
+			t_max.x += t_delta.x
+			cell.x += step.x
+		elif t_max.y <= t_max.z:
+			t = t_max.y
+			t_max.y += t_delta.y
+			cell.y += step.y
+		else:
+			t = t_max.z
+			t_max.z += t_delta.z
+			cell.z += step.z
+	return {}
+
+
+func _decor_target(cell: Vector3i) -> Dictionary:
+	var center := _terrain.to_global(Vector3(cell) + Vector3(0.5, 0.0, 0.5))
+	# Colocar un bloque apuntando a la hierba la sustituye (como en Minecraft).
+	return {"voxel": cell, "place": cell, "point": center, "normal": Vector3.UP, "decor": true}

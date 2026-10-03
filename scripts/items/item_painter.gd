@@ -24,6 +24,18 @@ static func paint(id: String) -> Image:
 		"note_belt", "note_backpack", "note_pick": _note(img)
 		"stone_pick": _stone_pick(img)
 		"torch": _torch(img)
+		"fiber": _fiber(img)
+		"seeds": _seeds(img)
+		"insect": _insect(img)
+		"rock": _rock(img, Color(0.56, 0.56, 0.58))
+		"flint": _rock(img, Color(0.3, 0.3, 0.36))
+		"sharp_rock": _sharp_rock(img)
+		"shell": _shell(img)
+		"flower_red": _flower(img, Color(0.82, 0.2, 0.2))
+		"flower_yellow": _flower(img, Color(0.95, 0.82, 0.25))
+		"resin": _resin(img)
+		"board": _board(img)
+		"campfire": _campfire(img)
 		_: img.fill(Color.MAGENTA)
 	_outline(img)
 	return img
@@ -259,3 +271,96 @@ static func _torch(img: Image) -> void:
 	_rect(img, 6, 3, 9, 4, Color(1.0, 0.62, 0.12))   # llama
 	_rect(img, 7, 1, 8, 2, Color(1.0, 0.85, 0.3))
 	_rect(img, 7, 3, 8, 4, Color(1.0, 0.92, 0.55))
+
+
+static func _fiber(img: Image) -> void:
+	# Manojo de fibras vegetales, atado por el medio.
+	var c := Color(0.62, 0.66, 0.36)
+	for k in 5:
+		_line(img, Vector2i(3 + k * 2, 14), Vector2i(5 + k, 2), c.darkened(0.08 * k))
+	_rect(img, 4, 8, 11, 9, Color(0.5, 0.42, 0.25))
+
+
+static func _seeds(img: Image) -> void:
+	var c := Color(0.55, 0.42, 0.22)
+	for p in [Vector2i(4, 6), Vector2i(8, 4), Vector2i(10, 8), Vector2i(6, 10), Vector2i(11, 12), Vector2i(4, 12)]:
+		_rect(img, p.x, p.y, p.x + 1, p.y + 1, c)
+		img.set_pixel(p.x, p.y, c.lightened(0.25))
+
+
+static func _insect(img: Image) -> void:
+	# Escarabajo visto desde arriba.
+	var shell := Color(0.25, 0.45, 0.3)
+	_rect(img, 6, 5, 9, 12, shell)
+	_rect(img, 7, 3, 8, 4, Color(0.15, 0.15, 0.12))   # cabeza
+	_rect(img, 7, 5, 8, 12, shell.lightened(0.2))     # línea del caparazón
+	for y in [6, 8, 10]:
+		img.set_pixel(5, y, Color(0.1, 0.1, 0.08))
+		img.set_pixel(4, y + 1, Color(0.1, 0.1, 0.08))
+		img.set_pixel(10, y, Color(0.1, 0.1, 0.08))
+		img.set_pixel(11, y + 1, Color(0.1, 0.1, 0.08))
+
+
+static func _rock(img: Image, c: Color) -> void:
+	_rect(img, 4, 6, 11, 12, c)
+	_rect(img, 5, 5, 10, 5, c)
+	_rect(img, 3, 8, 3, 11, c.darkened(0.15))
+	_rect(img, 5, 6, 7, 7, c.lightened(0.2))
+	_rect(img, 8, 11, 11, 12, c.darkened(0.2))
+
+
+static func _sharp_rock(img: Image) -> void:
+	# Lasca de piedra en punta, con el filo claro.
+	var c := Color(0.5, 0.5, 0.54)
+	for y in range(3, 14):
+		var w := int((y - 3) * 0.6)
+		_rect(img, 8 - w, y, 8 + w / 2, y, c)
+	_line(img, Vector2i(8, 3), Vector2i(2, 13), c.lightened(0.35))  # filo
+
+
+static func _shell(img: Image) -> void:
+	# Concha en abanico, con estrías.
+	var c := Color(0.95, 0.85, 0.76)
+	for y in range(4, 13):
+		var w := int((y - 3) * 0.7)
+		_rect(img, 8 - w, y, 8 + w, y, c)
+	for k in [-4, -2, 0, 2, 4]:
+		_line(img, Vector2i(8, 4), Vector2i(8 + k, 12), Color(0.85, 0.65, 0.58))
+	_rect(img, 7, 13, 9, 14, Color(0.85, 0.7, 0.62))
+
+
+static func _flower(img: Image, petal: Color) -> void:
+	_line(img, Vector2i(8, 15), Vector2i(8, 7), Color(0.3, 0.55, 0.22))
+	_rect(img, 9, 10, 10, 11, Color(0.35, 0.6, 0.25))   # hoja
+	for d in [Vector2i(0, -2), Vector2i(2, 0), Vector2i(0, 2), Vector2i(-2, 0)]:
+		_rect(img, 7 + d.x, 4 + d.y, 8 + d.x, 5 + d.y, petal)
+	_rect(img, 7, 4, 8, 5, Color(0.95, 0.85, 0.35) if petal.r > petal.g else Color(0.6, 0.35, 0.15))
+
+
+static func _resin(img: Image) -> void:
+	# Gota de resina ámbar, brillante.
+	var c := Color(0.85, 0.55, 0.12)
+	for y in range(3, 14):
+		var w := mini(int((y - 3) * 0.5), 4) if y < 10 else 13 - y
+		_rect(img, 8 - w, y, 8 + w, y, c)
+	_rect(img, 6, 8, 6, 10, c.lightened(0.5))
+
+
+static func _board(img: Image) -> void:
+	# Tabla larga y fina, en diagonal.
+	var wood := Color(0.7, 0.52, 0.32)
+	for k in 3:
+		_line(img, Vector2i(1 + k, 13 + k - 1), Vector2i(13 + k, 1 + k - 1), wood.darkened(0.08 * k))
+	_line(img, Vector2i(4, 11), Vector2i(6, 9), wood.darkened(0.3))  # veta
+
+
+static func _campfire(img: Image) -> void:
+	# Anillo de piedras con leña cruzada.
+	var stone := Color(0.55, 0.55, 0.57)
+	for p in [Vector2i(2, 11), Vector2i(5, 13), Vector2i(10, 13), Vector2i(13, 11), Vector2i(3, 8), Vector2i(12, 8)]:
+		_rect(img, p.x, p.y, p.x + 1, p.y + 1, stone)
+	var wood := Color(0.5, 0.34, 0.18)
+	_line(img, Vector2i(4, 12), Vector2i(11, 6), wood)
+	_line(img, Vector2i(11, 12), Vector2i(4, 6), wood.darkened(0.15))
+	_rect(img, 7, 3, 8, 6, Color(1.0, 0.6, 0.15))
+	img.set_pixel(7, 2, Color(1.0, 0.85, 0.35))

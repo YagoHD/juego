@@ -57,8 +57,20 @@ const DROPS := {
 ## barra que añade; "storage": huecos de inventario que añade.
 const OTHER_ITEMS := {
 	"rope": {"name": "Cuerda", "stack": 64},
+	"fiber": {"name": "Fibra", "stack": 64},
+	"seeds": {"name": "Semillas", "stack": 64},
+	"insect": {"name": "Insecto", "stack": 32},
+	"rock": {"name": "Piedra", "stack": 32},
+	"flint": {"name": "Pedernal", "stack": 32},
+	"sharp_rock": {"name": "Piedra afilada", "stack": 16},
+	"shell": {"name": "Concha", "stack": 32},
+	"flower_red": {"name": "Flor roja", "stack": 32},
+	"flower_yellow": {"name": "Flor amarilla", "stack": 32},
+	"resin": {"name": "Resina", "stack": 32},
+	"board": {"name": "Tabla", "stack": 16},
+	"campfire": {"name": "Hoguera", "stack": 4},
 	"wheat": {"name": "Manojo de trigo", "stack": 32},
-	"sticks": {"name": "Manojo de palitos", "stack": 32},
+	"sticks": {"name": "Palo", "stack": 32},
 	"stone_knife": {"name": "Cuchillo de piedra", "stack": 1},
 	"stone_axe": {"name": "Hacha de piedra", "stack": 1},
 	"stone_pick": {"name": "Pico de piedra", "stack": 1},
@@ -144,6 +156,31 @@ static func tool_speed(item_id: String, block_id: int) -> float:
 			if woody.has(block_id):
 				return 1.3
 	return 1.0
+
+
+## Lo que da un bloque al romperlo: [[id, cantidad], ...]. La decoración del suelo tiene suerte:
+## la hierba da fibra casi siempre, a veces semillas y rara vez un insecto; las piedrecitas,
+## a veces pedernal.
+static func drops_for(block_id: int, rng: RandomNumberGenerator) -> Array:
+	var roll := rng.randf()
+	match block_id:
+		IslandGenerator.TALL_GRASS:
+			if roll < 0.68: return [["fiber", 1 + int(rng.randf() < 0.3)]]
+			if roll < 0.84: return [["seeds", 1]]
+			if roll < 0.92: return [["insect", 1]]
+			return []
+		IslandGenerator.PEBBLES:
+			return [["flint", 1]] if roll < 0.15 else [["rock", 1 + int(rng.randf() < 0.4)]]
+		IslandGenerator.GROUND_STICKS:
+			return [["sticks", 1 + int(rng.randf() < 0.5)]]
+		IslandGenerator.SHELL:
+			return [["shell", 1]]
+		IslandGenerator.FLOWER_RED:
+			return [["flower_red", 1]]
+		IslandGenerator.FLOWER_YELLOW:
+			return [["flower_yellow", 1]]
+	var drop := drop_of(block_id)
+	return [] if drop == "" else [[drop, 1]]
 
 
 ## Objeto que se obtiene al romper un bloque ("" si no suelta nada).

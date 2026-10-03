@@ -25,6 +25,12 @@ const COLORS := {
 	IslandGenerator.LOG_Z: Color(0.45, 0.30, 0.17),
 	IslandGenerator.DEAD_LOG_X: Color(0.22, 0.18, 0.17),
 	IslandGenerator.DEAD_LOG_Z: Color(0.22, 0.18, 0.17),
+	IslandGenerator.TALL_GRASS: Color(0.36, 0.6, 0.25),
+	IslandGenerator.FLOWER_RED: Color(0.8, 0.2, 0.2),
+	IslandGenerator.FLOWER_YELLOW: Color(0.92, 0.8, 0.25),
+	IslandGenerator.PEBBLES: Color(0.55, 0.55, 0.55),
+	IslandGenerator.GROUND_STICKS: Color(0.45, 0.32, 0.18),
+	IslandGenerator.SHELL: Color(0.95, 0.86, 0.78),
 }
 
 const NAMES := {
@@ -50,6 +56,12 @@ const NAMES := {
 	IslandGenerator.LOG_Z: "Tronco caído",
 	IslandGenerator.DEAD_LOG_X: "Tronco seco caído",
 	IslandGenerator.DEAD_LOG_Z: "Tronco seco caído",
+	IslandGenerator.TALL_GRASS: "Hierba alta",
+	IslandGenerator.FLOWER_RED: "Flor roja",
+	IslandGenerator.FLOWER_YELLOW: "Flor amarilla",
+	IslandGenerator.PEBBLES: "Piedras sueltas",
+	IslandGenerator.GROUND_STICKS: "Palos",
+	IslandGenerator.SHELL: "Concha",
 }
 
 ## Bloques de la barra (teclas 1-9, en este orden).
@@ -59,7 +71,15 @@ const HOTBAR: Array[int] = [
 	IslandGenerator.LEAVES, IslandGenerator.WATER, IslandGenerator.WHEAT,
 ]
 
-const LAST_ID := IslandGenerator.DEAD_LOG_Z
+const LAST_ID := IslandGenerator.SHELL
+
+## Cosas pequeñas del suelo: no son cubos, no chocan y se recogen con la mano al momento.
+const DECOR := [IslandGenerator.TALL_GRASS, IslandGenerator.FLOWER_RED, IslandGenerator.FLOWER_YELLOW,
+	IslandGenerator.PEBBLES, IslandGenerator.GROUND_STICKS, IslandGenerator.SHELL]
+
+
+static func is_decor(id: int) -> bool:
+	return DECOR.has(id)
 
 
 ## Segundos que se tarda en romper cada bloque a mano (las herramientas lo aceleran, ver
@@ -71,6 +91,8 @@ const HARDNESS := {
 	IslandGenerator.DRIFTWOOD: 1.6, IslandGenerator.DEAD_WOOD: 1.8, IslandGenerator.PLANKS: 1.8,
 	IslandGenerator.CHEST: 1.8, IslandGenerator.WORKBENCH: 1.8, IslandGenerator.WOOD: 2.4,
 	IslandGenerator.LOG_X: 2.4, IslandGenerator.LOG_Z: 2.4, IslandGenerator.DEAD_LOG_X: 1.8, IslandGenerator.DEAD_LOG_Z: 1.8,
+	IslandGenerator.TALL_GRASS: 0.05, IslandGenerator.FLOWER_RED: 0.05, IslandGenerator.FLOWER_YELLOW: 0.05,
+	IslandGenerator.PEBBLES: 0.05, IslandGenerator.GROUND_STICKS: 0.05, IslandGenerator.SHELL: 0.05,
 	IslandGenerator.MOSSY_STONE: 2.6, IslandGenerator.STONE: 3.0,
 }
 

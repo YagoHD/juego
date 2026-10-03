@@ -112,6 +112,8 @@ func _build_world() -> void:
 			library.add_model(_make_water(water))
 		elif id == IslandGenerator.CLOTH:
 			library.add_model(_make_carpet(id, solid))
+		elif Blocks.is_decor(id):
+			library.add_model(DecorModels.make_model(id))  # hierba, flores, piedrecitas...
 		else:
 			library.add_model(_make_cube(id, solid))
 	library.bake()
