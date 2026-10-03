@@ -153,7 +153,7 @@ func _update_gulls(delta: float) -> void:
 	var t := Time.get_ticks_msec() * 0.001
 	for g in _gulls.duplicate():
 		var node: Node3D = g["node"]
-		if node.global_position.distance_to(me) > NEAR + 20.0:
+		if Vector2(node.global_position.x - me.x, node.global_position.z - me.z).length() > NEAR + 45.0:
 			node.queue_free()
 			_gulls.erase(g)
 			continue
