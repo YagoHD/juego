@@ -93,6 +93,7 @@ var fish: FishSchool         # peces del mar (lo pone main.gd)
 var farm: Farming           # cultivos (lo pone main.gd)
 var weather: Weather        # el tiempo (lo pone main.gd)
 var wildlife: Wildlife      # cangrejos y gaviotas (lo pone main.gd)
+var raft: Raft               # la balsa en la que va montado (o null)
 var _working := false        # agachado fabricando
 var _work_swing := 0.0
 var _crouch := 0.0           # 0..1: cuánto baja la vista al agacharse
@@ -273,6 +274,9 @@ func _unhandled_input(event: InputEvent) -> void:
 			return
 		if not key.pressed:
 			return
+		if key.keycode == KEY_SPACE and raft != null:
+			_dismount()
+			return
 		if key.keycode == KEY_W:
 			# Doble toque de W rápido = correr (como en Minecraft).
 			var now := Time.get_ticks_msec() / 1000.0
@@ -369,6 +373,9 @@ func _physics_process(delta: float) -> void:
 		_fly(delta)
 		_avatar.update_walk(0.0, false, delta)
 		_held.update_walk(0.0, delta)
+		return
+	if raft != null:
+		_ride(delta)
 		return
 
 	var feet_wet := _in_water(global_position + Vector3.UP * BODY_HEIGHT * 0.28)
@@ -552,6 +559,8 @@ func _target() -> Dictionary:
 	var decor := _decor_hit(from, forward, from.distance_to(hit_point))
 	if not decor.is_empty():
 		return _decor_target(decor["cell"])
+	if result.collider is Raft:
+		return {"raft": result.collider, "point": hit_point, "normal": hit_normal}
 	if result.collider is PlacedItem:
 		return {"item": result.collider, "point": hit_point, "normal": hit_normal}
 	var half_voxel: float = _terrain.scale.x * 0.5
@@ -569,6 +578,14 @@ func _edit_block(place: bool) -> void:
 	if place and _read_note():
 		return
 	var target := _target()
+	if target.has("raft"):
+		if place:
+			_board(target["raft"])
+		else:
+			_pick_up_raft(target["raft"])
+		return
+	if place and _launch_raft():
+		return
 	var at_campfire: bool = target.has("item") and (target["item"] as PlacedItem).campfire != null
 	if place and _try_plant(target):
 		return
@@ -722,6 +739,11 @@ func _update_highlight() -> void:
 		var box := item.get_box()
 		_highlight.global_transform = Transform3D(item.global_basis * Basis.from_scale(box.size),
 			item.global_transform * box.position)
+		_highlight.visible = true
+		return
+	if target.has("raft"):
+		var boat: Raft = target["raft"]
+		_highlight.global_transform = Transform3D(boat.global_basis * Basis.from_scale(Vector3(1.6, 0.25, 1.7)), boat.global_position)
 		_highlight.visible = true
 		return
 	var cell: Vector3i = target["voxel"]
@@ -1121,7 +1143,7 @@ func _play_step(feet_wet: bool, volume_db: float) -> void:
 ## romperse y hay que mantener el clic (cuánto, según el bloque y la herramienta de la mano).
 func _start_breaking() -> void:
 	var target := _target()
-	if target.has("item"):
+	if target.has("item") or target.has("raft"):
 		_edit_block(false)
 		return
 	_breaking = true
@@ -1409,3 +1431,94 @@ func _grab_crab() -> bool:
 		ItemDrop.spawn(get_parent(), global_position + Vector3.UP, "raw_crab", 1)
 	notice.emit("¡Has cogido un cangrejo!")
 	return true
+
+
+# ------------------------------------------------------------------ balsa
+
+## Con la balsa en la mano, clic derecho apuntando al mar: se echa al agua.
+func _launch_raft() -> bool:
+	var stack := active_inventory().get_slot(_hotbar_index)
+	if stack.is_empty() or stack["id"] != "raft":
+		return false
+	var water := _decor_hit(_camera.global_position, -_camera.global_transform.basis.z, REACH, true)
+	if water.is_empty():
+		notice.emit("La balsa se echa al agua del mar: apunta al agua.")
+		return true
+	var cell: Vector3i = water["cell"]
+	var boat := Raft.new()
+	boat.generator = _generator
+	boat.voxel_size = _terrain.scale.x
+	var spot := _terrain.to_global(Vector3(cell) + Vector3(0.5, 0.0, 0.5))
+	if not boat.is_water(spot):
+		boat.free()
+		notice.emit("Aquí no flota: hace falta el mar, con algo de fondo.")
+		return true
+	get_parent().add_child(boat)
+	boat.add_to_group("rafts")
+	boat.global_position = Vector3(spot.x, boat.sea_y(), spot.z)
+	boat.rotation.y = rotation.y
+	if not creative:
+		inventory.take(_hotbar_index, 1)
+	Sfx.play("paso_agua", spot, 0.0, 0.2)
+	notice.emit("Balsa al agua. Clic derecho sobre ella para subir.")
+	return true
+
+
+## Clic izquierdo sobre la balsa (sin ir montado): se recoge.
+func _pick_up_raft(boat: Raft) -> void:
+	if raft == boat:
+		return
+	if not creative and not can_pick_up("raft"):
+		notice.emit("No te cabe la balsa.")
+		return
+	boat.queue_free()
+	if not creative:
+		pick_up("raft", 1)
+	Sfx.play("recoger", null, -6.0, 0.15)
+
+
+func _board(boat: Raft) -> void:
+	raft = boat
+	_flying = false
+	_sprinting = false
+	velocity = Vector3.ZERO
+	notice.emit("W/S: remar  ·  A/D: girar  ·  Espacio: bajar")
+
+
+## Montado: W/S reman, A/D giran la balsa (y la vista con ella). No entra en tierra.
+func _ride(delta: float) -> void:
+	if not is_instance_valid(raft):
+		raft = null
+		return
+	var forward := (1.0 if _key(KEY_W) else 0.0) - (1.0 if _key(KEY_S) else 0.0)
+	var turn := (1.0 if _key(KEY_A) else 0.0) - (1.0 if _key(KEY_D) else 0.0)
+	var yaw_before := raft.rotation.y
+	raft.steer(forward, turn, delta)
+	rotate_y(raft.rotation.y - yaw_before)
+	velocity = Vector3.ZERO
+	global_position = raft.global_position + Vector3.UP * 0.1
+	_avatar.update_walk(0.0, true, delta)
+	_held.update_walk(0.0, delta)
+	if absf(forward) > 0.01:
+		_step_distance += delta
+		if _step_distance > 0.9:
+			_step_distance = 0.0
+			Sfx.play("paso_agua", raft.global_position, -6.0, 0.2)
+
+
+## Espacio: bajar. Si hay tierra al lado se baja a ella; si no, al agua.
+func _dismount() -> void:
+	var boat := raft
+	raft = null
+	if not is_instance_valid(boat):
+		return
+	var vs := _terrain.scale.x
+	for k in 16:
+		var a := TAU * k / 16.0
+		for dist in [1.4, 2.2]:
+			var p := boat.global_position + Vector3(cos(a), 0, sin(a)) * float(dist)
+			var h := _generator.get_ground_height(int(floorf(p.x / vs)), int(floorf(p.z / vs)))
+			if h > IslandGenerator.SEA_LEVEL:
+				global_position = Vector3(p.x, h * vs + 0.05, p.z)
+				return
+	global_position = boat.global_position + Vector3(1.2, 0.3, 0).rotated(Vector3.UP, rotation.y)

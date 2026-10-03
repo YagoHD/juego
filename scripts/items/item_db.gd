@@ -77,6 +77,7 @@ const OTHER_ITEMS := {
 	"campfire": {"name": "Hoguera", "stack": 4},
 	"green_ore": {"name": "Mineral verde", "stack": 32},
 	"bedroll": {"name": "Saco de dormir", "stack": 1},
+	"raft": {"name": "Balsa", "stack": 1},
 	"spear": {"name": "Lanza", "stack": 1},
 	"raw_fish": {"name": "Pescado crudo", "stack": 16},
 	"cooked_fish": {"name": "Pescado asado", "stack": 16},

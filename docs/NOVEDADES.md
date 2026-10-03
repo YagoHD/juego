@@ -128,3 +128,6 @@ Todo lo de Kenney y OpenGameArt es CC0 (créditos en `assets/third_party/*/` y
   (por diseñar).
 - **Cangrejos** en la arena (se cogen con la mano vacía, clic izquierdo; asados son comida) y
   **gaviotas** volando sobre la costa.
+- **Balsa** (receta en el diario): 4 tablas en cuadrado y 2 cuerdas encima. Con ella en la mano,
+  clic derecho al mar para echarla; clic derecho sobre ella para subir; W/S remar, A/D girar,
+  Espacio bajar (a tierra si hay cerca). No entra en tierra. Clic izquierdo la recoge. Se guarda.
