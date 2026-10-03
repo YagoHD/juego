@@ -197,11 +197,13 @@ func _make_cube(id: int, material: Material) -> VoxelBlockyModelCube:
 	# Cubo con las texturas del atlas: arriba, lados y abajo según BlockTextures.FACES.
 	var cube := VoxelBlockyModelCube.new()
 	cube.atlas_size_in_tiles = BlockTextures.atlas_size_in_tiles()
-	cube.set_tile(VoxelBlockyModel.SIDE_POSITIVE_Y, BlockTextures.tile_of(id, 0))
-	cube.set_tile(VoxelBlockyModel.SIDE_NEGATIVE_Y, BlockTextures.tile_of(id, 2))
-	for side in [VoxelBlockyModel.SIDE_POSITIVE_X, VoxelBlockyModel.SIDE_NEGATIVE_X,
-			VoxelBlockyModel.SIDE_POSITIVE_Z, VoxelBlockyModel.SIDE_NEGATIVE_Z]:
-		cube.set_tile(side, BlockTextures.tile_of(id, 1))
+	var sides := {
+		VoxelBlockyModel.SIDE_POSITIVE_Y: Vector3i.UP, VoxelBlockyModel.SIDE_NEGATIVE_Y: Vector3i.DOWN,
+		VoxelBlockyModel.SIDE_POSITIVE_X: Vector3i.RIGHT, VoxelBlockyModel.SIDE_NEGATIVE_X: Vector3i.LEFT,
+		VoxelBlockyModel.SIDE_POSITIVE_Z: Vector3i.BACK, VoxelBlockyModel.SIDE_NEGATIVE_Z: Vector3i.FORWARD,
+	}
+	for side: int in sides:
+		cube.set_tile(side, BlockTextures.side_tile(id, sides[side]))
 	cube.set_material_override(0, material)
 	return cube
 

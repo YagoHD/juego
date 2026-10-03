@@ -21,6 +21,10 @@ const COLORS := {
 	IslandGenerator.MOSSY_STONE: Color(0.38, 0.43, 0.34),
 	IslandGenerator.DRIFTWOOD: Color(0.40, 0.34, 0.25),
 	IslandGenerator.WORKBENCH: Color(0.6, 0.44, 0.26),
+	IslandGenerator.LOG_X: Color(0.45, 0.30, 0.17),
+	IslandGenerator.LOG_Z: Color(0.45, 0.30, 0.17),
+	IslandGenerator.DEAD_LOG_X: Color(0.22, 0.18, 0.17),
+	IslandGenerator.DEAD_LOG_Z: Color(0.22, 0.18, 0.17),
 }
 
 const NAMES := {
@@ -42,6 +46,10 @@ const NAMES := {
 	IslandGenerator.MOSSY_STONE: "Piedra musgosa",
 	IslandGenerator.DRIFTWOOD: "Madera de deriva",
 	IslandGenerator.WORKBENCH: "Mesa de trabajo",
+	IslandGenerator.LOG_X: "Tronco caído",
+	IslandGenerator.LOG_Z: "Tronco caído",
+	IslandGenerator.DEAD_LOG_X: "Tronco seco caído",
+	IslandGenerator.DEAD_LOG_Z: "Tronco seco caído",
 }
 
 ## Bloques de la barra (teclas 1-9, en este orden).
@@ -51,7 +59,7 @@ const HOTBAR: Array[int] = [
 	IslandGenerator.LEAVES, IslandGenerator.WATER, IslandGenerator.WHEAT,
 ]
 
-const LAST_ID := IslandGenerator.WORKBENCH
+const LAST_ID := IslandGenerator.DEAD_LOG_Z
 
 
 ## Segundos que se tarda en romper cada bloque a mano (las herramientas lo aceleran, ver
@@ -62,6 +70,7 @@ const HARDNESS := {
 	IslandGenerator.DIRT: 0.6, IslandGenerator.GRASS: 0.7, IslandGenerator.CORRUPT_SOIL: 0.9,
 	IslandGenerator.DRIFTWOOD: 1.6, IslandGenerator.DEAD_WOOD: 1.8, IslandGenerator.PLANKS: 1.8,
 	IslandGenerator.CHEST: 1.8, IslandGenerator.WORKBENCH: 1.8, IslandGenerator.WOOD: 2.4,
+	IslandGenerator.LOG_X: 2.4, IslandGenerator.LOG_Z: 2.4, IslandGenerator.DEAD_LOG_X: 1.8, IslandGenerator.DEAD_LOG_Z: 1.8,
 	IslandGenerator.MOSSY_STONE: 2.6, IslandGenerator.STONE: 3.0,
 }
 

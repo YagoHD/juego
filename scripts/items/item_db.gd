@@ -47,6 +47,10 @@ const DROPS := {
 	IslandGenerator.MOSSY_STONE: "mossy_stone",
 	IslandGenerator.DRIFTWOOD: "driftwood",
 	IslandGenerator.WORKBENCH: "workbench",
+	IslandGenerator.LOG_X: "wood",
+	IslandGenerator.LOG_Z: "wood",
+	IslandGenerator.DEAD_LOG_X: "dead_wood",
+	IslandGenerator.DEAD_LOG_Z: "dead_wood",
 }
 
 ## Objetos que no son bloques. "wear": hueco de equipo donde se lleva; "pockets": huecos de
@@ -121,7 +125,8 @@ static func teaches(id: String) -> String:
 
 ## Cuántas veces más rápido rompe este bloque con este objeto en la mano (1 = como a mano).
 static func tool_speed(item_id: String, block_id: int) -> float:
-	var woody := [IslandGenerator.WOOD, IslandGenerator.DEAD_WOOD, IslandGenerator.DRIFTWOOD, IslandGenerator.PLANKS, IslandGenerator.CHEST, IslandGenerator.WORKBENCH]
+	var woody := [IslandGenerator.WOOD, IslandGenerator.DEAD_WOOD, IslandGenerator.DRIFTWOOD, IslandGenerator.PLANKS, IslandGenerator.CHEST, IslandGenerator.WORKBENCH,
+		IslandGenerator.LOG_X, IslandGenerator.LOG_Z, IslandGenerator.DEAD_LOG_X, IslandGenerator.DEAD_LOG_Z]
 	var rocky := [IslandGenerator.STONE, IslandGenerator.MOSSY_STONE]
 	var soft := [IslandGenerator.LEAVES, IslandGenerator.PINE_LEAVES, IslandGenerator.CLOTH, IslandGenerator.WHEAT]
 	match item_id:

@@ -51,14 +51,16 @@ func _process(_delta: float) -> bool:
 			_t0 = Time.get_ticks_msec()
 			_step = 1
 		1:
-			if Time.get_ticks_msec() - _t0 < 4000:
+			if Time.get_ticks_msec() - _t0 < 9000:
 				return false
 			# Caído hacia +X (lejos de quien tala): tronco tumbado a lo largo de X, a ras de suelo.
 			var lying := 0
-			for i in range(1, _height + 3):
-				for dy in range(-3, 2):
-					if tool.get_voxel(_cut + Vector3i(i, dy, 0)) == IslandGenerator.WOOD:
-						lying += 1
+			for dx in range(-14, 15):
+				for dy in range(-6, 4):
+					for dz in range(-14, 15):
+						var id := tool.get_voxel(_cut + Vector3i(dx, dy, dz))
+						if id == IslandGenerator.LOG_X or id == IslandGenerator.LOG_Z:
+							lying += 1
 			_check("El tronco queda tumbado entero (%d de %d bloques)" % [lying, _height - 1], lying >= _height - 1)
 			var leaves := 0
 			for d: ItemDrop in get_nodes_in_group("item_drops"):

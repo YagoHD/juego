@@ -32,6 +32,11 @@ const FACES := {
 	IslandGenerator.MOSSY_STONE: ["mossy_stone", "mossy_stone", "mossy_stone"],
 	IslandGenerator.DRIFTWOOD: ["driftwood", "driftwood", "driftwood"],
 	IslandGenerator.WORKBENCH: ["workbench_top", "workbench_side", "planks"],
+	# Troncos tumbados: 6 caras [+Y, -Y, +X, -X, +Z, -Z]; anillos en las puntas, corteza tumbada ("_h").
+	IslandGenerator.LOG_X: ["log_side_h", "log_side_h", "log_top", "log_top", "log_side_h", "log_side_h"],
+	IslandGenerator.LOG_Z: ["log_side", "log_side", "log_side_h", "log_side_h", "log_top", "log_top"],
+	IslandGenerator.DEAD_LOG_X: ["dead_log_side_h", "dead_log_side_h", "dead_log_top", "dead_log_top", "dead_log_side_h", "dead_log_side_h"],
+	IslandGenerator.DEAD_LOG_Z: ["dead_log_side", "dead_log_side", "dead_log_side_h", "dead_log_side_h", "dead_log_top", "dead_log_top"],
 }
 
 static var _atlas: ImageTexture
@@ -52,10 +57,26 @@ static func atlas_size_in_tiles() -> Vector2i:
 	return Vector2i(COLUMNS, (_tiles.size() + COLUMNS - 1) / COLUMNS)
 
 
+## Tile de una cara concreta (normal hacia fuera). Sirve para bloques con 6 caras distintas.
+static func side_tile(block_id: int, normal: Vector3i) -> Vector2i:
+	atlas()
+	var names: Array = FACES.get(block_id, ["stone", "stone", "stone"])
+	if names.size() == 6:
+		var order := [Vector3i.UP, Vector3i.DOWN, Vector3i.RIGHT, Vector3i.LEFT, Vector3i.BACK, Vector3i.FORWARD]
+		return _tiles[names[order.find(normal)]]
+	if normal == Vector3i.UP:
+		return _tiles[names[0]]
+	if normal == Vector3i.DOWN:
+		return _tiles[names[2]]
+	return _tiles[names[1]]
+
+
 ## Posición en el atlas (en tiles) de la cara de un bloque: face = 0 arriba, 1 lados, 2 abajo.
 static func tile_of(block_id: int, face: int) -> Vector2i:
 	atlas()
 	var names: Array = FACES.get(block_id, ["stone", "stone", "stone"])
+	if names.size() == 6:  # bloque con las 6 caras distintas: arriba, +X como "lado", abajo
+		return _tiles[names[[0, 2, 1][face]]]
 	return _tiles[names[face]]
 
 
@@ -95,7 +116,7 @@ static func make_block_mesh(block_id: int, size: float) -> ArrayMesh:
 	var uvs := PackedVector2Array()
 	var indices := PackedInt32Array()
 	for f in faces:
-		var tile := Vector2(tile_of(block_id, f[1]))
+		var tile := Vector2(side_tile(block_id, Vector3i(f[0])))
 		var uv0 := tile / grid
 		var uv1 := (tile + Vector2.ONE) / grid
 		var face_uvs := [uv0, Vector2(uv1.x, uv0.y), uv1, Vector2(uv0.x, uv1.y)]
@@ -169,6 +190,10 @@ static func _build() -> void:
 
 
 static func _texture(name: String) -> Image:
+	if name.ends_with("_h"):  # la textura de base, tumbada (también si la base es un PNG propio)
+		var turned := (_texture(name.trim_suffix("_h")).duplicate()) as Image
+		turned.rotate_90(CLOCKWISE)
+		return turned
 	var path := OVERRIDE_DIR + name + ".png"
 	if ResourceLoader.exists(path):
 		var tex := load(path) as Texture2D

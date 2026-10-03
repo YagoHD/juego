@@ -28,6 +28,10 @@ const CLOTH := 15
 const MOSSY_STONE := 16
 const DRIFTWOOD := 17
 const WORKBENCH := 18
+const LOG_X := 19        # tronco tumbado a lo largo de X (árbol talado)
+const LOG_Z := 20        # tronco tumbado a lo largo de Z
+const DEAD_LOG_X := 21
+const DEAD_LOG_Z := 22
 
 const MAP_DIR := "res://assets/island/"
 const MAP_HALF := 1024.0      # los mapas cubren [-MAP_HALF, MAP_HALF] voxels en X y Z

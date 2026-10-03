@@ -6,6 +6,10 @@ const S := 16
 
 
 static func paint(name: String) -> Image:
+	if name.ends_with("_h"):  # la misma textura tumbada (corteza de un tronco caído)
+		var turned := paint(name.trim_suffix("_h"))
+		turned.rotate_90(CLOCKWISE)
+		return turned
 	var img := Image.create(S, S, false, Image.FORMAT_RGBA8)
 	var salt := name.hash()
 	match name:
