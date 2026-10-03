@@ -1028,6 +1028,7 @@ func _sleep(at: Vector3) -> void:
 		if h >= 19.0:
 			_day_night.day += 1
 		_day_night.set_hour(6.5)
+		_objectives.mark("dormido")
 		_save_world())
 	tween.tween_interval(0.8)
 	tween.tween_property(black, "color:a", 0.0, 1.5)

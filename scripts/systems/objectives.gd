@@ -13,8 +13,12 @@ const STEPS := [
 	["Busca los cofres del naufragio (clic derecho para abrirlos)", "_opened_chest"],
 	["Ponte la ropa que encuentres: abre el inventario (E) y llévala a su hueco", "_wears_clothes"],
 	["Haz cuerda: arranca hierba alta para sacar fibra; luego E, Fabricar y 3 fibras en línea", "_made_rope"],
+	["Haz una piedra afilada: una piedra encima de otra (las piedrecitas del suelo dan piedras)", "_made_sharp_rock"],
+	["Monta una hoguera y enciéndela con pedernal (clic derecho)", "_lit_fire"],
+	["Asa algo en la hoguera (pescado, setas, bayas, insectos...) y cómetelo", "_ate_cooked"],
 	["Lee la nota de la mochila (clic derecho) y fabrícala", "_has_backpack"],
 	["Desmonta el cofre: en Fabricar, arrástralo solo al suelo y pulsa Desmontar", "_knows_chest"],
+	["Cose un saco de dormir y duerme una noche (clic derecho en el saco)", "_slept"],
 	["Explora la isla: busca las ruinas del noroeste (mira el mapa del diario); dicen que hay un cofre", "_near_ruins"],
 ]
 
@@ -24,6 +28,10 @@ var _flags := {}
 var _timer := 0.0
 var _label: Label
 var _panel: PanelContainer
+
+
+func _ready() -> void:
+	add_to_group("objectives")  # otros sistemas avisan con call_group("objectives", "mark", ...)
 
 
 ## Construye el recuadro de la pantalla (arriba a la derecha) dentro de 'canvas'.
@@ -113,6 +121,22 @@ func _wears_clothes() -> bool:
 
 func _made_rope() -> bool:
 	return _flags.has("hecho_rope") or player.inventory.count_of("rope") > 6
+
+
+func _made_sharp_rock() -> bool:
+	return _flags.has("hecho_sharp_rock") or player.inventory.count_of("sharp_rock") > 0
+
+
+func _lit_fire() -> bool:
+	return _flags.has("hoguera")
+
+
+func _ate_cooked() -> bool:
+	return _flags.has("comido_asado")
+
+
+func _slept() -> bool:
+	return _flags.has("dormido")
 
 
 func _has_backpack() -> bool:

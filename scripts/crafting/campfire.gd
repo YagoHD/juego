@@ -106,6 +106,7 @@ func interact(held: Dictionary, player: Player) -> int:
 		if randf() < LIGHT_CHANCE:
 			lit = true
 			_show_lit()
+			get_tree().call_group("objectives", "mark", "hoguera")
 			Sfx.play("fabricado", global_position, -6.0)
 			player.notice.emit("¡La hoguera ha prendido!")
 		else:

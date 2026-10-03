@@ -1304,6 +1304,9 @@ func _try_eat() -> bool:
 	if needs == null or stack.is_empty() or not Needs.is_food(stack["id"]):
 		return false
 	if needs.eat(stack["id"]):
+		var food_id: String = stack["id"]
+		if food_id.begins_with("roasted") or food_id in ["cooked_fish", "flatbread"]:
+			get_tree().call_group("objectives", "mark", "comido_asado")
 		if not creative:
 			inventory.take(_hotbar_index, 1)
 		Sfx.play("recoger", null, -2.0, 0.25)
