@@ -476,6 +476,8 @@ func from_data(data: Array) -> void:
 			int(d.get("level", 0)), float(d.get("base_y", p.y)))
 		item.global_position = p
 		item.rotation.y = float(d.get("yaw", 0.0))
+		if item.campfire != null and d.get("state") is Dictionary:
+			item.campfire.set_state(d["state"])
 	_dirty = true
 
 

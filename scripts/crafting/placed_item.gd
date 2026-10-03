@@ -19,6 +19,7 @@ var _time := 0.0
 var _box := AABB()  # caja que ocupa, relativa a su posición (para el recuadro al apuntarlo)
 var _light: OmniLight3D       # solo las antorchas
 var _flame: MeshInstance3D
+var campfire: Campfire         # solo las hogueras
 
 
 ## Alto que ocupa (lo que sube el siguiente que se apile encima).
@@ -27,6 +28,8 @@ static func height_of(id: String) -> float:
 		return 0.6
 	if id == "board":
 		return 0.05
+	if id == "campfire":
+		return 0.15
 	return 0.18 if ItemDB.block_of(id) >= 0 else 0.3 / ItemPainter.S * 2.6
 
 
@@ -38,6 +41,9 @@ func _ready() -> void:
 		return
 	if item_id == "board":
 		_build_board()
+		return
+	if item_id == "campfire":
+		_build_campfire()
 		return
 	var is_block := ItemDB.block_of(item_id) >= 0
 	var size := 0.18 if is_block else (0.42 if item_id == "captain_journal" else 0.3)
@@ -93,7 +99,8 @@ func _process(delta: float) -> void:
 func to_data() -> Dictionary:
 	return {"id": item_id, "pos": [global_position.x, global_position.y, global_position.z],
 		"yaw": rotation.y, "support": [support.x, support.y, support.z],
-		"column": [column.x, column.y], "level": level, "base_y": base_y}
+		"column": [column.x, column.y], "level": level, "base_y": base_y,
+		"state": campfire.get_state() if campfire != null else {}}
 
 
 ## Antorcha clavada de pie: palo, tela enrollada, llama y una luz cálida que parpadea.
@@ -150,4 +157,18 @@ func _build_board() -> void:
 	shape.position.y = 0.03
 	add_child(shape)
 	_box = AABB(Vector3(-size.x * 0.5, 0.0, -size.z * 0.5), box.size).grow(0.01)
+	set_process(false)
+
+
+func _build_campfire() -> void:
+	campfire = Campfire.new()
+	add_child(campfire)
+	_material = StandardMaterial3D.new()  # (para el brillo de las recetas; la hoguera no lo usa)
+	var shape := CollisionShape3D.new()
+	var box := BoxShape3D.new()
+	box.size = Vector3(0.44, 0.15, 0.44)
+	shape.shape = box
+	shape.position.y = 0.075
+	add_child(shape)
+	_box = AABB(Vector3(-0.22, 0.0, -0.22), box.size).grow(0.01)
 	set_process(false)

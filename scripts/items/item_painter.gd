@@ -27,6 +27,9 @@ static func paint(id: String) -> Image:
 		"fiber": _fiber(img)
 		"seeds": _seeds(img)
 		"insect": _insect(img)
+		"roasted_insect": _roasted(img, "insect")
+		"roasted_berries": _roasted(img, "berries")
+		"roasted_seeds": _roasted(img, "seeds")
 		"rock": _rock(img, Color(0.56, 0.56, 0.58))
 		"flint": _rock(img, Color(0.3, 0.3, 0.36))
 		"sharp_rock": _sharp_rock(img)
@@ -364,3 +367,13 @@ static func _campfire(img: Image) -> void:
 	_line(img, Vector2i(11, 12), Vector2i(4, 6), wood.darkened(0.15))
 	_rect(img, 7, 3, 8, 6, Color(1.0, 0.6, 0.15))
 	img.set_pixel(7, 2, Color(1.0, 0.85, 0.35))
+
+
+## Lo asado: el mismo dibujo, tostado (más oscuro y cálido).
+static func _roasted(img: Image, raw: String) -> void:
+	var src := paint(raw)
+	for y in S:
+		for x in S:
+			var c := src.get_pixel(x, y)
+			if c.a > 0.0:
+				img.set_pixel(x, y, Color(c.r * 0.75 + 0.12, c.g * 0.55 + 0.05, c.b * 0.35, c.a))

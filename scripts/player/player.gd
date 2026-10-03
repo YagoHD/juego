@@ -560,7 +560,13 @@ func _edit_block(place: bool) -> void:
 		return
 	if target.has("item"):
 		if place:
-			_place_torch(target)  # otra antorcha al lado
+			var placed: PlacedItem = target["item"]
+			if placed.campfire != null:  # hoguera: encender, echar leña, cocinar
+				var spent := placed.campfire.interact(active_inventory().get_slot(_hotbar_index), self)
+				if spent > 0 and not creative:
+					inventory.take(_hotbar_index, spent)
+			else:
+				_place_torch(target)  # otra antorcha al lado
 		else:
 			_pick_up_placed(target["item"], Input.is_key_pressed(KEY_SHIFT))
 		return
@@ -927,10 +933,10 @@ func _pay_step_debt(delta: float) -> void:
 
 # ------------------------------------------------------------------ objetos en el suelo y recetas
 
-## Clic derecho con una antorcha en la mano: se clava en el suelo, donde se apunta.
+## Clic derecho con una antorcha o una hoguera en la mano: se pone en el suelo, donde se apunta.
 func _place_torch(target: Dictionary) -> void:
 	var stack := active_inventory().get_slot(_hotbar_index)
-	if not stack.is_empty() and stack["id"] == "torch":
+	if not stack.is_empty() and (stack["id"] == "torch" or stack["id"] == "campfire"):
 		_place_on_ground(target)
 
 
