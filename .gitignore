@@ -17,3 +17,8 @@ Thumbs.db
 
 # Ejecutables de Godot (no van al repositorio)
 *.exe
+
+# Paquetes de recursos descargados tal cual (grandes); lo que se usa se copia a assets/third_party/
+assets/third_party_raw/*
+!assets/third_party_raw/LEEME.md
+!assets/third_party_raw/.gdignore
