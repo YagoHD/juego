@@ -265,6 +265,12 @@ func _build_player() -> void:
 	fish_school.generator = _generator
 	fish_school.voxel_size = VOXEL_SIZE
 	_player.fish = fish_school
+	var wildlife := Wildlife.new()
+	add_child(wildlife)
+	wildlife.player = _player
+	wildlife.generator = _generator
+	wildlife.voxel_size = VOXEL_SIZE
+	_player.wildlife = wildlife
 	var weather := Weather.new()
 	add_child(weather)
 	weather.player = _player

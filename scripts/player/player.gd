@@ -92,6 +92,7 @@ var needs: Needs             # hambre y sed (lo pone main.gd)
 var fish: FishSchool         # peces del mar (lo pone main.gd)
 var farm: Farming           # cultivos (lo pone main.gd)
 var weather: Weather        # el tiempo (lo pone main.gd)
+var wildlife: Wildlife      # cangrejos y gaviotas (lo pone main.gd)
 var _working := false        # agachado fabricando
 var _work_swing := 0.0
 var _crouch := 0.0           # 0..1: cuánto baja la vista al agacharse
@@ -242,7 +243,7 @@ func _unhandled_input(event: InputEvent) -> void:
 		var zooming := Input.is_key_pressed(KEY_V)
 		match button.button_index:
 			MOUSE_BUTTON_LEFT:
-				if _spear_fish():
+				if _spear_fish() or _grab_crab():
 					pass
 				elif creative:
 					_edit_block(false)  # en creativo se rompe al momento
@@ -1310,7 +1311,7 @@ func _try_eat() -> bool:
 		return false
 	if needs.eat(stack["id"]):
 		var food_id: String = stack["id"]
-		if food_id.begins_with("roasted") or food_id in ["cooked_fish", "flatbread"]:
+		if food_id.begins_with("roasted") or food_id in ["cooked_fish", "flatbread", "cooked_crab"]:
 			get_tree().call_group("objectives", "mark", "comido_asado")
 		if not creative:
 			inventory.take(_hotbar_index, 1)
@@ -1393,3 +1394,18 @@ func wear_tool() -> void:
 	var worn := stack.duplicate()
 	worn["dur"] = left
 	inventory.set_slot(_hotbar_index, worn)
+
+
+## Clic izquierdo con la mano vacía: si hay un cangrejo cerca y delante, se coge.
+func _grab_crab() -> bool:
+	if wildlife == null or not active_inventory().get_slot(_hotbar_index).is_empty():
+		return false
+	if not wildlife.try_grab(_camera.global_position, -_camera.global_transform.basis.z):
+		return false
+	_held.swing()
+	_avatar.swing()
+	Sfx.play("recoger", null, 0.0, 0.2)
+	if pick_up("raw_crab", 1) > 0:
+		ItemDrop.spawn(get_parent(), global_position + Vector3.UP, "raw_crab", 1)
+	notice.emit("¡Has cogido un cangrejo!")
+	return true

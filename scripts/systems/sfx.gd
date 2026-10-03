@@ -240,6 +240,7 @@ static func _synth(sound: String) -> PackedFloat32Array:
 		"grillos": return _crickets(rng)
 		"olas": return _waves_loop(rng)
 		"lluvia": return _rain_loop(rng)
+		"gaviota": return _gull(rng)
 	return PackedFloat32Array()
 
 
@@ -405,4 +406,22 @@ static func _rain_loop(rng: RandomNumberGenerator) -> PackedFloat32Array:
 		var k2 := float(i) / fade
 		out[i] *= k2
 		out[n - 1 - i] *= k2
+	return out
+
+
+static func _gull(rng: RandomNumberGenerator) -> PackedFloat32Array:
+	# Graznidos: tonos agudos que bajan, ásperos y con temblor; dos o tres seguidos.
+	var out := PackedFloat32Array()
+	for k in rng.randi_range(2, 3):
+		var length := rng.randf_range(0.18, 0.3)
+		var n := int(length * RATE)
+		var phase := 0.0
+		for i in n:
+			var t := float(i) / RATE
+			var f := lerpf(1700.0, 1100.0, t / length) + sin(t * 90.0) * 60.0
+			phase += TAU * f / RATE
+			var rough := sin(phase) + 0.35 * sin(phase * 2.0) + rng.randf_range(-0.15, 0.15)
+			out.append(rough * 0.18 * sin(PI * t / length))
+		for i in int(0.06 * RATE):
+			out.append(0.0)
 	return out

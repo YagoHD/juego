@@ -81,6 +81,8 @@ const OTHER_ITEMS := {
 	"raw_fish": {"name": "Pescado crudo", "stack": 16},
 	"cooked_fish": {"name": "Pescado asado", "stack": 16},
 	"flatbread": {"name": "Torta de pan", "stack": 16},
+	"raw_crab": {"name": "Cangrejo", "stack": 16},
+	"cooked_crab": {"name": "Cangrejo asado", "stack": 16},
 	"wheat": {"name": "Manojo de trigo", "stack": 32},
 	"sticks": {"name": "Palo", "stack": 32},
 	"stone_knife": {"name": "Cuchillo de piedra", "stack": 1},

@@ -46,6 +46,8 @@ static func paint(id: String) -> Image:
 		"spear": _spear(img)
 		"raw_fish": _fish(img, false)
 		"flatbread": _flatbread(img)
+		"raw_crab": _crab(img, false)
+		"cooked_crab": _crab(img, true)
 		"cooked_fish": _fish(img, true)
 		_: img.fill(Color.MAGENTA)
 	_outline(img)
@@ -449,3 +451,15 @@ static func _green_ore(img: Image) -> void:
 	for p in [Vector2i(6, 7), Vector2i(9, 9), Vector2i(7, 10), Vector2i(10, 6)]:
 		img.set_pixel(p.x, p.y, glow)
 		img.set_pixel(p.x + 1, p.y, glow.darkened(0.3))
+
+
+static func _crab(img: Image, cooked: bool) -> void:
+	var c := Color(0.85, 0.32, 0.18) if not cooked else Color(0.95, 0.45, 0.2)
+	_rect(img, 4, 7, 11, 11, c)
+	_rect(img, 5, 6, 10, 6, c.lightened(0.1))
+	_rect(img, 2, 4, 3, 6, c.darkened(0.1))    # pinzas
+	_rect(img, 12, 4, 13, 6, c.darkened(0.1))
+	for x in [3, 5, 10, 12]:
+		_rect(img, x, 12, x, 13, c.darkened(0.3))  # patas
+	img.set_pixel(6, 5, Color(0.1, 0.1, 0.1))
+	img.set_pixel(9, 5, Color(0.1, 0.1, 0.1))
