@@ -47,6 +47,7 @@ const DROPS := {
 	IslandGenerator.MOSSY_STONE: "mossy_stone",
 	IslandGenerator.DRIFTWOOD: "driftwood",
 	IslandGenerator.WORKBENCH: "workbench",
+	IslandGenerator.ORE: "green_ore",
 	IslandGenerator.LOG_X: "wood",
 	IslandGenerator.LOG_Z: "wood",
 	IslandGenerator.DEAD_LOG_X: "dead_wood",
@@ -74,6 +75,7 @@ const OTHER_ITEMS := {
 	"resin": {"name": "Resina", "stack": 32},
 	"board": {"name": "Tabla", "stack": 16},
 	"campfire": {"name": "Hoguera", "stack": 4},
+	"green_ore": {"name": "Mineral verde", "stack": 32},
 	"bedroll": {"name": "Saco de dormir", "stack": 1},
 	"spear": {"name": "Lanza", "stack": 1},
 	"raw_fish": {"name": "Pescado crudo", "stack": 16},
@@ -149,7 +151,7 @@ static func teaches(id: String) -> String:
 static func tool_speed(item_id: String, block_id: int) -> float:
 	var woody := [IslandGenerator.WOOD, IslandGenerator.DEAD_WOOD, IslandGenerator.DRIFTWOOD, IslandGenerator.PLANKS, IslandGenerator.CHEST, IslandGenerator.WORKBENCH,
 		IslandGenerator.LOG_X, IslandGenerator.LOG_Z, IslandGenerator.DEAD_LOG_X, IslandGenerator.DEAD_LOG_Z]
-	var rocky := [IslandGenerator.STONE, IslandGenerator.MOSSY_STONE]
+	var rocky := [IslandGenerator.STONE, IslandGenerator.MOSSY_STONE, IslandGenerator.ORE]
 	var soft := [IslandGenerator.LEAVES, IslandGenerator.PINE_LEAVES, IslandGenerator.CLOTH, IslandGenerator.WHEAT]
 	match item_id:
 		"stone_pick":

@@ -39,6 +39,7 @@ const FLOWER_YELLOW := 25
 const PEBBLES := 26
 const GROUND_STICKS := 27
 const SHELL := 28
+const ORE := 29          # mineral verde de las montañas (brilla un poco)
 
 const MAP_DIR := "res://assets/island/"
 const MAP_HALF := 512.0       # los mapas cubren [-MAP_HALF, MAP_HALF] voxels en X y Z (la isla a la mitad
@@ -209,6 +210,15 @@ func _generate_block(out_buffer: VoxelBuffer, origin_in_voxels: Vector3i, lod: i
 			_fill_run(out_buffer, origin_in_voxels, size, x, z, sub, sub_start, height - 1)
 			_fill_run(out_buffer, origin_in_voxels, size, x, z, top, height - 1, height)
 			_fill_run(out_buffer, origin_in_voxels, size, x, z, WATER, height, water_top)
+			# Vetas de mineral verde en la roca de las montañas (algunas asoman a la superficie).
+			if top == STONE and height > SEA_LEVEL + 16:
+				var vein := _hash01(wx * 5 + 1, wz * 7 + 11)
+				if vein < 0.03:
+					var depth := int(vein * 1000.0) % 3
+					for k in 2:
+						var oy := height - 1 - depth - k - origin_in_voxels.y
+						if oy >= 0 and oy < size.y:
+							out_buffer.set_voxel(ORE, x, oy, z, VoxelBuffer.CHANNEL_TYPE)
 			if water_top <= height and height > SEA_LEVEL:
 				var d := _decor_at(wx, wz, top)
 				var ly := height - origin_in_voxels.y

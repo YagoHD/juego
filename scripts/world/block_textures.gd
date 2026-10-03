@@ -36,6 +36,7 @@ const FACES := {
 	IslandGenerator.MOSSY_STONE: ["mossy_stone", "mossy_stone", "mossy_stone"],
 	IslandGenerator.DRIFTWOOD: ["driftwood", "driftwood", "driftwood"],
 	IslandGenerator.WORKBENCH: ["workbench_top", "workbench_side", "planks"],
+	IslandGenerator.ORE: ["ore", "ore", "ore"],
 	# Troncos tumbados: 6 caras [+Y, -Y, +X, -X, +Z, -Z]; anillos en las puntas, corteza tumbada ("_h").
 	IslandGenerator.LOG_X: ["log_side_h", "log_side_h", "log_top", "log_top", "log_side_h", "log_side_h"],
 	IslandGenerator.LOG_Z: ["log_side", "log_side", "log_side_h", "log_side_h", "log_top", "log_top"],

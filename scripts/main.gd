@@ -120,6 +120,8 @@ func _build_world() -> void:
 			library.add_model(_make_water(water))
 		elif id == IslandGenerator.CLOTH:
 			library.add_model(_make_carpet(id, solid))
+		elif id == IslandGenerator.ORE:
+			library.add_model(_make_cube(id, _glowing(solid)))  # el mineral brilla un poco
 		elif Blocks.is_decor(id):
 			library.add_model(DecorModels.make_model(id))  # hierba, flores, piedrecitas...
 		else:
@@ -1094,3 +1096,13 @@ func _make_need_bar(canvas: CanvasLayer, row: int, text: String, color: Color) -
 	bar.add_theme_stylebox_override("fill", fill)
 	row_box.add_child(bar)
 	return bar
+
+
+## El mismo material de los bloques, pero que brilla un poco (para el mineral verde).
+func _glowing(base: StandardMaterial3D) -> StandardMaterial3D:
+	var m := base.duplicate() as StandardMaterial3D
+	m.emission_enabled = true
+	m.emission_texture = base.albedo_texture
+	m.emission = Color(0.4, 1.0, 0.55)
+	m.emission_energy_multiplier = 0.6
+	return m

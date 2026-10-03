@@ -31,6 +31,7 @@ const COLORS := {
 	IslandGenerator.PEBBLES: Color(0.55, 0.55, 0.55),
 	IslandGenerator.GROUND_STICKS: Color(0.45, 0.32, 0.18),
 	IslandGenerator.SHELL: Color(0.95, 0.86, 0.78),
+	IslandGenerator.ORE: Color(0.45, 0.6, 0.48),
 }
 
 const NAMES := {
@@ -62,6 +63,7 @@ const NAMES := {
 	IslandGenerator.PEBBLES: "Piedras sueltas",
 	IslandGenerator.GROUND_STICKS: "Palos",
 	IslandGenerator.SHELL: "Concha",
+	IslandGenerator.ORE: "Veta de mineral verde",
 }
 
 ## Bloques de la barra (teclas 1-9, en este orden).
@@ -71,7 +73,7 @@ const HOTBAR: Array[int] = [
 	IslandGenerator.LEAVES, IslandGenerator.WATER, IslandGenerator.WHEAT,
 ]
 
-const LAST_ID := IslandGenerator.SHELL
+const LAST_ID := IslandGenerator.ORE
 
 ## Cosas pequeñas del suelo: no son cubos, no chocan y se recogen con la mano al momento.
 const DECOR := [IslandGenerator.TALL_GRASS, IslandGenerator.FLOWER_RED, IslandGenerator.FLOWER_YELLOW,
@@ -93,6 +95,7 @@ const HARDNESS := {
 	IslandGenerator.LOG_X: 2.4, IslandGenerator.LOG_Z: 2.4, IslandGenerator.DEAD_LOG_X: 1.8, IslandGenerator.DEAD_LOG_Z: 1.8,
 	IslandGenerator.TALL_GRASS: 0.05, IslandGenerator.FLOWER_RED: 0.05, IslandGenerator.FLOWER_YELLOW: 0.05,
 	IslandGenerator.PEBBLES: 0.05, IslandGenerator.GROUND_STICKS: 0.05, IslandGenerator.SHELL: 0.05,
+	IslandGenerator.ORE: 7.0,
 	IslandGenerator.MOSSY_STONE: 2.6, IslandGenerator.STONE: 3.0,
 }
 

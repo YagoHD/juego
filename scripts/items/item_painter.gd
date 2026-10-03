@@ -41,6 +41,7 @@ static func paint(id: String) -> Image:
 		"resin": _resin(img)
 		"board": _board(img)
 		"campfire": _campfire(img)
+		"green_ore": _green_ore(img)
 		"bedroll": _bedroll(img)
 		"spear": _spear(img)
 		"raw_fish": _fish(img, false)
@@ -439,3 +440,12 @@ static func _flatbread(img: Image) -> void:
 				img.set_pixel(x, y, c.darkened(0.1 if d > 5.0 else 0.0))
 	for p in [Vector2i(5, 7), Vector2i(9, 6), Vector2i(7, 10), Vector2i(10, 9)]:
 		img.set_pixel(p.x, p.y, c.darkened(0.45))
+
+
+static func _green_ore(img: Image) -> void:
+	# Trozo de piedra con cristales verdes.
+	_rock(img, Color(0.45, 0.46, 0.48))
+	var glow := Color(0.45, 1.0, 0.6)
+	for p in [Vector2i(6, 7), Vector2i(9, 9), Vector2i(7, 10), Vector2i(10, 6)]:
+		img.set_pixel(p.x, p.y, glow)
+		img.set_pixel(p.x + 1, p.y, glow.darkened(0.3))

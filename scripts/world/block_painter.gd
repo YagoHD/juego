@@ -38,6 +38,7 @@ static func paint(name: String) -> Image:
 		"chest_back": _chest(img, salt, false, true)
 		"cloth": _cloth(img, salt)
 		"workbench_top": _workbench_top(img, salt)
+		"ore": _ore(img, salt)
 		"workbench_side": _workbench_side(img, salt)
 		_: img.fill(Color.MAGENTA)
 	return img
@@ -431,3 +432,15 @@ static func _workbench_side(img: Image, salt: int) -> void:
 				if top and y == 3:
 					c = wood.darkened(0.3)
 			img.set_pixel(x, y, c)
+
+
+static func _ore(img: Image, salt: int) -> void:
+	# Piedra con cristales verdes que brillan (el "mineral" del diario).
+	_stone(img, salt)
+	var glow := Color(0.45, 1.0, 0.6)
+	for k in 6:
+		var x := 2 + int(_rand(k, 7, salt) * 11.0)
+		var y := 2 + int(_rand(k, 9, salt) * 11.0)
+		img.set_pixel(x, y, glow)
+		img.set_pixel(x + 1, y, glow.darkened(0.25))
+		img.set_pixel(x, y + 1, glow.darkened(0.35))
