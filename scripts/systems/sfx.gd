@@ -41,6 +41,14 @@ var _pool2d: Array[AudioStreamPlayer] = []
 var _waves: AudioStreamPlayer
 var _rng := RandomNumberGenerator.new()
 var _chirp_timer := 3.0
+var _music: AudioStreamPlayer
+var _music_wait := 25.0          # silencio antes de la siguiente pieza (s)
+var _last_track := -1
+## Música (CC0, ver assets/third_party/music/CREDITOS.md): suena de vez en cuando, con silencios
+## largos entre piezas, como en los juegos de exploración.
+const MUSIC := ["res://assets/third_party/music/exploration_theme.ogg",
+	"res://assets/third_party/music/exploration_guitar.wav",
+	"res://assets/third_party/music/feel_good_island_loop.ogg"]
 ## Qué tan cerca está el mar (0..1) y si es de día (0..1): los pone main.gd cada fotograma.
 var sea_amount := 0.0
 var daylight := 1.0
@@ -64,6 +72,9 @@ func _ready() -> void:
 	_waves.volume_db = -80.0
 	add_child(_waves)
 	_waves.play()
+	_music = AudioStreamPlayer.new()
+	add_child(_music)
+	_music.finished.connect(func() -> void: _music_wait = _rng.randf_range(90.0, 240.0))
 
 
 ## Suena un efecto. pos = null: sin posición (interfaz o el propio jugador).
@@ -121,6 +132,7 @@ func _free(pool: Array) -> Node:
 
 
 func _process(delta: float) -> void:
+	_update_music(delta)
 	if get_tree().paused:
 		_waves.volume_db = -80.0
 		return
@@ -335,3 +347,24 @@ static func _waves_loop(rng: RandomNumberGenerator) -> PackedFloat32Array:
 		out[i] *= k
 		out[n - 1 - i] *= k
 	return out
+
+
+func _update_music(delta: float) -> void:
+	if _music == null:
+		return
+	_music.volume_db = linear_to_db(maxf(Settings.music, 0.0001)) - 8.0
+	if _music.playing or Settings.music <= 0.001:
+		return
+	_music_wait -= delta
+	if _music_wait > 0.0:
+		return
+	var track := _rng.randi() % MUSIC.size()
+	if track == _last_track:
+		track = (track + 1) % MUSIC.size()
+	_last_track = track
+	var stream: AudioStream = load(MUSIC[track]) if ResourceLoader.exists(MUSIC[track]) else null
+	if stream == null:
+		_music_wait = 60.0
+		return
+	_music.stream = stream
+	_music.play()

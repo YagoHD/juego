@@ -135,6 +135,8 @@ func _build_options() -> Control:
 		Settings.volume = v
 		Settings.apply_volume()
 	box.add_child(_slider("Volumen", 0.0, 1.0, Settings.volume, set_volume, "%d%%", 100.0))
+	var set_music := func(v: float) -> void: Settings.music = v
+	box.add_child(_slider("Música", 0.0, 1.0, Settings.music, set_music, "%d%%", 100.0))
 	_invert_check = CheckBox.new()
 	_invert_check.text = "Invertir el ratón (arriba / abajo)"
 	_invert_check.button_pressed = Settings.invert_y

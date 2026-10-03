@@ -8,6 +8,7 @@ const DEFAULT_SENSITIVITY := 0.0025
 static var sensitivity := DEFAULT_SENSITIVITY  # radianes por píxel de ratón
 static var fov := 75.0                          # grados
 static var volume := 0.8                        # 0..1, volumen general
+static var music := 0.5                         # 0..1, volumen de la música
 static var show_fps := false
 static var invert_y := false
 static var _loaded := false
@@ -25,6 +26,7 @@ static func load_settings() -> void:
 	fov = float(cfg.get_value("video", "campo_de_vision", fov))
 	show_fps = bool(cfg.get_value("video", "mostrar_fps", show_fps))
 	volume = float(cfg.get_value("sonido", "volumen", volume))
+	music = float(cfg.get_value("sonido", "musica", music))
 	apply_volume()
 
 
@@ -35,6 +37,7 @@ static func save_settings() -> void:
 	cfg.set_value("video", "campo_de_vision", fov)
 	cfg.set_value("video", "mostrar_fps", show_fps)
 	cfg.set_value("sonido", "volumen", volume)
+	cfg.set_value("sonido", "musica", music)
 	cfg.save(PATH)
 	apply_volume()
 
