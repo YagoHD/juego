@@ -511,6 +511,20 @@ func _update_capture() -> void:
 				if not hit.is_empty():
 					var pt: Vector3 = hit.position
 					_ground.place(pt, "torch", 0.0, Vector3i((pt / VOXEL_SIZE - Vector3(0, 0.5, 0)).floor()))
+		if OS.get_cmdline_user_args().has("--showcase"):  # modelos voxelizados delante (pruebas de estilo)
+			var fwd := -_player.global_basis.z
+			fwd.y = 0.0
+			var names := ["palmera", "roca", "setas"]
+			for k in names.size():
+				var model_path := "res://assets/models/voxel/%s.res" % names[k]
+				if not ResourceLoader.exists(model_path):
+					continue
+				var show := MeshInstance3D.new()
+				show.mesh = load(model_path)
+				add_child(show)
+				var p: Vector3 = _player.global_position + fwd.normalized() * (4.0 + k * 0.5) + _player.global_basis.x * (float(k) - 1.0) * 2.2
+				var hit := get_world_3d().direct_space_state.intersect_ray(PhysicsRayQueryParameters3D.create(p + Vector3.UP * 4.0, p + Vector3.DOWN * 8.0))
+				show.global_position = hit.position if not hit.is_empty() else p
 		if OS.get_cmdline_user_args().has("--bench"):
 			_debug_bench()
 		var shape := _arg("--shape=")  # receta dibujada en el suelo delante del jugador
