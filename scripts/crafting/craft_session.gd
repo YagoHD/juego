@@ -518,9 +518,7 @@ func _build_ui() -> void:
 
 	# Abajo, en el centro de la zona derecha: pista y botones de las recetas que ya están listas.
 	var bottom := PanelContainer.new()
-	var style := PauseMenu.panel_style()
-	style.bg_color.a = 0.75
-	style.set_content_margin_all(12)
+	var style := UiTheme.panel(0.9, 14.0)
 	bottom.add_theme_stylebox_override("panel", style)
 	bottom.set_anchors_preset(Control.PRESET_CENTER_BOTTOM)
 	bottom.grow_horizontal = Control.GROW_DIRECTION_BOTH
@@ -576,9 +574,7 @@ func _refresh_book() -> void:
 ## Recetario (a la derecha): las recetas conocidas; al pulsar una se dibuja en la zona.
 func _build_book() -> Control:
 	var panel := PanelContainer.new()
-	var style := PauseMenu.panel_style()
-	style.bg_color.a = 0.75
-	style.set_content_margin_all(10)
+	var style := UiTheme.panel(0.9, 14.0)
 	panel.add_theme_stylebox_override("panel", style)
 	panel.set_anchors_preset(Control.PRESET_TOP_RIGHT)
 	panel.grow_horizontal = Control.GROW_DIRECTION_BEGIN

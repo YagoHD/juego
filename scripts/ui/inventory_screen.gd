@@ -29,7 +29,7 @@ var _side: Control                        # panel opcional a la izquierda (equip
 var _dim: ColorRect
 var _center: CenterContainer
 var _panel: PanelContainer
-var _panel_style: StyleBoxFlat
+var _panel_style: StyleBox
 var _layout := "normal"
 var _press_pos := Vector2.ZERO           # dónde se pulsó en un hueco (para saber si se arrastra)
 ## Capa para paneles extra (botón Fabricar, recetario...) por encima de todo menos el cursor.
@@ -40,6 +40,7 @@ func _ready() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	mouse_filter = Control.MOUSE_FILTER_STOP
 	visible = false
+	theme = UiTheme.wood_theme()
 
 	_dim = ColorRect.new()
 	_dim.color = Color(0, 0, 0, 0.45)
@@ -53,13 +54,8 @@ func _ready() -> void:
 	add_child(_center)
 	var panel := PanelContainer.new()
 	_panel = panel
-	var style := StyleBoxFlat.new()
+	var style := UiTheme.panel(1.0, 18.0)  # madera (Kenney UI RPG)
 	_panel_style = style
-	style.bg_color = Color(0.13, 0.12, 0.11, 0.94)
-	style.set_corner_radius_all(8)
-	style.set_content_margin_all(14)
-	style.border_color = Color(0.45, 0.38, 0.3)
-	style.set_border_width_all(2)
 	panel.add_theme_stylebox_override("panel", style)
 	_center.add_child(panel)
 	_row = HBoxContainer.new()
@@ -112,7 +108,7 @@ func set_sections(sections: Array[Dictionary]) -> void:
 			var hint := Label.new()
 			hint.text = section["hint"]
 			hint.add_theme_font_size_override("font_size", 12)
-			hint.add_theme_color_override("font_color", Color(0.75, 0.7, 0.62))
+			hint.add_theme_color_override("font_color", Color(0.95, 0.88, 0.72))
 			_box.add_child(hint)
 		var grid := GridContainer.new()
 		grid.columns = section["columns"]
@@ -292,12 +288,7 @@ func _make_slot_visual(parent: Control) -> Panel:
 	var panel := Panel.new()
 	panel.custom_minimum_size = Vector2(SLOT, SLOT)
 	panel.size = Vector2(SLOT, SLOT)
-	var style := StyleBoxFlat.new()
-	style.bg_color = Color(0.22, 0.2, 0.18, 0.95)
-	style.set_corner_radius_all(4)
-	style.border_color = Color(0.45, 0.4, 0.34)
-	style.set_border_width_all(1)
-	panel.add_theme_stylebox_override("panel", style)
+	panel.add_theme_stylebox_override("panel", UiTheme.slot())  # hueco hundido de pergamino
 	var icon := TextureRect.new()
 	icon.name = "icon"
 	icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -358,7 +349,7 @@ func set_layout(mode: String) -> void:
 	_layout = mode
 	_dim.color.a = 0.45 if mode == "normal" else (0.12 if mode == "kneel" else 0.0)
 	_center.anchor_right = 1.0 if mode == "normal" else (0.55 if mode == "kneel" else 0.42)
-	_panel_style.bg_color.a = 0.94 if mode == "normal" else 0.8
+	_panel.self_modulate.a = 1.0 if mode == "normal" else 0.85  # algo transparente: se ve el mundo
 	if _side != null:
 		_side.visible = mode != "craft"
 

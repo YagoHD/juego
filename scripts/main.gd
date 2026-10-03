@@ -68,6 +68,7 @@ var _world_is_new := false
 
 func _ready() -> void:
 	Settings.load_settings()
+	UiTheme.apply_cursor()
 	_sfx = Sfx.new()
 	add_child(_sfx)
 	_build_world()
@@ -416,9 +417,7 @@ func _build_hud() -> void:
 
 	# Ayuda de controles (F1), a la derecha.
 	var help := PanelContainer.new()
-	var help_style := PauseMenu.panel_style()
-	help_style.bg_color.a = 0.82
-	help_style.set_content_margin_all(14)
+	var help_style := UiTheme.panel(0.88, 18.0)
 	help.add_theme_stylebox_override("panel", help_style)
 	help.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	help.add_child(PauseMenu.controls_grid())

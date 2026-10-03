@@ -35,6 +35,7 @@ var _invert_check: CheckBox
 
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS  # sigue funcionando con el juego en pausa
+	theme = UiTheme.wood_theme()
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	mouse_filter = Control.MOUSE_FILTER_STOP
 	visible = false
@@ -61,16 +62,8 @@ func _ready() -> void:
 
 
 ## Estilo de los paneles del juego (madera oscura con borde cálido).
-static func panel_style() -> StyleBoxFlat:
-	var style := StyleBoxFlat.new()
-	style.bg_color = Color(0.12, 0.1, 0.09, 0.96)
-	style.border_color = Color(0.55, 0.42, 0.28)
-	style.set_border_width_all(2)
-	style.set_corner_radius_all(10)
-	style.set_content_margin_all(24)
-	style.shadow_color = Color(0, 0, 0, 0.45)
-	style.shadow_size = 12
-	return style
+static func panel_style() -> StyleBox:
+	return UiTheme.panel(1.0, 26.0)
 
 
 static func title_label(text: String, size: int) -> Label:
@@ -88,14 +81,7 @@ static func menu_button(text: String) -> Button:
 	button.focus_mode = Control.FOCUS_NONE
 	button.custom_minimum_size = Vector2(320, 44)
 	button.add_theme_font_size_override("font_size", 18)
-	for state in [["normal", Color(0.24, 0.19, 0.15)], ["hover", Color(0.36, 0.28, 0.2)], ["pressed", Color(0.18, 0.14, 0.11)], ["disabled", Color(0.16, 0.14, 0.13)]]:
-		var style := StyleBoxFlat.new()
-		style.bg_color = state[1]
-		style.border_color = Color(0.55, 0.42, 0.28) if state[0] != "hover" else Color(0.85, 0.66, 0.4)
-		style.set_border_width_all(1)
-		style.set_corner_radius_all(6)
-		button.add_theme_stylebox_override(state[0], style)
-	button.add_theme_color_override("font_hover_color", Color(1.0, 0.92, 0.75))
+	UiTheme.style_button(button)
 	button.pressed.connect(func() -> void: Sfx.play("clic", null, -6.0))
 	return button
 
