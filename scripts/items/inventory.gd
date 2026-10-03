@@ -52,6 +52,8 @@ func add(id: String, count: int, allowed: Array = []) -> int:
 		if _slots[i].is_empty():
 			var put := mini(left, limit)
 			_slots[i] = {"id": id, "count": put}
+			if ItemDB.max_durability(id) > 0:
+				_slots[i]["dur"] = ItemDB.max_durability(id)  # herramienta nueva
 			left -= put
 	if left != count:
 		changed.emit()
@@ -98,6 +100,8 @@ func from_data(data: Array) -> void:
 		var s: Dictionary = data[i] if data[i] is Dictionary else {}
 		if not s.is_empty() and ItemDB.exists(str(s.get("id", ""))) and int(s.get("count", 0)) > 0:
 			_slots[i] = {"id": str(s["id"]), "count": int(s["count"])}
+			if s.has("dur"):
+				_slots[i]["dur"] = int(s["dur"])  # lo que le queda a una herramienta
 		else:
 			_slots[i] = {}
 	changed.emit()

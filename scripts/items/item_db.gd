@@ -168,6 +168,14 @@ static func tool_speed(item_id: String, block_id: int) -> float:
 	return 1.0
 
 
+## Usos de cada herramienta antes de romperse (las que no están aquí no se gastan).
+const DURABILITY := {"stone_axe": 80, "stone_pick": 80, "stone_knife": 60, "spear": 40}
+
+
+static func max_durability(id: String) -> int:
+	return DURABILITY.get(id, 0)
+
+
 ## Lo que da un bloque al romperlo: [[id, cantidad], ...]. La decoración del suelo tiene suerte:
 ## la hierba da fibra casi siempre, a veces semillas y rara vez un insecto; las piedrecitas,
 ## a veces pedernal.

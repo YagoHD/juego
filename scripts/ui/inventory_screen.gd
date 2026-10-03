@@ -307,6 +307,13 @@ func _make_slot_visual(parent: Control) -> Panel:
 	count.add_theme_color_override("font_outline_color", Color.BLACK)
 	count.add_theme_constant_override("outline_size", 4)
 	panel.add_child(count)
+	var dur := ColorRect.new()  # desgaste de la herramienta
+	dur.name = "dur"
+	dur.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	dur.position = Vector2(6, SLOT - 8)
+	dur.size = Vector2(SLOT - 12, 3)
+	dur.visible = false
+	panel.add_child(dur)
 	if parent != null:
 		parent.add_child(panel)
 	return panel
@@ -323,6 +330,7 @@ func _refresh() -> void:
 
 
 func _show_stack(icon: TextureRect, label: Label, stack: Dictionary) -> void:
+	show_durability(icon.get_parent().get_node_or_null("dur"), stack, SLOT - 12)
 	if stack.is_empty():
 		icon.texture = null
 		label.text = ""
@@ -393,3 +401,17 @@ func slots_of(inv: Inventory) -> Array:
 		if section["inventory"] == inv:
 			out.append_array(section["slots"])
 	return out
+
+
+## Barrita de lo que le queda a una herramienta (verde, amarilla, roja); oculta si está nueva.
+static func show_durability(bar: ColorRect, stack: Dictionary, full_width: float) -> void:
+	if bar == null:
+		return
+	var top := 0 if stack.is_empty() else ItemDB.max_durability(stack["id"])
+	if top <= 0 or int(stack.get("dur", top)) >= top:
+		bar.visible = false
+		return
+	var k := clampf(float(stack["dur"]) / top, 0.0, 1.0)
+	bar.visible = true
+	bar.size.x = full_width * k
+	bar.color = Color(0.9, 0.25, 0.2) if k < 0.25 else (Color(0.95, 0.8, 0.25) if k < 0.6 else Color(0.4, 0.85, 0.35))

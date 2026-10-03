@@ -65,6 +65,13 @@ func _ready() -> void:
 		count.add_theme_constant_override("outline_size", 4)
 		slot.add_child(count)
 		_counts.append(count)
+		var dur := ColorRect.new()  # desgaste de la herramienta
+		dur.name = "dur"
+		dur.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		dur.position = Vector2(8, SLOT_SIZE - 9)
+		dur.size = Vector2(SLOT_SIZE - 16, 3)
+		dur.visible = false
+		slot.add_child(dur)
 
 	_name_label = Label.new()
 	_name_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -123,6 +130,7 @@ func _refresh() -> void:
 		_slots[i].add_theme_stylebox_override("panel", _slot_style(i == _selected))
 		var stack := _inventory.get_slot(i)
 		_icons[i].texture = null if stack.is_empty() else ItemDB.icon(stack["id"])
+		InventoryScreen.show_durability(_slots[i].get_node("dur"), stack, SLOT_SIZE - 16)
 		if stack.is_empty():
 			_counts[i].text = ""
 		elif _infinite:

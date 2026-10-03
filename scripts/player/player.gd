@@ -631,6 +631,10 @@ func _edit_block(place: bool) -> void:
 				for d in ItemDB.drops_for(above_id, _loot_rng):
 					ItemDrop.spawn(get_parent(), center + Vector3.UP * size * 0.6, d[0], d[1])
 		TreeFelling.try_fell(get_parent(), _terrain, cell, broken, global_position)  # ¿se cae el árbol?
+		# La herramienta que sirve para este bloque se gasta un poco.
+		var held_tool := active_inventory().get_slot(_hotbar_index)
+		if not held_tool.is_empty() and ItemDB.tool_speed(held_tool["id"], broken) > 1.0:
+			wear_tool()
 		block_broken.emit(cell, broken)
 
 
@@ -1341,6 +1345,7 @@ func _spear_fish() -> bool:
 		return false
 	_held.swing()
 	_avatar.swing()
+	wear_tool()
 	Sfx.play("tirar", null, -4.0)
 	if fish.try_spear(_camera.global_position, -_camera.global_transform.basis.z):
 		Sfx.play("paso_agua", null, 0.0, 0.2)
@@ -1365,3 +1370,26 @@ func _try_plant(target: Dictionary) -> bool:
 		Sfx.play("colocar", null, -6.0)
 		notice.emit("Has plantado trigo. Tardará unos minutos en madurar.")
 	return true
+
+
+# ------------------------------------------------------------------ herramientas que se gastan
+
+## Gasta un uso de la herramienta de la mano (si es de las que se gastan). Al acabarse, se rompe.
+func wear_tool() -> void:
+	if creative:
+		return
+	var stack := inventory.get_slot(_hotbar_index)
+	if stack.is_empty():
+		return
+	var top := ItemDB.max_durability(stack["id"])
+	if top <= 0:
+		return
+	var left := int(stack.get("dur", top)) - 1
+	if left <= 0:
+		inventory.take(_hotbar_index, 1)
+		Sfx.play("romper_madera", null, 0.0, 0.1)
+		notice.emit("Se ha roto tu %s." % ItemDB.display_name(stack["id"]).to_lower())
+		return
+	var worn := stack.duplicate()
+	worn["dur"] = left
+	inventory.set_slot(_hotbar_index, worn)
