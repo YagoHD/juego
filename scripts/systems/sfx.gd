@@ -9,6 +9,32 @@ const RATE := 22050
 
 static var _instance: Sfx
 static var _streams := {}
+static var _file_streams := {}  # ruta -> AudioStream (cargado una vez)
+
+## Sonidos grabados (Kenney, CC0) para cada efecto: se elige uno al azar cada vez. Los que no
+## están aquí se generan por código (agua, pájaros, olas, melodías...).
+const AUDIO := "res://assets/third_party/kenney_audio/"
+const FILES := {
+	"paso_hierba": ["footstep_grass_000", "footstep_grass_001", "footstep_grass_002", "footstep_grass_003", "footstep_grass_004"],
+	"paso_arena": ["footstep_snow_000", "footstep_snow_001", "footstep_snow_002", "footstep_snow_003", "footstep_snow_004"],
+	"paso_piedra": ["footstep_concrete_000", "footstep_concrete_001", "footstep_concrete_002", "footstep_concrete_003", "footstep_concrete_004"],
+	"paso_madera": ["footstep_wood_000", "footstep_wood_001", "footstep_wood_002", "footstep_wood_003", "footstep_wood_004"],
+	"paso_tela": ["footstep_carpet_000", "footstep_carpet_001", "footstep_carpet_002", "footstep_carpet_003", "footstep_carpet_004"],
+	"romper_hierba": ["impactSoft_medium_000", "impactSoft_medium_001", "impactSoft_medium_002", "impactSoft_medium_003", "impactSoft_medium_004"],
+	"romper_arena": ["impactSoft_heavy_000", "impactSoft_heavy_001", "impactSoft_heavy_002", "impactSoft_heavy_003", "impactSoft_heavy_004"],
+	"romper_piedra": ["impactMining_000", "impactMining_001", "impactMining_002", "impactMining_003", "impactMining_004"],
+	"romper_madera": ["impactWood_heavy_000", "impactWood_heavy_001", "impactWood_heavy_002", "impactWood_heavy_003", "impactWood_heavy_004"],
+	"romper_tela": ["cloth1", "cloth2", "cloth3", "cloth4"],
+	"colocar": ["impactGeneric_light_000", "impactGeneric_light_001", "impactGeneric_light_002", "impactGeneric_light_003", "impactGeneric_light_004"],
+	"golpe": ["impactWood_light_000", "impactWood_light_001", "impactWood_light_002", "impactWood_light_003", "impactWood_light_004"],
+	"recoger": ["handleSmallLeather", "handleSmallLeather2"],
+	"tirar": ["dropLeather"],
+	"pagina": ["bookFlip1", "bookFlip2", "bookFlip3"],
+	"cofre": ["creak1", "creak2", "creak3"],
+	"clic": ["click1", "click2", "click3", "click4", "click5"],
+	"talar": ["chop"],
+	"cortar": ["knifeSlice", "knifeSlice2"],
+}
 
 var _pool3d: Array[AudioStreamPlayer3D] = []
 var _pool2d: Array[AudioStreamPlayer] = []
@@ -66,7 +92,9 @@ static func material_of(block_id: int) -> String:
 
 
 func _play(sound: String, pos: Variant, volume_db: float, pitch_spread: float) -> void:
-	var stream := _stream(sound)
+	var stream: AudioStream = _recorded(sound)
+	if stream == null:
+		stream = _stream(sound)
 	if stream == null:
 		return
 	var pitch := 1.0 + _rng.randf_range(-pitch_spread, pitch_spread)
@@ -107,6 +135,17 @@ func _process(delta: float) -> void:
 			_play("pajaro", null, -14.0 - sea_amount * 6.0, 0.25)
 		else:
 			_play("grillos", null, -16.0, 0.1)
+
+
+## Uno de los sonidos grabados de este efecto, al azar (null si no hay).
+func _recorded(sound: String) -> AudioStream:
+	if not FILES.has(sound):
+		return null
+	var list: Array = FILES[sound]
+	var path := AUDIO + String(list[_rng.randi() % list.size()]) + ".ogg"
+	if not _file_streams.has(path):
+		_file_streams[path] = load(path) if ResourceLoader.exists(path) else null
+	return _file_streams[path]
 
 
 # ------------------------------------------------------------------ síntesis
