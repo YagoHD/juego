@@ -12,6 +12,7 @@ static var _loaded := false
 static var _prefabs: Array[Prefab] = []
 static var _first: Array[int] = []       # primer id de cada prefab
 static var _kind := {}                   # id -> "wood" / "leaves" / "rock" / "mushroom"
+static var _owner := {}                  # id -> nombre del prefab al que pertenece
 static var _color := {}                  # id -> Color
 static var _mesh := {}                   # id -> ArrayMesh (espacio 0..1)
 static var _last_id := FIRST_ID - 1
@@ -31,6 +32,7 @@ static func load_all() -> void:
 		_first.append(next)
 		for i in p.cells.size():
 			_kind[next + i] = p.kinds[i]
+			_owner[next + i] = n
 			_color[next + i] = p.colors[i]
 			_mesh[next + i] = p.meshes[i]
 		next += p.cells.size()
@@ -48,6 +50,10 @@ static func is_prefab(id: int) -> bool:
 
 static func kind(id: int) -> String:
 	return _kind.get(id, "")
+
+
+static func prefab_of(id: int) -> String:
+	return _owner.get(id, "")
 
 
 static func color(id: int) -> Color:

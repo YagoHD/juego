@@ -260,6 +260,8 @@ func _prefab_at(wx: int, wz: int) -> int:
 	var h := _hash01(wx * 29 + 3, wz * 31 + 17)
 	if h > 0.009:
 		return -1  # descarte barato
+	if Vector2(wx, wz).distance_to(Vector2(Structures.spawn_voxel())) < 12.0:
+		return -1  # el sitio donde aparece el jugador, despejado
 	var i := _index(wx, wz)
 	if i < 0:
 		return -1
