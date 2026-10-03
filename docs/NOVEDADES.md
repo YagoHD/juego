@@ -114,3 +114,17 @@ Todo lo de Kenney y OpenGameArt es CC0 (créditos en `assets/third_party/*/` y
   trigo asado = torta de pan.
 - Pendiente: la librería de animaciones de Quaternius se descarga a mano desde itch.io (para
   cuando toque el "personaje vivo").
+
+## Más vida y supervivencia (3 de octubre, noche)
+
+- **Objetivos del tutorial**: ahora 12 pasos (también piedra afilada, encender hoguera, comer algo
+  asado y dormir una noche).
+- **Lluvia**: a ratos llueve (cielo gris, gotas, sonido); apaga las hogueras al raso; se puede
+  beber mirando al cielo con la mano vacía.
+- **Las herramientas se gastan** (hacha y pico 80 usos, cuchillo 60, lanza 40): barrita de
+  desgaste en el hueco; al acabarse se rompen.
+- **El mapa del diario se completa al explorar**: lo que no has pisado sale en blanco.
+- **Mineral verde** en la roca de las montañas: brilla un poco, se saca con el pico. Para la forja
+  (por diseñar).
+- **Cangrejos** en la arena (se cogen con la mano vacía, clic izquierdo; asados son comida) y
+  **gaviotas** volando sobre la costa.
