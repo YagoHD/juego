@@ -589,6 +589,7 @@ func _edit_block(place: bool) -> void:
 		var drop := ItemDB.drop_of(broken)
 		if not creative and drop != "":
 			ItemDrop.spawn(get_parent(), center - Vector3.UP * size * 0.4, drop, 1)
+		TreeFelling.try_fell(get_parent(), _terrain, cell, broken, global_position)  # ¿se cae el árbol?
 		block_broken.emit(cell, broken)
 
 
