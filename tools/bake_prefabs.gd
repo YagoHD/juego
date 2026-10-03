@@ -25,6 +25,11 @@ const LIST := [
 	["stump", "stump_oldTall", 0.9, "tree"],
 	["mushrooms_red", "mushroom_redGroup", 0.45, "mushroom"],
 	["mushrooms_tan", "mushroom_tanGroup", 0.45, "mushroom"],
+	["oak_k", "tree_oak", 6.5, "tree"],
+	["fat_k", "tree_fat", 6.0, "tree"],
+	["pine_k", "tree_pineTallA_detailed", 8.0, "tree"],
+	["log_fallen", "log_large", 2.4, "trunk"],
+	["bush_large", "plant_bushLarge", 1.8, "bush"],
 ]
 
 var _palette := {}   # Color -> índice
@@ -69,6 +74,8 @@ func _recolor(c: Color, kind: String) -> Color:
 			return Color.from_hsv(0.08, 0.06, v * 0.95)
 		"bush":
 			return Color.from_hsv(0.27, 0.55, v * 0.85)
+		"trunk":
+			return Color.from_hsv(0.075, 0.5, v * 0.8)
 		"tree":
 			if greenish or c.b > c.r:
 				return Color.from_hsv(0.25 + (v - 0.5) * 0.05, 0.6, v * 0.9)  # hojas
@@ -133,7 +140,9 @@ func _cut(prefab_name: String, cells: Dictionary, default_kind: String) -> Prefa
 				green += 1
 		avg /= sub.size()
 		var kind := default_kind
-		if default_kind == "tree":
+		if default_kind == "trunk":
+			kind = "wood"
+		elif default_kind == "tree":
 			kind = "leaves" if green * 2 > sub.size() else "wood"
 		elif default_kind == "bush":
 			kind = "leaves"

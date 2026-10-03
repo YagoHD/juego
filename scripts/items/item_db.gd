@@ -173,7 +173,7 @@ static func tool_speed(item_id: String, block_id: int) -> float:
 static func drops_for(block_id: int, rng: RandomNumberGenerator) -> Array:
 	var roll := rng.randf()
 	if PrefabLibrary.is_prefab(block_id):
-		if PrefabLibrary.prefab_of(block_id) == "bush":  # el arbusto da bayas (o fibra)
+		if PrefabLibrary.prefab_of(block_id) in ["bush", "bush_large"]:  # los arbustos dan bayas (o fibra)
 			if roll < 0.55: return [["berries", 1 + int(rng.randf() < 0.4)]]
 			return [["fiber", 1]] if roll < 0.8 else []
 		match PrefabLibrary.kind(block_id):

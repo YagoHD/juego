@@ -40,6 +40,7 @@ var _push := Vector3.ZERO       # empujón guardado hasta que se suelta
 var _push_at := Vector3.ZERO
 var _spin := 0.0
 var _tip_speed := 0.8
+var _tip_axis := Vector3.ZERO
 const WAIT := 0.35               # s quieto al principio: el terreno tiene que quitar su choque viejo
 
 
@@ -243,15 +244,20 @@ func _physics_process(delta: float) -> void:
 			apply_impulse(_push, _push_at)
 			# Vuelco: empieza a inclinarse hacia donde se le empuja; el peso de la copa hace el resto.
 			var tip := Vector3.UP.cross(_push.normalized()).normalized()
+			_tip_axis = tip
 			angular_velocity = tip * _tip_speed + Vector3.UP * _spin
 		return
+	# Si se queda enganchado de pie (entre las copas vecinas), se sigue venciendo hacia su lado.
+	if _age < WAIT + 4.0 and _tilt() < 0.35 and _tip_axis != Vector3.ZERO:
+		apply_torque(_tip_axis * mass * 3.0)
+		_still = 0.0
 	# Golpe contra el suelo con la copa: las hojas se rompen.
 	if not _leaves_broken and _hit and _age > 0.25 and (_tilt() > 0.6 or _age > 2.5):
 		_break_leaves()
 	# Quieto un rato (o demasiado tiempo cayendo): se queda como bloques.
 	var moving := linear_velocity.length() > 0.15 or angular_velocity.length() > 0.2
 	_still = 0.0 if moving else _still + delta
-	if (_still > 0.6 and _age > WAIT + 1.0) or _age > MAX_TIME or global_position.y < -60.0:
+	if (_still > 0.6 and _age > WAIT + 1.0 and (_tilt() >= 0.35 or _age > WAIT + 4.0)) or _age > MAX_TIME or global_position.y < -60.0:
 		_settle()
 
 

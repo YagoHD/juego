@@ -5,7 +5,9 @@ class_name PrefabLibrary
 
 const DIR := "res://assets/models/prefabs/"
 const NAMES := ["palm_tall", "palm_bend", "palm_short", "rock_a", "rock_d", "rock_tall",
-	"bush", "stump", "mushrooms_red", "mushrooms_tan"]
+	"bush", "stump", "mushrooms_red", "mushrooms_tan",
+	# Nuevos, siempre al final:
+	"oak_k", "fat_k", "pine_k", "log_fallen", "bush_large"]
 const FIRST_ID := 64
 
 static var _loaded := false

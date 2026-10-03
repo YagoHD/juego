@@ -233,6 +233,12 @@ func _generate_block(out_buffer: VoxelBuffer, origin_in_voxels: Vector3i, lod: i
 			var base := _height_at(wx, wz)
 			if base + MAX_TREE_HEIGHT < origin_in_voxels.y or base > origin_in_voxels.y + size.y:
 				continue  # el árbol no toca este bloque
+			var kenney := _kenney_tree(wx, wz, kind)
+			if kenney >= 0:  # uno de cada cuatro: un árbol de Kenney troceado en bloques
+				for piece in PrefabLibrary.pieces(kenney):
+					var kc: Vector3i = piece[0]
+					_set_if_air(out_buffer, origin_in_voxels, size, wx + kc.x, base + kc.y, wz + kc.z, piece[1])
+				continue
 			_stamp_tree(out_buffer, origin_in_voxels, size, wx, wz, base, kind)
 
 	# --- 3b. Decoración del suelo (después de los árboles, para no ocupar el pie de un tronco).
@@ -252,6 +258,17 @@ func _fill_run(buffer: VoxelBuffer, origin: Vector3i, size: Vector3i, x: int, z:
 	var b := mini(to_y - origin.y, size.y)
 	if b > a:
 		buffer.fill_area(id, Vector3i(x, a, z), Vector3i(x + 1, b, z + 1), VoxelBuffer.CHANNEL_TYPE)
+
+
+## Árbol de Kenney (troceado) en lugar del nuestro, uno de cada cuatro (o -1).
+func _kenney_tree(wx: int, wz: int, kind: int) -> int:
+	var r := _hash01(wx * 41 + 9, wz * 43 + 5)
+	if r > 0.25:
+		return -1
+	match kind:
+		1: return PrefabLibrary.index_of("oak_k" if r < 0.12 else "fat_k")
+		2: return PrefabLibrary.index_of("pine_k")
+	return -1
 
 
 ## Prefab (palmera, roca, arbusto...) que nace en esta columna, o -1. Las palmeras, en la arena
@@ -274,6 +291,8 @@ func _prefab_at(wx: int, wz: int) -> int:
 		SAND:
 			if h < 0.006 and height <= SEA_LEVEL + 6:
 				return _palms[int(pick * _palms.size()) % _palms.size()]
+			if h < 0.0068:
+				return PrefabLibrary.index_of("log_fallen")
 		GRASS:
 			if h < 0.0010:
 				return _rocks[int(pick * _rocks.size()) % _rocks.size()]
@@ -283,6 +302,10 @@ func _prefab_at(wx: int, wz: int) -> int:
 				return PrefabLibrary.index_of("stump")
 			if h < 0.0075:
 				return PrefabLibrary.index_of("mushrooms_red" if pick < 0.5 else "mushrooms_tan")
+			if h < 0.0085:
+				return PrefabLibrary.index_of("bush_large")
+			if h < 0.009:
+				return PrefabLibrary.index_of("log_fallen")
 		STONE, MOSSY_STONE, DIRT:
 			if h < 0.004:
 				return _rocks[int(pick * _rocks.size()) % _rocks.size()]
