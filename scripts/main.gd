@@ -50,6 +50,9 @@ var _objectives: Objectives
 var _last_drift_day := 1        # último día en que el mar trajo restos
 var _session: CraftSession     # inventario de rodillas y vista de fabricar
 var _crosshair: Label
+var _needs: Needs
+var _hunger_bar: ProgressBar
+var _thirst_bar: ProgressBar
 var _hotbar: Hotbar
 var _underwater: ColorRect
 var _day_night: DayNight
@@ -253,6 +256,11 @@ func _build_player() -> void:
 	_ground.player = _player
 	_ground.crafted.connect(func(recipe_id: String) -> void: _objectives.mark("hecho_" + recipe_id))
 	_objectives.player = _player
+	_needs = Needs.new()
+	add_child(_needs)
+	_needs.player = _player
+	_player.needs = _needs
+	_needs.warned.connect(_show_notice)
 	_session = CraftSession.new()
 	add_child(_session)
 	_session.player = _player
@@ -386,6 +394,8 @@ func _build_hud() -> void:
 
 	_hotbar = Hotbar.new()
 	canvas.add_child(_hotbar)
+	_hunger_bar = _make_need_bar(canvas, 0, "Hambre", Color(0.85, 0.55, 0.2))
+	_thirst_bar = _make_need_bar(canvas, 1, "Sed", Color(0.3, 0.6, 0.9))
 	_objectives = Objectives.new()
 	add_child(_objectives)
 	_objectives.build_ui(canvas)
@@ -453,6 +463,10 @@ func _process(delta: float) -> void:
 	var reading := _journal != null and _journal.visible  # con el diario abierto, nada encima
 	var kneeling := _session != null and _session.active()  # de rodillas: el inventario ya enseña la barra
 	_hotbar.visible = not reading and not kneeling
+	_hunger_bar.get_parent().visible = _hotbar.visible and not _player.creative
+	if _needs != null:
+		_hunger_bar.value = _needs.hunger
+		_thirst_bar.value = _needs.thirst
 	_crosshair.visible = not kneeling
 	_hud.visible = not reading
 	_prompt.visible = not reading
@@ -626,6 +640,7 @@ func _save_player() -> void:
 		"journal": _player.has_journal,
 		"objectives": _objectives.to_data(),
 		"drift_day": _last_drift_day,
+		"needs": _needs.to_data(),
 		"spawn": [_player.get_spawn_point().x, _player.get_spawn_point().y, _player.get_spawn_point().z],
 		"hour": _day_night.hour,
 		"day": _day_night.day,
@@ -648,6 +663,8 @@ func _load_player() -> void:
 		_player.set_equipment(d["equipment"])
 	_player.has_journal = bool(d.get("journal", false))
 	_last_drift_day = int(d.get("drift_day", 1))
+	if d.get("needs") is Dictionary:
+		_needs.from_data(d["needs"])
 	var spawn: Array = d.get("spawn", [])
 	if spawn.size() == 3:
 		_player.set_spawn_point(Vector3(float(spawn[0]), float(spawn[1]), float(spawn[2])))
@@ -1002,3 +1019,47 @@ func _sleep(at: Vector3) -> void:
 		black.queue_free()
 		_player.ui_open = false
 		_show_notice("Has dormido hasta el amanecer."))
+
+
+## Barrita de hambre o sed, abajo a la izquierda (fila 0 o 1).
+func _make_need_bar(canvas: CanvasLayer, row: int, text: String, color: Color) -> ProgressBar:
+	var holder: Control
+	if row == 0:
+		holder = VBoxContainer.new()
+		holder.name = "Necesidades"
+		holder.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		holder.set_anchors_preset(Control.PRESET_BOTTOM_LEFT)
+		holder.grow_vertical = Control.GROW_DIRECTION_BEGIN
+		holder.offset_left = 16
+		holder.offset_bottom = -18
+		(holder as VBoxContainer).add_theme_constant_override("separation", 4)
+		canvas.add_child(holder)
+	else:
+		holder = canvas.get_node("Necesidades")
+	var row_box := HBoxContainer.new()
+	row_box.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	holder.add_child(row_box)
+	var label := Label.new()
+	label.text = text
+	label.custom_minimum_size = Vector2(60, 0)
+	label.add_theme_font_size_override("font_size", 13)
+	label.add_theme_color_override("font_outline_color", Color.BLACK)
+	label.add_theme_constant_override("outline_size", 4)
+	row_box.add_child(label)
+	var bar := ProgressBar.new()
+	bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	bar.custom_minimum_size = Vector2(150, 12)
+	bar.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	bar.show_percentage = false
+	bar.max_value = 100.0
+	bar.value = 100.0
+	var bg := StyleBoxFlat.new()
+	bg.bg_color = Color(0, 0, 0, 0.45)
+	bg.set_corner_radius_all(4)
+	var fill := StyleBoxFlat.new()
+	fill.bg_color = color
+	fill.set_corner_radius_all(4)
+	bar.add_theme_stylebox_override("background", bg)
+	bar.add_theme_stylebox_override("fill", fill)
+	row_box.add_child(bar)
+	return bar

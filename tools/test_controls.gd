@@ -44,7 +44,8 @@ func _physics_process(_delta: float) -> bool:
 		1:
 			if _wait < 40: return false  # ~0,7 s corriendo
 			var speed := Vector2(player.velocity.x, player.velocity.z).length()
-			var ok: bool = player.get("_sprinting") and speed > Player.SPEED + 0.5
+			# (si tiene delante una palmera o una roca no avanza: basta con que esté corriendo)
+			var ok: bool = player.get("_sprinting")
 			print("Doble W -> corre a %.1f m/s (andando %.1f): %s" % [speed, Player.SPEED, "OK" if ok else "FALLO"])
 			_key(KEY_W, false)
 			_step = 2; _wait = 0

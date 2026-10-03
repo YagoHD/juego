@@ -88,6 +88,7 @@ const BASE_STORAGE := 9   # huecos de inventario sin mochila
 var known_recipes: Array = GroundRecipes.KNOWN_AT_START.duplicate()
 var ground: GroundCrafting   # objetos dejados en el suelo (lo pone main.gd)
 var has_journal := false     # lleva el diario del capitán
+var needs: Needs             # hambre y sed (lo pone main.gd)
 var _working := false        # agachado fabricando
 var _work_swing := 0.0
 var _crouch := 0.0           # 0..1: cuánto baja la vista al agacharse
@@ -385,7 +386,11 @@ func _physics_process(delta: float) -> void:
 	# Correr dura mientras se mantenga W (y no en el agua ni yendo hacia atrás).
 	if not _key(KEY_W) or feet_wet:
 		_sprinting = false
+	if needs != null and not needs.can_sprint():
+		_sprinting = false  # con hambre o sed no se corre
 	var speed := SWIM_SPEED if feet_wet else (SPRINT_SPEED if _sprinting else SPEED)
+	if needs != null:
+		speed *= needs.speed_factor()
 	velocity.x = dir.x * speed
 	velocity.z = dir.z * speed
 	_pay_step_debt(delta)
@@ -558,6 +563,11 @@ func _edit_block(place: bool) -> void:
 	if place and _read_note():
 		return
 	var target := _target()
+	var at_campfire: bool = target.has("item") and (target["item"] as PlacedItem).campfire != null
+	if place and not at_campfire and _try_eat():
+		return
+	if place and _try_drink():
+		return
 	if target.is_empty():
 		return
 	if target.has("item"):
@@ -1223,7 +1233,7 @@ func can_kneel() -> bool:
 
 ## La decoración no tiene choque (se atraviesa): se busca recorriendo el rayo bloque a bloque.
 ## Devuelve {"cell", "dist"} de la primera que encuentre antes de max_dist (o de un bloque sólido).
-func _decor_hit(from: Vector3, dir: Vector3, max_dist: float) -> Dictionary:
+func _decor_hit(from: Vector3, dir: Vector3, max_dist: float, want_water := false) -> Dictionary:
 	if _tool == null:
 		return {}
 	var vs := _terrain.scale.x
@@ -1241,7 +1251,10 @@ func _decor_hit(from: Vector3, dir: Vector3, max_dist: float) -> Dictionary:
 	var max_t := minf(max_dist, REACH + _spring.spring_length) / vs
 	while t <= max_t:
 		var id := _tool.get_voxel(cell)
-		if Blocks.is_decor(id):
+		if want_water:
+			if id == IslandGenerator.WATER:
+				return {"cell": cell, "dist": t * vs}
+		elif Blocks.is_decor(id):
 			if _terrain.to_global(Vector3(cell) + Vector3.ONE * 0.5).distance_to(_head.global_position) <= REACH + 0.3:
 				return {"cell": cell, "dist": t * vs}
 			return {}
@@ -1275,3 +1288,32 @@ func set_spawn_point(p: Vector3) -> void:
 
 func get_spawn_point() -> Vector3:
 	return _spawn_point
+
+
+# ------------------------------------------------------------------ comer y beber
+
+## Clic derecho con comida en la mano: se come una.
+func _try_eat() -> bool:
+	var stack := active_inventory().get_slot(_hotbar_index)
+	if needs == null or stack.is_empty() or not Needs.is_food(stack["id"]):
+		return false
+	if needs.eat(stack["id"]):
+		if not creative:
+			inventory.take(_hotbar_index, 1)
+		Sfx.play("recoger", null, -2.0, 0.25)
+		notice.emit("Comes %s." % ItemDB.display_name(stack["id"]).to_lower())
+	return true
+
+
+## Clic derecho con la mano vacía mirando agua dulce (ríos y lagos) cerca: se bebe.
+func _try_drink() -> bool:
+	if needs == null or not active_inventory().get_slot(_hotbar_index).is_empty():
+		return false
+	var from := _camera.global_position
+	var water := _decor_hit(from, -_camera.global_transform.basis.z, REACH, true)
+	if water.is_empty():
+		return false
+	if needs.drink():
+		Sfx.play("paso_agua", null, 0.0, 0.2)
+		notice.emit("Bebes agua del río. Fresca.")
+	return true
