@@ -43,9 +43,18 @@ var _tip_speed := 0.8
 const WAIT := 0.35               # s quieto al principio: el terreno tiene que quitar su choque viejo
 
 
+## Tronco: el de los árboles normales, el seco y las piezas de tronco de las palmeras.
+static func _is_wood(id: int) -> bool:
+	return WOODS.has(id) or (PrefabLibrary.is_prefab(id) and PrefabLibrary.kind(id) == "wood")
+
+
+static func _is_leaf(id: int) -> bool:
+	return LEAF_IDS.has(id) or (PrefabLibrary.is_prefab(id) and PrefabLibrary.kind(id) == "leaves")
+
+
 ## Se llama al romper un bloque. Devuelve true si el árbol empieza a caer.
 static func try_fell(parent: Node, terrain: VoxelTerrain, cut: Vector3i, cut_id: int, from: Vector3) -> bool:
-	if not WOODS.has(cut_id):
+	if not _is_wood(cut_id):
 		return false
 	var tool := terrain.get_voxel_tool()
 	tool.channel = VoxelBuffer.CHANNEL_TYPE
@@ -70,7 +79,7 @@ func _collect(cut: Vector3i) -> bool:
 	for dx in [-1, 0, 1]:
 		for dz in [-1, 0, 1]:
 			var c := cut + Vector3i(dx, 1, dz)
-			if WOODS.has(_tool.get_voxel(c)):
+			if _is_wood(_tool.get_voxel(c)):
 				stack.append(c)
 	if stack.is_empty():
 		return false
@@ -80,12 +89,12 @@ func _collect(cut: Vector3i) -> bool:
 		if _woods.has(c):
 			continue
 		var id := _tool.get_voxel(c)
-		if not WOODS.has(id):
+		if not _is_wood(id):
 			continue
 		if c.y <= cut.y:
 			return false  # sigue unido a algo por debajo del corte: se sostiene
 		_woods[c] = id
-		if id == IslandGenerator.WOOD:
+		if id != IslandGenerator.DEAD_WOOD:
 			dead_only = false
 		if _woods.size() > MAX_BLOCKS:
 			return false
@@ -107,7 +116,7 @@ func _collect(cut: Vector3i) -> bool:
 		if c.y < cut.y or maxi(absi(c.x - cut.x), absi(c.z - cut.z)) > CROWN_REACH:
 			continue
 		var id := _tool.get_voxel(c)
-		if not LEAF_IDS.has(id):
+		if not _is_leaf(id):
 			continue
 		_leaves[c] = id
 		if _leaves.size() > MAX_BLOCKS:
@@ -205,13 +214,14 @@ func _build_blocks(cells: Dictionary) -> Node3D:
 		var list: Array = by_id[id]
 		var mm := MultiMesh.new()
 		mm.transform_format = MultiMesh.TRANSFORM_3D
-		mm.mesh = BlockTextures.make_block_mesh(id, _vs)
+		var shaped := PrefabLibrary.is_prefab(id)  # pieza de palmera: su propia forma
+		mm.mesh = PrefabLibrary.centered_mesh(id, _vs) if shaped else BlockTextures.make_block_mesh(id, _vs)
 		mm.instance_count = list.size()
 		for i in list.size():
 			mm.set_instance_transform(i, Transform3D(Basis(), _local(list[i]) * _vs))
 		var inst := MultiMeshInstance3D.new()
 		inst.multimesh = mm
-		inst.material_override = BlockTextures.make_material()
+		inst.material_override = PrefabLibrary.material() if shaped else BlockTextures.make_material()
 		holder.add_child(inst)
 	return holder
 
@@ -263,7 +273,7 @@ func _break_leaves() -> void:
 		center += p
 		if rng.randf() < LEAF_DROP_CHANCE and dropped < 40:
 			dropped += 1
-			ItemDrop.spawn(get_parent(), p + Vector3.UP * 0.3, ItemDB.drop_of(_leaves[c]), 1)
+			ItemDrop.spawn(get_parent(), p + Vector3.UP * 0.3, ("leaves" if PrefabLibrary.is_prefab(_leaves[c]) else ItemDB.drop_of(_leaves[c])), 1)
 	center /= _leaves.size()
 	# Los pinos sueltan resina al caer.
 	if _leaves.values().has(IslandGenerator.PINE_LEAVES):

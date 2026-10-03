@@ -59,7 +59,18 @@ var _hasher := HashingContext.new()
 var _fingerprint := ""
 
 
+var _margin := TREE_MARGIN     # columnas de margen: lo que más se aleja un árbol o un prefab de su pie
+var _palms: Array[int] = []
+var _rocks: Array[int] = []
+
+
 func _init() -> void:
+	PrefabLibrary.load_all()  # palmeras, rocas... (en el hilo principal, antes de generar)
+	_margin = maxi(TREE_MARGIN, PrefabLibrary.reach() + 1)
+	for n in ["palm_tall", "palm_bend", "palm_short"]:
+		_palms.append(PrefabLibrary.index_of(n))
+	for n in ["rock_a", "rock_d", "rock_tall"]:
+		_rocks.append(PrefabLibrary.index_of(n))
 	_hasher.start(HashingContext.HASH_MD5)
 	_h = _load_16bit(MAP_DIR + "height.png")
 	_w = _load_16bit(MAP_DIR + "water.png")
@@ -144,10 +155,10 @@ func _height_at(wx: int, wz: int) -> int:
 func _chunk_height_range(origin: Vector3i, size: Vector3i) -> Vector2i:
 	# Altura mínima del suelo y máxima (suelo o agua) bajo el bloque, leyendo el mapa en bruto.
 	# Incluye el margen de los árboles vecinos. Mucho más barato que muestrear cada columna.
-	var p0x := floori(_to_px(origin.x - TREE_MARGIN)) - 1
-	var p1x := ceili(_to_px(origin.x + size.x + TREE_MARGIN)) + 1
-	var p0z := floori(_to_px(origin.z - TREE_MARGIN)) - 1
-	var p1z := ceili(_to_px(origin.z + size.z + TREE_MARGIN)) + 1
+	var p0x := floori(_to_px(origin.x - _margin)) - 1
+	var p1x := ceili(_to_px(origin.x + size.x + _margin)) + 1
+	var p0z := floori(_to_px(origin.z - _margin)) - 1
+	var p1z := ceili(_to_px(origin.z + size.z + _margin)) + 1
 	var lo := INF
 	var hi := -INF
 	if _h.is_empty() or p0x < 0 or p0z < 0 or p1x >= _n or p1z >= _n:
@@ -205,12 +216,19 @@ func _generate_block(out_buffer: VoxelBuffer, origin_in_voxels: Vector3i, lod: i
 					decor.append(Vector4i(x, ly, z, d))
 
 	# --- 3. Árboles (con margen para no cortar copas entre chunks).
-	for lx in range(-TREE_MARGIN, size.x + TREE_MARGIN):
-		for lz in range(-TREE_MARGIN, size.z + TREE_MARGIN):
+	for lx in range(-_margin, size.x + _margin):
+		for lz in range(-_margin, size.z + _margin):
 			var wx: int = origin_in_voxels.x + lx
 			var wz: int = origin_in_voxels.z + lz
 			var kind := _tree_kind(wx, wz)
 			if kind == 0:
+				var prefab := _prefab_at(wx, wz)
+				if prefab >= 0:
+					var pbase := _height_at(wx, wz)
+					if pbase + MAX_TREE_HEIGHT >= origin_in_voxels.y and pbase <= origin_in_voxels.y + size.y:
+						for piece in PrefabLibrary.pieces(prefab):
+							var pc: Vector3i = piece[0]
+							_set_if_air(out_buffer, origin_in_voxels, size, wx + pc.x, pbase + pc.y, wz + pc.z, piece[1])
 				continue
 			var base := _height_at(wx, wz)
 			if base + MAX_TREE_HEIGHT < origin_in_voxels.y or base > origin_in_voxels.y + size.y:
@@ -234,6 +252,39 @@ func _fill_run(buffer: VoxelBuffer, origin: Vector3i, size: Vector3i, x: int, z:
 	var b := mini(to_y - origin.y, size.y)
 	if b > a:
 		buffer.fill_area(id, Vector3i(x, a, z), Vector3i(x + 1, b, z + 1), VoxelBuffer.CHANNEL_TYPE)
+
+
+## Prefab (palmera, roca, arbusto...) que nace en esta columna, o -1. Las palmeras, en la arena
+## junto al mar; las rocas grandes, arbustos, tocones y setas, en la hierba y la montaña.
+func _prefab_at(wx: int, wz: int) -> int:
+	var h := _hash01(wx * 29 + 3, wz * 31 + 17)
+	if h > 0.009:
+		return -1  # descarte barato
+	var i := _index(wx, wz)
+	if i < 0:
+		return -1
+	var top: int = _surface[i * 3]
+	var height := _height_at(wx, wz)
+	if height <= SEA_LEVEL or _w[i] > height:
+		return -1  # bajo el agua
+	var pick := _hash01(wx * 7 - 5, wz * 13 + 1)
+	match top:
+		SAND:
+			if h < 0.006 and height <= SEA_LEVEL + 6:
+				return _palms[int(pick * _palms.size()) % _palms.size()]
+		GRASS:
+			if h < 0.0010:
+				return _rocks[int(pick * _rocks.size()) % _rocks.size()]
+			if h < 0.0035:
+				return PrefabLibrary.index_of("bush")
+			if h < 0.0045:
+				return PrefabLibrary.index_of("stump")
+			if h < 0.0075:
+				return PrefabLibrary.index_of("mushrooms_red" if pick < 0.5 else "mushrooms_tan")
+		STONE, MOSSY_STONE, DIRT:
+			if h < 0.004:
+				return _rocks[int(pick * _rocks.size()) % _rocks.size()]
+	return -1
 
 
 ## Qué cosa pequeña hay en el suelo de esta columna (AIR si nada), según el suelo.

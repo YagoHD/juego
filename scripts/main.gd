@@ -117,6 +117,11 @@ func _build_world() -> void:
 			library.add_model(DecorModels.make_model(id))  # hierba, flores, piedrecitas...
 		else:
 			library.add_model(_make_cube(id, solid))
+	# Huecos hasta los prefabs (ids libres para bloques futuros) y las piezas de los prefabs.
+	for id in range(Blocks.LAST_ID + 1, PrefabLibrary.FIRST_ID):
+		library.add_model(VoxelBlockyModelEmpty.new())
+	for id in range(PrefabLibrary.FIRST_ID, PrefabLibrary.last_id() + 1):
+		library.add_model(PrefabLibrary.make_model(id))  # palmeras, rocas... troceadas
 	library.bake()
 
 	var mesher := VoxelMesherBlocky.new()
@@ -179,6 +184,7 @@ func _world_fingerprint() -> String:
 	var text := _generator.get_maps_fingerprint()
 	text += FileAccess.get_md5("res://scripts/world/island_generator.gd")
 	text += FileAccess.get_md5("res://scripts/world/structures.gd")
+	text += FileAccess.get_md5("res://scripts/world/prefab_library.gd") + str(PrefabLibrary.last_id())
 	return text.md5_text().substr(0, 12)
 
 

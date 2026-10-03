@@ -49,6 +49,8 @@ static func play(sound: String, pos: Variant = null, volume_db := 0.0, pitch_spr
 
 ## Nombre del sonido de pasos / golpes según el bloque.
 static func material_of(block_id: int) -> String:
+	if PrefabLibrary.is_prefab(block_id):
+		return {"wood": "madera", "rock": "piedra"}.get(PrefabLibrary.kind(block_id), "hierba")
 	match block_id:
 		IslandGenerator.SAND, IslandGenerator.SNOW:
 			return "arena"

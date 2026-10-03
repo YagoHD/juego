@@ -30,6 +30,8 @@ static func paint(id: String) -> Image:
 		"roasted_insect": _roasted(img, "insect")
 		"roasted_berries": _roasted(img, "berries")
 		"roasted_seeds": _roasted(img, "seeds")
+		"mushroom": _mushroom(img)
+		"roasted_mushroom": _roasted(img, "mushroom")
 		"rock": _rock(img, Color(0.56, 0.56, 0.58))
 		"flint": _rock(img, Color(0.3, 0.3, 0.36))
 		"sharp_rock": _sharp_rock(img)
@@ -377,3 +379,13 @@ static func _roasted(img: Image, raw: String) -> void:
 			var c := src.get_pixel(x, y)
 			if c.a > 0.0:
 				img.set_pixel(x, y, Color(c.r * 0.75 + 0.12, c.g * 0.55 + 0.05, c.b * 0.35, c.a))
+
+
+static func _mushroom(img: Image) -> void:
+	var cap := Color(0.78, 0.22, 0.18)
+	_rect(img, 3, 4, 12, 7, cap)
+	_rect(img, 5, 3, 10, 3, cap)
+	for p in [Vector2i(5, 5), Vector2i(9, 4), Vector2i(10, 6)]:
+		img.set_pixel(p.x, p.y, Color(0.95, 0.9, 0.85))
+	_rect(img, 6, 8, 9, 13, Color(0.9, 0.85, 0.75))
+	_rect(img, 6, 13, 9, 13, Color(0.75, 0.68, 0.58))

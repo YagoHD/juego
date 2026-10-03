@@ -7,7 +7,7 @@ class_name Campfire
 ## Encendida da luz y calor, chisporrotea y echa humo; cuando se acaba la leña se apaga.
 
 const FUEL := {"sticks": 45.0, "wood": 150.0, "board": 120.0, "planks": 90.0, "fiber": 10.0, "resin": 30.0}
-const COOKS := {"insect": "roasted_insect", "berries": "roasted_berries", "seeds": "roasted_seeds"}
+const COOKS := {"insect": "roasted_insect", "berries": "roasted_berries", "seeds": "roasted_seeds", "mushroom": "roasted_mushroom"}
 const COOK_TIME := 4.0
 const LIGHT_CHANCE := 0.45
 

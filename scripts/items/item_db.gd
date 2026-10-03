@@ -63,6 +63,8 @@ const OTHER_ITEMS := {
 	"roasted_insect": {"name": "Insecto asado", "stack": 32},
 	"roasted_berries": {"name": "Bayas asadas", "stack": 24},
 	"roasted_seeds": {"name": "Semillas tostadas", "stack": 64},
+	"mushroom": {"name": "Seta", "stack": 32},
+	"roasted_mushroom": {"name": "Seta asada", "stack": 32},
 	"rock": {"name": "Piedra", "stack": 32},
 	"flint": {"name": "Pedernal", "stack": 32},
 	"sharp_rock": {"name": "Piedra afilada", "stack": 16},
@@ -166,6 +168,13 @@ static func tool_speed(item_id: String, block_id: int) -> float:
 ## a veces pedernal.
 static func drops_for(block_id: int, rng: RandomNumberGenerator) -> Array:
 	var roll := rng.randf()
+	if PrefabLibrary.is_prefab(block_id):
+		match PrefabLibrary.kind(block_id):
+			"wood": return [["wood", 1]]
+			"rock": return [["rock", 1 + int(roll < 0.5)]] if roll > 0.08 else [["flint", 1]]
+			"leaves": return [["leaves", 1]] if roll < 0.3 else ([["fiber", 1]] if roll < 0.5 else [])
+			"mushroom": return [["mushroom", 1 + int(roll < 0.3)]]
+		return []
 	match block_id:
 		IslandGenerator.TALL_GRASS:
 			if roll < 0.68: return [["fiber", 1 + int(rng.randf() < 0.3)]]
