@@ -25,7 +25,7 @@ static var _chest_loot := {}     # Vector3i (celda del cofre) -> Array de {"id",
 static var _spawn := Vector2i.ZERO
 static var _spawn_yaw := 0.0
 static var _ship := Vector2i.ZERO  # centro del barco naufragado (voxels x, z)
-static var _ruins := Vector2i(-548, -691)
+static var _ruins := Vector2i(-274, -345)
 static var _built := false
 
 
@@ -76,7 +76,7 @@ static func spawn_yaw() -> float:
 static func _build_ruins(gen: IslandGenerator) -> void:
 	# Restos de un muro antiguo en la colina del noroeste. La piedra musgosa es
 	# cosechable y también se puede usar como bloque de construcción.
-	var center := Vector2(-548.0, -691.0)
+	var center := Vector2(-274.0, -345.0)
 	for row in 2:
 		var z := int(center.y) + (row * 2 - 1) * 5
 		for i in 15:
@@ -111,8 +111,8 @@ static func _build_ruins(gen: IslandGenerator) -> void:
 
 static func _build_shipwreck(gen: IslandGenerator) -> void:
 	# Orilla: desde el pueblo hacia el centro de la bahía, el primer punto que ya es agua.
-	var village := Vector2(-560, 607)
-	var bay := Vector2(-618, 786)
+	var village := Vector2(-280, 303)
+	var bay := Vector2(-309, 393)
 	var dir := (bay - village).normalized()
 	var shore := village
 	for step in 400:

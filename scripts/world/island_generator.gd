@@ -41,7 +41,8 @@ const GROUND_STICKS := 27
 const SHELL := 28
 
 const MAP_DIR := "res://assets/island/"
-const MAP_HALF := 1024.0      # los mapas cubren [-MAP_HALF, MAP_HALF] voxels en X y Z
+const MAP_HALF := 512.0       # los mapas cubren [-MAP_HALF, MAP_HALF] voxels en X y Z (la isla a la mitad
+                              # de ancho que el horneado original; las alturas, iguales)
 const OCEAN_FLOOR := 4.0
 const SEA_LEVEL := 24         # coincide con el plano de mar en main.gd y con el horneador
 const DIRT_DEPTH := 3

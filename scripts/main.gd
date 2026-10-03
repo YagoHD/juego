@@ -130,7 +130,7 @@ func _build_world() -> void:
 	terrain.stream = _make_world_stream()
 	terrain.generate_collisions = true
 	# Solo existen voxels dentro de la isla y entre el fondo marino y las cimas.
-	terrain.bounds = AABB(Vector3(-1024, 0, -1024), Vector3(2048, 256, 2048))
+	terrain.bounds = AABB(Vector3(-IslandGenerator.MAP_HALF, 0, -IslandGenerator.MAP_HALF), Vector3(IslandGenerator.MAP_HALF * 2.0, 256, IslandGenerator.MAP_HALF * 2.0))
 	# Mallas de 32³ voxels: 8 veces menos objetos de malla y colisión que con 16³.
 	terrain.mesh_block_size = 32
 	terrain.max_view_distance = NEAR_VIEW_VOXELS + 64
