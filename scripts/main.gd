@@ -318,7 +318,7 @@ func _enter_game() -> void:
 
 func _near_spawn_area() -> AABB:
 	var r := NEAR_VIEW_VOXELS * 0.8
-	return AABB(Vector3(Structures.spawn_voxel().x - r, 0, Structures.spawn_voxel().y - r), Vector3(2 * r, 256, 2 * r))
+	return AABB(Vector3(Structures.spawn_voxel().x - r, 0, Structures.spawn_voxel().y - r), Vector3(2 * r, 256, 2 * r)).intersection(_terrain.bounds)  # sin salirse del mundo (si no, nunca termina)
 
 
 func _finish_loading() -> void:
