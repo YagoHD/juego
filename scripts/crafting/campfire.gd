@@ -22,13 +22,21 @@ var _crackle := 0.0
 
 
 func _ready() -> void:
-	# Piedras en anillo.
-	for k in 8:
-		var a := TAU * k / 8.0
-		_box(Vector3(cos(a) * 0.17, 0.035, sin(a) * 0.17), Vector3(0.08, 0.07, 0.07), Color(0.52, 0.52, 0.54).darkened(0.1 * (k % 3)), a)
-	# Leña cruzada en el centro.
-	_box(Vector3(0, 0.05, 0), Vector3(0.24, 0.045, 0.045), Color(0.42, 0.28, 0.15), 0.6)
-	_box(Vector3(0, 0.08, 0), Vector3(0.24, 0.045, 0.045), Color(0.38, 0.25, 0.13), -0.7)
+	var pit_path := "res://assets/models/voxel/campfire_pit.res"
+	if ResourceLoader.exists(pit_path):
+		# Anillo de piedras con leña (Kenney Survival Kit, en cubitos).
+		var pit := MeshInstance3D.new()
+		pit.mesh = load(pit_path)
+		pit.scale = Vector3.ONE * 0.75
+		add_child(pit)
+	else:
+		# Piedras en anillo.
+		for k in 8:
+			var a := TAU * k / 8.0
+			_box(Vector3(cos(a) * 0.17, 0.035, sin(a) * 0.17), Vector3(0.08, 0.07, 0.07), Color(0.52, 0.52, 0.54).darkened(0.1 * (k % 3)), a)
+		# Leña cruzada en el centro.
+		_box(Vector3(0, 0.05, 0), Vector3(0.24, 0.045, 0.045), Color(0.42, 0.28, 0.15), 0.6)
+		_box(Vector3(0, 0.08, 0), Vector3(0.24, 0.045, 0.045), Color(0.38, 0.25, 0.13), -0.7)
 	_flames = Node3D.new()
 	add_child(_flames)
 	for k in 3:

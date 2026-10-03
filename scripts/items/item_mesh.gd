@@ -1,13 +1,46 @@
 class_name ItemMesh
 ## Malla 3D de un objeto para verlo en la mano o en el suelo: los bloques son cubos con su
-## textura; el resto (cuerda, ropa...) es su icono con grosor, un prisma por píxel.
+## textura; las herramientas con modelo (hacha, pico) son sus modelos de cubitos (Kenney Survival
+## Kit, voxelizados); el resto (cuerda, ropa...) es su icono con grosor, un prisma por píxel.
+
+## Objetos con modelo de cubitos (res://assets/models/voxel/<nombre>.res).
+const VOXEL_MODELS := {"stone_axe": "tool_axe", "stone_pick": "tool_pickaxe"}
+
+static var _voxel_cache := {}
 
 
 static func make(id: String, size: float) -> Mesh:
 	var block := ItemDB.block_of(id)
 	if block >= 0:
 		return BlockTextures.make_block_mesh(block, size)
+	if VOXEL_MODELS.has(id):
+		var voxel := _voxel(VOXEL_MODELS[id], size * 1.4)
+		if voxel != null:
+			return voxel
 	return _flat(id, size)
+
+
+## Modelo de cubitos centrado en el origen y con su medida mayor igual a "size".
+static func _voxel(model_name: String, size: float) -> Mesh:
+	var key := "%s:%.3f" % [model_name, size]
+	if _voxel_cache.has(key):
+		return _voxel_cache[key]
+	var path := "res://assets/models/voxel/%s.res" % model_name
+	if not ResourceLoader.exists(path):
+		return null
+	var src: ArrayMesh = load(path)
+	var box := src.get_aabb()
+	var k := size / maxf(maxf(box.size.x, box.size.y), maxf(box.size.z, 0.0001))
+	var center := box.get_center()
+	var arrays := src.surface_get_arrays(0)
+	var verts: PackedVector3Array = arrays[Mesh.ARRAY_VERTEX]
+	for i in verts.size():
+		verts[i] = (verts[i] - center) * k
+	arrays[Mesh.ARRAY_VERTEX] = verts
+	var out := ArrayMesh.new()
+	out.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
+	_voxel_cache[key] = out
+	return out
 
 
 static func make_material(id: String) -> StandardMaterial3D:

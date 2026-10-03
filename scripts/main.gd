@@ -508,6 +508,14 @@ func _update_capture() -> void:
 			for entry in give.split(","):
 				var pair := entry.split(":")
 				_player.pick_up(pair[0], int(pair[1]))
+		if OS.get_cmdline_user_args().has("--campfire"):  # hoguera encendida delante
+			var cf := -_player.global_basis.z
+			var cp: Vector3 = _player.global_position + Vector3(cf.x, 0, cf.z).normalized() * 2.2
+			var chit := get_world_3d().direct_space_state.intersect_ray(PhysicsRayQueryParameters3D.create(cp + Vector3.UP * 3.0, cp + Vector3.DOWN * 6.0))
+			if not chit.is_empty():
+				var cpt: Vector3 = chit.position
+				var fire := _ground.place(cpt, "campfire", 0.0, Vector3i((cpt / VOXEL_SIZE - Vector3(0, 0.5, 0)).floor()))
+				fire.campfire.set_state({"lit": true, "fuel": 300.0})
 		if OS.get_cmdline_user_args().has("--torches"):  # dos antorchas clavadas delante
 			var fwd := -_player.global_basis.z
 			for k in [-1.2, 1.2]:

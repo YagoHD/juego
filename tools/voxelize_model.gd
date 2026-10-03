@@ -41,7 +41,8 @@ static func voxelize(obj_path: String, target_height: float, voxel: float) -> Ar
 	for v in verts:
 		low = low.min(v)
 		high = high.max(v)
-	var k := target_height / maxf(high.y - low.y, 0.0001)
+	var extent := high - low  # la medida mayor (alto o ancho) es la que se pide
+	var k := target_height / maxf(maxf(extent.x, extent.y), maxf(extent.z, 0.0001))
 	var center := Vector3((low.x + high.x) * 0.5, low.y, (low.z + high.z) * 0.5)
 	# Muestrear cada triángulo con puntos más juntos que un cubito.
 	var cells := {}  # Vector3i -> Color
@@ -63,31 +64,47 @@ static func voxelize(obj_path: String, target_height: float, voxel: float) -> Ar
 	return _build_mesh(cells, voxel)
 
 
-## Lee un OBJ sencillo con su MTL: vértices, caras (en triángulos) y el color (Kd) de cada una.
+## Lee un OBJ sencillo con su MTL: vértices, caras (en triángulos) y el color de cada una. El
+## color sale del Kd del material o, si el material tiene imagen (map_Kd, como el Survival Kit),
+## de la imagen en el centro de la cara (esas imágenes son paletas de colores lisos).
 static func _read_obj(path: String) -> Dictionary:
 	var f := FileAccess.open(path, FileAccess.READ)
 	if f == null:
 		return {}
-	var colors := {}
+	var materials := {}
 	var verts := PackedVector3Array()
+	var uvs := PackedVector2Array()
 	var tris := []
-	var current := Color(0.8, 0.8, 0.8)
+	var current := {"color": Color(0.8, 0.8, 0.8), "image": null}
 	while not f.eof_reached():
 		var line := f.get_line().strip_edges()
 		if line.begins_with("mtllib "):
-			colors = _read_mtl(path.get_base_dir().path_join(line.substr(7).strip_edges()))
+			materials = _read_mtl(path.get_base_dir().path_join(line.substr(7).strip_edges()))
 		elif line.begins_with("usemtl "):
-			current = colors.get(line.substr(7).strip_edges(), Color(0.8, 0.8, 0.8))
+			current = materials.get(line.substr(7).strip_edges(), current)
 		elif line.begins_with("v "):
 			var p := line.split(" ", false)
 			verts.append(Vector3(float(p[1]), float(p[2]), float(p[3])))
+		elif line.begins_with("vt "):
+			var p := line.split(" ", false)
+			uvs.append(Vector2(float(p[1]), float(p[2])))
 		elif line.begins_with("f "):
 			var p := line.split(" ", false)
 			var idx: Array[int] = []
+			var tidx: Array[int] = []
 			for n in range(1, p.size()):
-				idx.append(int(p[n].split("/")[0]) - 1)
+				var parts := p[n].split("/")
+				idx.append(int(parts[0]) - 1)
+				tidx.append(int(parts[1]) - 1 if parts.size() > 1 and parts[1] != "" else -1)
 			for n in range(1, idx.size() - 1):
-				tris.append([idx[0], idx[n], idx[n + 1], current])
+				var color: Color = current["color"]
+				var img: Image = current["image"]
+				if img != null and tidx[0] >= 0:
+					var uv := (uvs[tidx[0]] + uvs[tidx[n]] + uvs[tidx[n + 1]]) / 3.0
+					var px := clampi(int(uv.x * img.get_width()), 0, img.get_width() - 1)
+					var py := clampi(int((1.0 - uv.y) * img.get_height()), 0, img.get_height() - 1)
+					color = img.get_pixel(px, py)
+				tris.append([idx[0], idx[n], idx[n + 1], color])
 	return {"verts": verts, "tris": tris}
 
 
@@ -101,10 +118,16 @@ static func _read_mtl(path: String) -> Dictionary:
 		var line := f.get_line().strip_edges()
 		if line.begins_with("newmtl "):
 			name = line.substr(7).strip_edges()
+			out[name] = {"color": Color(0.8, 0.8, 0.8), "image": null}
 		elif line.begins_with("Kd ") and name != "":
 			var p := line.split(" ", false)
 			# Los colores del MTL de Kenney ya son los que se ven (sRGB): tal cual.
-			out[name] = Color(float(p[1]), float(p[2]), float(p[3]))
+			out[name]["color"] = Color(float(p[1]), float(p[2]), float(p[3]))
+		elif line.begins_with("map_Kd ") and name != "":
+			var img := Image.load_from_file(path.get_base_dir().path_join(line.substr(7).strip_edges()))
+			if img != null:
+				img.convert(Image.FORMAT_RGBA8)
+				out[name]["image"] = img
 	return out
 
 
