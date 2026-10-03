@@ -36,6 +36,74 @@ const LIST := [
 
 var _palette := {}   # Color -> índice
 var _palette_list: Array[Color] = []
+var _tree_colors := {}  # "oak_k"/"pine_k" -> {"leaf": Color, "wood": Color}
+
+
+## El verde y el marrón que más se repiten en un árbol de Kenney (ya pasado a nuestra paleta).
+func _common_colors(cells: Dictionary) -> Dictionary:
+	var count := {}
+	for col: Color in cells.values():
+		count[col] = int(count.get(col, 0)) + 1
+	var best := {"leaf": [Color.GREEN, 0], "wood": [Color.BROWN, 0]}
+	for col: Color in count:
+		var key := "leaf" if col.g > col.r * 1.08 else "wood"
+		if int(count[col]) > int(best[key][1]):
+			best[key] = [col, count[col]]
+	return {"leaf": best["leaf"][0], "wood": best["wood"][0]}
+
+
+## Piezas de nuestros árboles (ver scripts/world/tree_parts.gd; mismo orden que su enum), con los
+## colores de los árboles de Kenney para que todos parezcan del mismo juego.
+func _tree_parts() -> Prefab:
+	var leaf: Color = _tree_colors["oak_k"]["leaf"]
+	var pine: Color = _tree_colors["pine_k"]["leaf"]
+	var wood: Color = _tree_colors["oak_k"]["wood"]
+	var dead := Color.from_hsv(wood.h, wood.s * 0.3, wood.v * 0.8)
+	var shapes := [
+		["leaves", _shape(leaf, "full")], ["leaves", _shape(leaf, "round")],
+		["leaves", _shape(pine, "full")], ["leaves", _shape(pine, "round")],
+		["wood", _shape(wood, "y")], ["wood", _shape(wood, "x")], ["wood", _shape(wood, "z")],
+		["wood", _shape(dead, "y")], ["wood", _shape(dead, "x")], ["wood", _shape(dead, "z")],
+		["wood", _shape(wood, "full")],
+	]
+	var p := Prefab.new()
+	p.prefab_name = "tree_parts"
+	for s in shapes:
+		var sub: Dictionary = s[1]
+		p.cells.append(Vector3i.ZERO)  # no forman un modelo: el generador las coloca una a una
+		p.meshes.append(_piece_mesh(sub, {}, Vector3i.ZERO))
+		p.kinds.append(s[0])
+		var avg := Color(0, 0, 0)
+		for col: Color in sub.values():
+			avg += col
+		p.colors.append(avg / sub.size())
+	return p
+
+
+## Cubitos de una pieza: "full" (bloque entero), "round" (sin las aristas: la piel redondeada de
+## una copa) o "x"/"y"/"z" (tronco fino de 3x3 cubitos a lo largo de ese eje, con vetas).
+func _shape(color: Color, kind: String) -> Dictionary:
+	var sub := {}
+	for x in N:
+		for y in N:
+			for z in N:
+				var c := Vector3i(x, y, z)
+				var col := color
+				match kind:
+					"round":
+						var edges := int(x == 0 or x == N - 1) + int(y == 0 or y == N - 1) + int(z == 0 or z == N - 1)
+						if edges >= 2:
+							continue
+					"x", "y", "z":
+						var axis := {"x": 0, "y": 1, "z": 2}[kind] as int
+						var across := [x, y, z]
+						across.remove_at(axis)
+						if across[0] < 1 or across[0] > N - 2 or across[1] < 1 or across[1] > N - 2:
+							continue
+						if (c[axis] + across[0] * 2 + across[1]) % 4 == 0:
+							col = color.darkened(0.12)  # vetas de la corteza
+				sub[c] = col
+	return sub
 
 
 func _init() -> void:
@@ -49,7 +117,10 @@ func _init() -> void:
 			continue
 		for c in cells:
 			cells[c] = _recolor(cells[c], entry[3])
+		if entry[0] in ["oak_k", "pine_k"]:
+			_tree_colors[entry[0]] = _common_colors(cells)
 		prefabs.append(_cut(entry[0], cells, entry[3]))
+	prefabs.append(_tree_parts())
 	# Paleta: una fila de colores; luego, las UV de cada pieza apuntan a su color.
 	var img := Image.create(maxi(_palette_list.size(), 1), 1, false, Image.FORMAT_RGBA8)
 	for i in _palette_list.size():
@@ -118,7 +189,49 @@ func _voxelize(obj: String, height: float) -> Dictionary:
 				var cell := Vector3i(((p + Vector3(0.25, 0.001, 0.25)) / voxel).floor())
 				if not cells.has(cell):
 					cells[cell] = t[3]
+	_fill_inside(cells)
 	return cells
+
+
+## Los modelos son solo una piel: se rellena por dentro para que, al picar, no se vea hueco.
+## Se inunda el aire desde fuera de la caja del modelo; lo que no se alcanza es interior y toma
+## el color de la piel más cercana.
+func _fill_inside(cells: Dictionary) -> void:
+	var low := Vector3i(1 << 20, 1 << 20, 1 << 20)
+	var high := -low
+	for c: Vector3i in cells:
+		low = low.min(c)
+		high = high.max(c)
+	low -= Vector3i.ONE
+	high += Vector3i.ONE
+	var dirs := [Vector3i.UP, Vector3i.DOWN, Vector3i.LEFT, Vector3i.RIGHT, Vector3i.FORWARD, Vector3i.BACK]
+	var outside := {low: true}
+	var queue: Array[Vector3i] = [low]
+	while not queue.is_empty():
+		var c: Vector3i = queue.pop_back()
+		for d: Vector3i in dirs:
+			var n := c + d
+			if n.x < low.x or n.y < low.y or n.z < low.z or n.x > high.x or n.y > high.y or n.z > high.z:
+				continue
+			if outside.has(n) or cells.has(n):
+				continue
+			outside[n] = true
+			queue.append(n)
+	# Interior: se pinta capa a capa desde la piel hacia dentro.
+	var front: Array[Vector3i] = []
+	front.assign(cells.keys())
+	while not front.is_empty():
+		var next: Array[Vector3i] = []
+		for c in front:
+			for d: Vector3i in dirs:
+				var n := c + d
+				if cells.has(n) or outside.has(n):
+					continue
+				if n.x < low.x or n.y < low.y or n.z < low.z or n.x > high.x or n.y > high.y or n.z > high.z:
+					continue
+				cells[n] = cells[c]
+				next.append(n)
+		front = next
 
 
 ## Trocea los cubitos en bloques y hace la malla de cada trozo.
@@ -158,8 +271,8 @@ func _cut(prefab_name: String, cells: Dictionary, default_kind: String) -> Prefa
 	return p
 
 
-## Malla de un trozo: cubitos de 1/N, solo las caras que dan al aire en el modelo entero (las que
-## tocan otro trozo no se dibujan: muchas menos caras; si se rompe el vecino se ve el hueco).
+## Malla de un trozo: cubitos de 1/N, con su piel completa (las caras entre trozos vecinos no se
+## ven por estar de espaldas, y al romper el vecino el trozo sigue macizo).
 func _piece_mesh(sub: Dictionary, all_cells: Dictionary, offset: Vector3i) -> ArrayMesh:
 	var faces := [
 		[Vector3i.UP, 1.0, [Vector3(0, 1, 1), Vector3(1, 1, 1), Vector3(1, 1, 0), Vector3(0, 1, 0)]],
@@ -172,20 +285,59 @@ func _piece_mesh(sub: Dictionary, all_cells: Dictionary, offset: Vector3i) -> Ar
 	var size := 1.0 / N
 	var st := SurfaceTool.new()
 	st.begin(Mesh.PRIMITIVE_TRIANGLES)
-	for c: Vector3i in sub:
-		var base := Vector3(c) * size
-		var color: Color = sub[c]
-		for f in faces:
-			if all_cells.has(offset + c + (f[0] as Vector3i)):
-				continue
-			var shade := color * float(f[1])
-			shade.a = 1.0
-			var idx := _color_index(shade)
-			var v: Array = f[2]
-			for i in [0, 2, 1, 0, 3, 2]:
-				st.set_normal(Vector3(f[0] as Vector3i))
-				st.set_uv(Vector2(idx, 0.5))  # índice de la paleta (se pasa a UV al final)
-				st.add_vertex(base + (v[i] as Vector3) * size)
+	# Por cada dirección y cada capa: máscara de las caras que dan al aire (dentro de la pieza),
+	# y se juntan en rectángulos del mismo color (muchas menos caras que una por cubito).
+	for f in faces:
+		var normal: Vector3i = f[0]
+		var axis := 0 if normal.x != 0 else (1 if normal.y != 0 else 2)
+		var u := (axis + 1) % 3
+		var v := (axis + 2) % 3
+		for layer in N:
+			var mask := {}  # Vector2i(u, v) -> índice de color
+			for a in N:
+				for b in N:
+					var c := Vector3i.ZERO
+					c[axis] = layer
+					c[u] = a
+					c[v] = b
+					if not sub.has(c) or sub.has(c + normal):
+						continue
+					var shade: Color = (sub[c] as Color) * float(f[1])
+					shade.a = 1.0
+					mask[Vector2i(a, b)] = _color_index(shade)
+			while not mask.is_empty():
+				var start: Vector2i = mask.keys()[0]
+				var idx: int = mask[start]
+				# Crecer a lo largo de u, luego de v mientras toda la fila sea igual.
+				var w := 1
+				while mask.get(start + Vector2i(w, 0), -1) == idx:
+					w += 1
+				var h := 1
+				var grow := true
+				while grow:
+					for k in w:
+						if mask.get(start + Vector2i(k, h), -1) != idx:
+							grow = false
+							break
+					if grow:
+						h += 1
+				for k in w:
+					for j in h:
+						mask.erase(start + Vector2i(k, j))
+				var lo := Vector3.ZERO
+				var hi := Vector3.ZERO
+				lo[axis] = layer
+				hi[axis] = layer + 1
+				lo[u] = start.x
+				hi[u] = start.x + w
+				lo[v] = start.y
+				hi[v] = start.y + h
+				var corners: Array = f[2]
+				for i in [0, 2, 1, 0, 3, 2]:
+					var t: Vector3 = corners[i]
+					st.set_normal(Vector3(normal))
+					st.set_uv(Vector2(idx, 0.5))  # índice de la paleta (se pasa a UV al final)
+					st.add_vertex((lo + (hi - lo) * t) * size)
 	st.index()
 	return st.commit()
 

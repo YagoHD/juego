@@ -95,7 +95,7 @@ func _collect(cut: Vector3i) -> bool:
 		if c.y <= cut.y:
 			return false  # sigue unido a algo por debajo del corte: se sostiene
 		_woods[c] = id
-		if id != IslandGenerator.DEAD_WOOD:
+		if id != IslandGenerator.DEAD_WOOD and not TreeParts.is_dead(id):
 			dead_only = false
 		if _woods.size() > MAX_BLOCKS:
 			return false
@@ -140,7 +140,7 @@ func _start(from: Vector3) -> void:
 	can_sleep = true
 	var rng := RandomNumberGenerator.new()
 	rng.randomize()
-	var dead := not _woods.values().has(IslandGenerator.WOOD)
+	var dead := _woods.values().all(func(w: int) -> bool: return w == IslandGenerator.DEAD_WOOD or TreeParts.is_dead(w))
 	# Peso: la madera pesa y las hojas poco; los muertos, secos, pesan menos.
 	mass = _woods.size() * (12.0 if dead else 20.0) + _leaves.size() * 1.5
 	var friction := PhysicsMaterial.new()
@@ -279,10 +279,10 @@ func _break_leaves() -> void:
 		center += p
 		if rng.randf() < LEAF_DROP_CHANCE and dropped < 40:
 			dropped += 1
-			ItemDrop.spawn(get_parent(), p + Vector3.UP * 0.3, ("leaves" if PrefabLibrary.is_prefab(_leaves[c]) else ItemDB.drop_of(_leaves[c])), 1)
+			ItemDrop.spawn(get_parent(), p + Vector3.UP * 0.3, _leaf_item(_leaves[c]), 1)
 	center /= _leaves.size()
 	# Los pinos sueltan resina al caer.
-	if _leaves.values().has(IslandGenerator.PINE_LEAVES):
+	if _leaves.values().any(func(l: int) -> bool: return l == IslandGenerator.PINE_LEAVES or TreeParts.is_pine(l)):
 		for k in rng.randi_range(1, 3):
 			ItemDrop.spawn(get_parent(), global_transform * (Vector3(0, 1.5, 0) * _vs) + Vector3.UP * 0.4, "resin", 1)
 	for node in _leaf_nodes:
@@ -333,10 +333,10 @@ func _settle() -> void:
 		fall = 0
 	for cell: Vector3i in targets:
 		var p := cell - Vector3i(0, fall, 0)
-		if _tool.get_voxel(p) == IslandGenerator.AIR:
+		if _free(_tool.get_voxel(p)):
 			_tool.set_voxel(p, targets[cell])
 		else:  # el sitio está ocupado: ese trozo queda como objeto
-			ItemDrop.spawn(get_parent(), (Vector3(p) + Vector3.ONE * 0.5) * _vs + Vector3.UP * 0.4, ItemDB.drop_of(targets[cell]), 1)
+			ItemDrop.spawn(get_parent(), (Vector3(p) + Vector3.ONE * 0.5) * _vs + Vector3.UP * 0.4, _leaf_item(targets[cell]), 1)
 	Sfx.play("colocar", global_position, 2.0, 0.1)
 	queue_free()
 
@@ -344,6 +344,8 @@ func _settle() -> void:
 func _lying_id(id: int, along: Vector3i) -> int:
 	if along.y != 0:
 		return id
+	if TreeParts.part_of(id) >= 0:
+		return TreeParts.lying(id, along)
 	var dead := id == IslandGenerator.DEAD_WOOD
 	if along.x != 0:
 		return IslandGenerator.DEAD_LOG_X if dead else IslandGenerator.LOG_X
@@ -352,7 +354,7 @@ func _lying_id(id: int, along: Vector3i) -> int:
 
 func _fits(cells: Dictionary, offset: Vector3i) -> bool:
 	for cell: Vector3i in cells:
-		if _tool.get_voxel(cell + offset) != IslandGenerator.AIR:
+		if not _free(_tool.get_voxel(cell + offset)):
 			return false
 	return true
 
@@ -384,3 +386,14 @@ func _burst_leaves(at: Vector3) -> void:
 	particles.global_position = at
 	particles.emitting = true
 	get_tree().create_timer(1.8).timeout.connect(particles.queue_free)
+
+
+static func _leaf_item(id: int) -> String:
+	if TreeParts.part_of(id) >= 0:
+		return TreeParts.item_of(id)
+	return "leaves" if PrefabLibrary.is_prefab(id) else ItemDB.drop_of(id)
+
+
+## Hueco donde puede quedar el tronco: aire, o hierba, flores y hojas (que aplasta).
+func _free(id: int) -> bool:
+	return id == IslandGenerator.AIR or Blocks.is_decor(id)

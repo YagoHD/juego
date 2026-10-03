@@ -46,7 +46,7 @@ func _process(_delta: float) -> bool:
 			print("Árbol encontrado en ", _cut, " con tronco de ", _height)
 			tool.set_voxel(_cut, IslandGenerator.AIR)
 			var from := (Vector3(_cut) + Vector3(-3, 0, 0)) * 0.5
-			_check("Romper el pie del tronco hace caer el árbol", TreeFelling.try_fell(_main, terrain, _cut, IslandGenerator.WOOD, from))
+			_check("Romper el pie del tronco hace caer el árbol", TreeFelling.try_fell(_main, terrain, _cut, TreeParts.id(TreeParts.TRUNK), from))
 			_check("Lo de encima ya no está en pie", tool.get_voxel(_cut + Vector3i.UP) == IslandGenerator.AIR)
 			_t0 = Time.get_ticks_msec()
 			_step = 1
@@ -59,7 +59,7 @@ func _process(_delta: float) -> bool:
 				for dy in range(-6, 4):
 					for dz in range(-14, 15):
 						var id := tool.get_voxel(_cut + Vector3i(dx, dy, dz))
-						if id == IslandGenerator.LOG_X or id == IslandGenerator.LOG_Z:
+						if id == IslandGenerator.LOG_X or id == IslandGenerator.LOG_Z or id == TreeParts.id(TreeParts.TRUNK_X) or id == TreeParts.id(TreeParts.TRUNK_Z):
 							lying += 1
 			_check("El tronco queda tumbado entero (%d de %d bloques)" % [lying, _height - 1], lying >= _height - 1)
 			var leaves := 0
@@ -77,17 +77,17 @@ func _process(_delta: float) -> bool:
 func _try_tree(tool: VoxelTool, column: Vector3i) -> bool:
 	for y in range(column.y - 12, column.y + 12):
 		var c := Vector3i(column.x, y, column.z)
-		if tool.get_voxel(c) != IslandGenerator.WOOD or tool.get_voxel(c + Vector3i.UP) != IslandGenerator.WOOD:
+		if tool.get_voxel(c) != TreeParts.id(TreeParts.TRUNK) or tool.get_voxel(c + Vector3i.UP) != TreeParts.id(TreeParts.TRUNK):
 			continue
 		var below := tool.get_voxel(c + Vector3i.DOWN)
-		if below == IslandGenerator.WOOD or below == IslandGenerator.AIR:
+		if below == TreeParts.id(TreeParts.TRUNK) or below == IslandGenerator.AIR:
 			continue
 		var h := 0
-		while tool.get_voxel(c + Vector3i(0, h, 0)) == IslandGenerator.WOOD:
+		while tool.get_voxel(c + Vector3i(0, h, 0)) == TreeParts.id(TreeParts.TRUNK):
 			h += 1
 		# Tronco de una columna (sin vecinos de 2x2) y con hueco a +X.
-		if tool.get_voxel(c + Vector3i(1, 0, 0)) == IslandGenerator.WOOD or tool.get_voxel(c + Vector3i(0, 0, 1)) == IslandGenerator.WOOD \
-				or tool.get_voxel(c + Vector3i(-1, 0, 0)) == IslandGenerator.WOOD or tool.get_voxel(c + Vector3i(0, 0, -1)) == IslandGenerator.WOOD:
+		if tool.get_voxel(c + Vector3i(1, 0, 0)) == TreeParts.id(TreeParts.TRUNK) or tool.get_voxel(c + Vector3i(0, 0, 1)) == TreeParts.id(TreeParts.TRUNK) \
+				or tool.get_voxel(c + Vector3i(-1, 0, 0)) == TreeParts.id(TreeParts.TRUNK) or tool.get_voxel(c + Vector3i(0, 0, -1)) == TreeParts.id(TreeParts.TRUNK):
 			continue
 		if h < 4:
 			continue
@@ -102,7 +102,7 @@ func _count_wood(tool: VoxelTool, at: Vector3i, r: int) -> int:
 	for dx in range(-r, r + 1):
 		for dy in range(-2, r + 1):
 			for dz in range(-r, r + 1):
-				if tool.get_voxel(at + Vector3i(dx, dy, dz)) == IslandGenerator.WOOD:
+				if tool.get_voxel(at + Vector3i(dx, dy, dz)) == TreeParts.id(TreeParts.TRUNK):
 					n += 1
 	return n
 

@@ -63,11 +63,22 @@ var _fingerprint := ""
 var _margin := TREE_MARGIN     # columnas de margen: lo que más se aleja un árbol o un prefab de su pie
 var _palms: Array[int] = []
 var _rocks: Array[int] = []
+# Piezas de nuestros árboles (TreeParts): mismo estilo que los de Kenney.
+var _t_leaf := 0
+var _t_pine := 0
+var _t_trunk := 0
+var _t_dead := 0
+var _t_thick := 0
 
 
 func _init() -> void:
 	PrefabLibrary.load_all()  # palmeras, rocas... (en el hilo principal, antes de generar)
 	_margin = maxi(TREE_MARGIN, PrefabLibrary.reach() + 1)
+	_t_leaf = TreeParts.id(TreeParts.LEAF)
+	_t_pine = TreeParts.id(TreeParts.PINE)
+	_t_trunk = TreeParts.id(TreeParts.TRUNK)
+	_t_dead = TreeParts.id(TreeParts.DEAD)
+	_t_thick = TreeParts.id(TreeParts.THICK)
 	for n in ["palm_tall", "palm_bend", "palm_short"]:
 		_palms.append(PrefabLibrary.index_of(n))
 	for n in ["rock_a", "rock_d", "rock_tall"]:
@@ -414,7 +425,9 @@ func _blob(b: Array, cx: float, cy: float, cz: float, radius: float, id: int) ->
 					continue  # lejos del borde: fuera seguro, sin calcular el azar
 				var edge := 0.6 + 0.5 * _hash01(x * 31 + y * 7, z * 17 - y * 3)
 				if d2 <= radius * radius * edge:
-					_put(b, x, y, z, id)
+					# La piel de la copa, con las aristas redondeadas (la pieza siguiente a la entera).
+					var skin := d2 > (radius - 0.9) * (radius - 0.9)
+					_put(b, x, y, z, id + 1 if skin else id)
 
 
 ## Tronco vertical de una columna.
@@ -425,25 +438,25 @@ func _trunk(b: Array, x: int, z: int, from_y: int, height: int, id: int) -> void
 
 func _bush(b: Array, wx: int, wz: int, base: int, r2: float) -> void:
 	# Arbusto: casi sin tronco, una mata de hojas pegada al suelo.
-	_put(b, wx, base, wz, WOOD)
-	_blob(b, wx + 0.5, base + 1.2, wz + 0.5, 1.4 + r2 * 0.6, LEAVES)
+	_put(b, wx, base, wz, _t_trunk)
+	_blob(b, wx + 0.5, base + 1.2, wz + 0.5, 1.4 + r2 * 0.6, _t_leaf)
 
 
 func _oak(b: Array, wx: int, wz: int, base: int, r2: float, r3: float) -> void:
 	# Roble: tronco de 4-6, copa principal y una o dos bolas de lado; a veces una rama.
 	var h := 4 + int(r2 * 3.0)
-	_trunk(b, wx, wz, base, h, WOOD)
+	_trunk(b, wx, wz, base, h, _t_trunk)
 	var top := base + h
-	_blob(b, wx + 0.5, top + 0.3, wz + 0.5, 2.2 + r3 * 0.9, LEAVES)
+	_blob(b, wx + 0.5, top + 0.3, wz + 0.5, 2.2 + r3 * 0.9, _t_leaf)
 	var sides := 1 + int(r3 * 2.0)
 	for k in sides:
 		var a := TAU * _hash01(wx + k * 5, wz - k * 3)
 		var ox := cos(a) * 1.8
 		var oz := sin(a) * 1.8
-		_blob(b, wx + 0.5 + ox, top - 0.8, wz + 0.5 + oz, 1.5 + r2 * 0.5, LEAVES)
+		_blob(b, wx + 0.5 + ox, top - 0.8, wz + 0.5 + oz, 1.5 + r2 * 0.5, _t_leaf)
 	if r3 > 0.6:  # rama que sale del tronco hacia una de las bolas
 		var dx := 1 if r2 > 0.5 else -1
-		_put(b, wx + dx, top - 2, wz, WOOD)
+		_put(b, wx + dx, top - 2, wz, _t_trunk)
 
 
 func _leaning_oak(b: Array, wx: int, wz: int, base: int, r2: float, r3: float) -> void:
@@ -457,11 +470,11 @@ func _leaning_oak(b: Array, wx: int, wz: int, base: int, r2: float, r3: float) -
 		if i == h / 2 or (i == h - 2 and r2 > 0.6):
 			x += lean.x
 			z += lean.y
-			_put(b, x, base + i - 1, z, WOOD)  # el codo, para que el tronco no quede suelto
-		_put(b, x, base + i, z, WOOD)
+			_put(b, x, base + i - 1, z, _t_trunk)  # el codo, para que el tronco no quede suelto
+		_put(b, x, base + i, z, _t_trunk)
 	var top := base + h
-	_blob(b, x + 0.5, top + 0.2, z + 0.5, 2.4 + r3 * 0.7, LEAVES)
-	_blob(b, x + 0.5 - lean.x * 1.5, top - 1.0, z + 0.5 - lean.y * 1.5, 1.6, LEAVES)
+	_blob(b, x + 0.5, top + 0.2, z + 0.5, 2.4 + r3 * 0.7, _t_leaf)
+	_blob(b, x + 0.5 - lean.x * 1.5, top - 1.0, z + 0.5 - lean.y * 1.5, 1.6, _t_leaf)
 
 
 func _giant(b: Array, wx: int, wz: int, base: int, r2: float, r3: float) -> void:
@@ -469,15 +482,15 @@ func _giant(b: Array, wx: int, wz: int, base: int, r2: float, r3: float) -> void
 	var h := 8 + int(r2 * 4.0)
 	for ox in 2:
 		for oz in 2:
-			_trunk(b, wx + ox, wz + oz, base, h, WOOD)
+			_trunk(b, wx + ox, wz + oz, base, h, _t_thick)
 	for k in 4:  # raíces
 		if _hash01(wx + k, wz * 3 + k) > 0.45:
 			var d := [Vector2i(-1, 0), Vector2i(2, 1), Vector2i(1, -1), Vector2i(0, 2)][k] as Vector2i
-			_put(b, wx + d.x, base, wz + d.y, WOOD)
+			_put(b, wx + d.x, base, wz + d.y, _t_trunk)
 	var cx := wx + 1.0
 	var cz := wz + 1.0
 	var top := base + h
-	_blob(b, cx, top + 0.5, cz, 3.0 + r3 * 0.4, LEAVES)
+	_blob(b, cx, top + 0.5, cz, 3.0 + r3 * 0.4, _t_leaf)
 	var branches := 2 + int(r3 * 2.0)
 	for k in branches:
 		var a := TAU * (float(k) / branches + r2)
@@ -486,8 +499,8 @@ func _giant(b: Array, wx: int, wz: int, base: int, r2: float, r3: float) -> void
 		var end := Vector2(cx, cz)
 		for s in range(1, 4):  # la rama sube en diagonal
 			end = Vector2(cx, cz) + dir * (0.8 + s * 0.8)
-			_put(b, int(floorf(end.x)), start + s, int(floorf(end.y)), WOOD)
-		_blob(b, end.x, start + 3.6, end.y, 2.0 + r2 * 0.6, LEAVES)
+			_put(b, int(floorf(end.x)), start + s, int(floorf(end.y)), _t_trunk)
+		_blob(b, end.x, start + 3.6, end.y, 2.0 + r2 * 0.6, _t_leaf)
 
 
 func _pine(b: Array, wx: int, wz: int, base: int, r: float, r2: float, r3: float) -> void:
@@ -496,7 +509,7 @@ func _pine(b: Array, wx: int, wz: int, base: int, r: float, r2: float, r3: float
 	var h := (4 + int(r2 * 2.0)) if small else (7 + int(r2 * 6.0))
 	var max_radius := 2 if small or r3 < 0.4 else 3
 	var tiered := r3 > 0.65
-	_trunk(b, wx, wz, base, h, WOOD)
+	_trunk(b, wx, wz, base, h, _t_trunk)
 	var top := base + h + 1
 	var start := base + 2 + int(r3 * 2.0)
 	for y in range(start, top + 1):
@@ -507,22 +520,23 @@ func _pine(b: Array, wx: int, wz: int, base: int, r: float, r2: float, r3: float
 			for dz in range(-radius, radius + 1):
 				var d2 := dx * dx + dz * dz
 				if d2 <= radius * radius + 1 and (d2 < radius * radius or _hash01(wx + dx * 7 + y, wz + dz * 5) > 0.3):
-					_put(b, wx + dx, y, wz + dz, PINE_LEAVES)
-	_put(b, wx, top + 1, wz, PINE_LEAVES)  # la punta
+					var skin := d2 > (radius - 1) * (radius - 1) or (top - y) % 3 == 0
+					_put(b, wx + dx, y, wz + dz, _t_pine + 1 if skin else _t_pine)
+	_put(b, wx, top + 1, wz, _t_pine + 1)  # la punta
 
 
 func _dead_tree(b: Array, wx: int, wz: int, base: int, r2: float, r3: float) -> void:
 	# Árbol muerto: tronco seco de 3 a 8, de 0 a 3 ramas al azar; a veces la punta rota.
 	var h := 3 + int(r2 * 6.0)
-	_trunk(b, wx, wz, base, h, DEAD_WOOD)
+	_trunk(b, wx, wz, base, h, _t_dead)
 	var dirs := [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]
 	var branches := int(r3 * 4.0)
 	for k in branches:
 		var d: Vector2i = dirs[(k + int(r2 * 4.0)) % 4]
 		var y := base + 2 + int(_hash01(wx + k, wz - k) * maxf(h - 3, 1))
-		_put(b, wx + d.x, y, wz + d.y, DEAD_WOOD)
+		_put(b, wx + d.x, y, wz + d.y, _t_dead)
 		if _hash01(wx - k, wz + k * 7) > 0.5:
-			_put(b, wx + d.x * 2, y + 1, wz + d.y * 2, DEAD_WOOD)
+			_put(b, wx + d.x * 2, y + 1, wz + d.y * 2, _t_dead)
 
 
 func _set_if_air(buffer: VoxelBuffer, origin: Vector3i, size: Vector3i, wx: int, wy: int, wz: int, id: int) -> void:

@@ -7,7 +7,7 @@ const DIR := "res://assets/models/prefabs/"
 const NAMES := ["palm_tall", "palm_bend", "palm_short", "rock_a", "rock_d", "rock_tall",
 	"bush", "stump", "mushrooms_red", "mushrooms_tan",
 	# Nuevos, siempre al final:
-	"oak_k", "fat_k", "pine_k", "log_fallen", "bush_large", "wheat_a", "wheat_b"]
+	"oak_k", "fat_k", "pine_k", "log_fallen", "bush_large", "wheat_a", "wheat_b", "tree_parts"]
 const FIRST_ID := 64
 
 static var _loaded := false
@@ -114,7 +114,10 @@ static func make_model(id: int) -> VoxelBlockyModelMesh:
 	var mesh: ArrayMesh = _mesh[id]
 	model.mesh = mesh
 	model.set_material_override(0, material())
-	model.culls_neighbors = false
+	# Las piezas que llenan el bloque entero tapan las caras de sus vecinas (las copas de los
+	# árboles son casi todo piezas enteras: así no se dibuja su interior).
+	var box := mesh.get_aabb()
+	model.culls_neighbors = box.size.is_equal_approx(Vector3.ONE) and _is_full(mesh)
 	model.transparency_index = 3
 	if kind(id) in ["leaves", "mushroom", "crop"]:
 		model.set_mesh_collision_enabled(0, false)
@@ -122,6 +125,14 @@ static func make_model(id: int) -> VoxelBlockyModelMesh:
 	else:
 		model.collision_aabbs = [mesh.get_aabb()]
 	return model
+
+
+## ¿Es un cubo entero? (tras juntar caras, un cubo macizo de un color son 6 caras: 12 triángulos;
+## con los tonos de cada lado, igual; algo con huecos o escalones tiene más)
+static func _is_full(mesh: ArrayMesh) -> bool:
+	var arrays := mesh.surface_get_arrays(0)
+	var indices: PackedInt32Array = arrays[Mesh.ARRAY_INDEX]
+	return indices.size() == 36
 
 
 ## Malla de la pieza centrada en el origen y de lado 'size' (para dibujarla suelta: árboles que
