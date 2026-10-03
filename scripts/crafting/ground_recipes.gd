@@ -17,7 +17,11 @@ const MAX_LEVELS := 4   # objetos apilados como mucho en una columna
 const RECIPES := {
 	"rope": {
 		"result": "rope", "count": 1, "action": "Retorcer", "time": 1.5,
-		"layers": [["HHH"]], "key": {"H": "leaves"},
+		"layers": [["FFF"]], "key": {"F": "fiber"},
+	},
+	"sharp_rock": {
+		"result": "sharp_rock", "count": 1, "action": "Golpear", "time": 1.5,
+		"layers": [["R"], ["R"]], "key": {"R": "rock"},
 	},
 	"planks": {
 		"result": "planks", "count": 4, "action": "Tallar", "time": 2.0,
@@ -41,15 +45,15 @@ const RECIPES := {
 	},
 	"stone_knife": {
 		"result": "stone_knife", "count": 1, "action": "Atar", "time": 2.0,
-		"layers": [["SR"], ["P."]], "key": {"S": "sticks", "R": "rope", "P": "stone"}, "dismantle": true,
+		"layers": [["SR"], ["P."]], "key": {"S": "sticks", "R": "rope", "P": "sharp_rock"}, "dismantle": true,
 	},
 	"stone_axe": {
 		"result": "stone_axe", "count": 1, "action": "Atar", "time": 2.5,
-		"layers": [["SSR"], ["..P"]], "key": {"S": "sticks", "R": "rope", "P": "stone"}, "dismantle": true,
+		"layers": [["SSR"], ["..P"]], "key": {"S": "sticks", "R": "rope", "P": "sharp_rock"}, "dismantle": true,
 	},
 	"workbench": {
 		"result": "workbench", "count": 1, "action": "Montar", "time": 3.0,
-		"layers": [["WW"], ["PP"]], "key": {"W": "wood", "P": "planks"},
+		"layers": [["WW"], ["BB"]], "key": {"W": "wood", "B": "board"},
 	},
 	# Sobre la mesa de trabajo ("surface"): formas que en el suelo no salen.
 	"sailor_backpack": {
@@ -59,18 +63,26 @@ const RECIPES := {
 	},
 	"stone_pick": {
 		"result": "stone_pick", "count": 1, "action": "Atar", "time": 3.0, "surface": "workbench",
-		"layers": [["SR", "S."], ["PP", ".."]], "key": {"S": "sticks", "R": "rope", "P": "stone"},
+		"layers": [["SR", "S."], ["PP", ".."]], "key": {"S": "sticks", "R": "rope", "P": "rock"},
 	},
 	"torch": {
-		"result": "torch", "count": 2, "action": "Atar", "time": 1.5,
-		"layers": [["S"], ["T"]], "key": {"S": "sticks", "T": "cloth"},
+		"result": "torch", "count": 2, "action": "Untar", "time": 1.5,
+		"layers": [["S"], ["Z"]], "key": {"S": "sticks", "Z": "resin"},
+	},
+	"board": {
+		"result": "board", "count": 2, "action": "Cortar", "time": 3.0,
+		"layers": [["WA"]], "key": {"W": "wood", "A": "stone_axe"}, "tools": ["A"],
+	},
+	"campfire": {
+		"result": "campfire", "count": 1, "action": "Montar", "time": 2.5,
+		"layers": [["RRR", "RSR", "RRR"], ["...", ".F.", "..."]], "key": {"R": "rock", "S": "sticks", "F": "fiber"},
 	},
 }
 
 ## Lo que el personaje sabe hacer desde el principio (nada: lo básico viene en el diario).
 const KNOWN_AT_START := []
 ## Lo que se puede leer en el diario del capitán (está empapado: solo se salva lo básico).
-const JOURNAL_RECIPES := ["rope", "planks", "sticks", "workbench", "torch"]
+const JOURNAL_RECIPES := ["rope", "sharp_rock", "stone_knife", "stone_axe", "board", "workbench", "torch", "campfire"]
 
 
 ## Celdas de la forma: {Vector3i(columna, capa, fila): id del objeto}.

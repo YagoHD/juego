@@ -265,6 +265,10 @@ func _break_leaves() -> void:
 			dropped += 1
 			ItemDrop.spawn(get_parent(), p + Vector3.UP * 0.3, ItemDB.drop_of(_leaves[c]), 1)
 	center /= _leaves.size()
+	# Los pinos sueltan resina al caer.
+	if _leaves.values().has(IslandGenerator.PINE_LEAVES):
+		for k in rng.randi_range(1, 3):
+			ItemDrop.spawn(get_parent(), global_transform * (Vector3(0, 1.5, 0) * _vs) + Vector3.UP * 0.4, "resin", 1)
 	for node in _leaf_nodes:
 		node.queue_free()
 	_leaf_nodes.clear()

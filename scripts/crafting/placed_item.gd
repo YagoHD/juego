@@ -25,6 +25,8 @@ var _flame: MeshInstance3D
 static func height_of(id: String) -> float:
 	if id == "torch":
 		return 0.6
+	if id == "board":
+		return 0.05
 	return 0.18 if ItemDB.block_of(id) >= 0 else 0.3 / ItemPainter.S * 2.6
 
 
@@ -33,6 +35,9 @@ func _ready() -> void:
 	collision_mask = 0
 	if item_id == "torch":
 		_build_torch()
+		return
+	if item_id == "board":
+		_build_board()
 		return
 	var is_block := ItemDB.block_of(item_id) >= 0
 	var size := 0.18 if is_block else (0.42 if item_id == "captain_journal" else 0.3)
@@ -125,3 +130,24 @@ func _build_torch() -> void:
 	add_child(shape)
 	_box = AABB(Vector3(-0.07, 0.0, -0.07), col.size).grow(0.01)
 	set_process(true)
+
+
+## Tabla: larga (2 bloques) y fina, con la madera de los tablones. Para las formas cuenta en
+## la celda de su centro.
+func _build_board() -> void:
+	var size := Vector3(1.0, 0.05, 0.24)
+	var mesh := MeshInstance3D.new()
+	mesh.mesh = BlockTextures.make_block_mesh(IslandGenerator.PLANKS, 1.0)
+	mesh.scale = size
+	mesh.position.y = size.y * 0.5
+	_material = BlockTextures.make_material()
+	mesh.material_override = _material
+	add_child(mesh)
+	var shape := CollisionShape3D.new()
+	var box := BoxShape3D.new()
+	box.size = Vector3(size.x, 0.06, size.z)
+	shape.shape = box
+	shape.position.y = 0.03
+	add_child(shape)
+	_box = AABB(Vector3(-size.x * 0.5, 0.0, -size.z * 0.5), box.size).grow(0.01)
+	set_process(false)

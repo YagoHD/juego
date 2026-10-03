@@ -25,7 +25,7 @@ func _lay_leaves(session: CraftSession, ground: GroundCrafting, count: int, row:
 	for i in count:
 		var p := base + Vector3(c * (i - 1), 0, 0)
 		p.y = session._ground_y(p)
-		session._placed.append(ground.place(p, "leaves", 0.0, Vector3i((p / 0.5 - Vector3(0, 0.5, 0)).floor())))
+		session._placed.append(ground.place(p, "fiber", 0.0, Vector3i((p / 0.5 - Vector3(0, 0.5, 0)).floor())))
 
 
 func _process(_delta: float) -> bool:
@@ -67,7 +67,7 @@ func _process(_delta: float) -> bool:
 			_check("Al terminar, la cuerda está en el inventario", player.inventory.count_of("rope") == 1)
 			_lay_leaves(session, ground, 2, 2)  # dos hojas sueltas, sin terminar nada
 			screen.close()
-			_check("Al cerrar, lo que no se usó vuelve al inventario", player.inventory.count_of("leaves") == 2)
+			_check("Al cerrar, lo que no se usó vuelve al inventario", player.inventory.count_of("fiber") == 2)
 			_check("Se levanta", not player.is_kneeling())
 			_t0 = Time.get_ticks_msec()
 			_step = 3

@@ -535,7 +535,7 @@ func _update_capture() -> void:
 		if OS.get_cmdline_user_args().has("--inventory"):
 			open_inventory()
 		if OS.get_cmdline_user_args().has("--craft"):  # inventario de rodillas y vista de fabricar
-			_player.inventory.add("leaves", 3)
+			_player.inventory.add("fiber", 3)
 			open_inventory()
 			_session._enter_craft()
 			_player.learn("rope")
@@ -544,7 +544,7 @@ func _update_capture() -> void:
 			for i in 3:
 				var p := base + Vector3(c * (i - 1) + randf_range(-0.07, 0.07), 0, randf_range(-0.07, 0.07))
 				p.y = _session._ground_y(p)
-				_session._placed.append(_ground.place(p, "leaves", randf() * TAU, Vector3i((p / VOXEL_SIZE - Vector3(0, 0.5, 0)).floor())))
+				_session._placed.append(_ground.place(p, "fiber", randf() * TAU, Vector3i((p / VOXEL_SIZE - Vector3(0, 0.5, 0)).floor())))
 		if OS.get_cmdline_user_args().has("--open-chest"):  # abrir el cofre de la playa del naufragio
 			var cells: Array = Structures._chest_loot.keys()
 			_on_block_used(cells[cells.size() - 1], IslandGenerator.CHEST)

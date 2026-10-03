@@ -35,6 +35,7 @@ static func paint(name: String) -> Image:
 		"driftwood": _driftwood(img, salt)
 		"chest_top": _chest(img, salt, false)
 		"chest_side": _chest(img, salt, true)
+		"chest_back": _chest(img, salt, false, true)
 		"cloth": _cloth(img, salt)
 		"workbench_top": _workbench_top(img, salt)
 		"workbench_side": _workbench_side(img, salt)
@@ -359,7 +360,7 @@ static func _planks(img: Image, salt: int, base: Color) -> void:
 		img.set_pixel(posmod(kx + 1, S), ky, base.lightened(0.08))
 
 
-static func _chest(img: Image, salt: int, side: bool) -> void:
+static func _chest(img: Image, salt: int, side: bool, plain_side := false) -> void:
 	var wood := Blocks.color_of(IslandGenerator.CHEST)
 	_planks(img, salt, wood)
 	var band := Color(0.38, 0.36, 0.34)
@@ -368,6 +369,9 @@ static func _chest(img: Image, salt: int, side: bool) -> void:
 		img.set_pixel(i, S - 1, band.darkened(0.2))
 		img.set_pixel(0, i, band)
 		img.set_pixel(S - 1, i, band.darkened(0.2))
+	if plain_side:  # lados y trasera: solo la junta de la tapa, sin cerradura
+		for x in S:
+			img.set_pixel(x, 5, wood.darkened(0.5))
 	if side:
 		for x in S:  # junta de la tapa
 			img.set_pixel(x, 5, wood.darkened(0.5))

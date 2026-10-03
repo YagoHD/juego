@@ -26,7 +26,8 @@ const FACES := {
 	IslandGenerator.CORRUPT_SOIL: ["corrupt_top", "corrupt_side", "dirt"],
 	IslandGenerator.DEAD_WOOD: ["dead_log_top", "dead_log_side", "dead_log_top"],
 	IslandGenerator.WHEAT: ["wheat_top", "wheat_side", "dirt"],
-	IslandGenerator.CHEST: ["chest_top", "chest_side", "chest_top"],
+	# Cofre: la cerradura solo en la cara de delante (-Z); los demás lados, lisos.
+	IslandGenerator.CHEST: ["chest_top", "chest_top", "chest_back", "chest_back", "chest_back", "chest_side"],
 	IslandGenerator.PLANKS: ["planks", "planks", "planks"],
 	IslandGenerator.CLOTH: ["cloth", "cloth", "cloth"],
 	IslandGenerator.MOSSY_STONE: ["mossy_stone", "mossy_stone", "mossy_stone"],
