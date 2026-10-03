@@ -25,6 +25,7 @@ param(
     [switch]$Title,     # foto de la pantalla de título (mundo ya cargado)
     [switch]$Bench,     # dos mesas de trabajo delante, con el pico a medio montar
     [switch]$Torches,   # dos antorchas clavadas delante
+    [switch]$Craft,     # inventario de rodillas y vista de fabricar
     [int]$Page = 0,     # con -Journal: página izquierda (par)
     [string]$Learn = "", # con -Journal: recetas aprendidas, p. ej. "chest,belt"
     [int]$Wait = 90,
@@ -53,6 +54,7 @@ if ($Cracks -ne "") { $gameArgs += "--cracks=$Cracks" }
 if ($Title) { $gameArgs += "--title" }
 if ($Bench) { $gameArgs += "--bench" }
 if ($Torches) { $gameArgs += "--torches" }
+if ($Craft) { $gameArgs += "--craft" }
 if ($At -ne "") { $gameArgs += "--at=$At" }
 $p = Start-Process -FilePath $Godot -ArgumentList $gameArgs -RedirectStandardOutput "$env:TEMP\capture_out.txt" -RedirectStandardError "$env:TEMP\capture_err.txt" -PassThru
 if (-not $p.WaitForExit(180000)) { $p.Kill(); Write-Output "TIMEOUT" }

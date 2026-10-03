@@ -71,7 +71,7 @@ func _run() -> void:
 	_p.learn("rope")
 	_check("Sabiendo la cuerda: 3 hojas en línea (sueltas en su celda) = cuerda", _recipes() == ["rope"])
 	_p.global_position = Vector3(1.2, 0, 2.8)
-	_check("Cerca de la forma aparece el aviso: '%s'" % _g.prompt(), _g.prompt().contains("Retorcer"))
+	_check("Cerca de la forma aparece el aviso: '%s'" % _g.prompt(), _g.prompt().contains("Retorcer · Cuerda"))
 	_clear()
 
 	# Cinturón: no se conoce hasta leer la nota.
@@ -110,8 +110,9 @@ func _run() -> void:
 	var data := _g.to_data()
 	_g.from_data(data)
 	_check("Guardar y cargar conserva los 8 objetos y la forma", _g.to_data().size() == 8 and _recipes() == ["rough_backpack"])
+	_p.inventory.clear()
 	_g.craft(_g._matches[0])
-	_check("Fabricar quita los materiales y suelta la mochila", _g.to_data().is_empty() and _drops() == {"rough_backpack": 1})
+	_check("Fabricar quita los materiales y la mochila va al inventario", _g.to_data().is_empty() and _p.inventory.count_of("rough_backpack") == 1)
 	_clear()
 
 	# Herramientas: tallar tablones con el cuchillo; el cuchillo no se gasta.
@@ -119,17 +120,19 @@ func _run() -> void:
 	_put("wood", 0, 0)
 	_put("stone_knife", 1, 0)
 	_check("Tronco + cuchillo = tablones", _recipes() == ["planks"])
+	_p.inventory.clear()
 	_g.craft(_g._matches[0])
 	var left: Array = _g.to_data()
-	_check("El cuchillo se queda en el suelo y salen 4 tablones", left.size() == 1 and left[0]["id"] == "stone_knife" and _drops() == {"planks": 4})
+	_check("El cuchillo se queda en el suelo y salen 4 tablones", left.size() == 1 and left[0]["id"] == "stone_knife" and _p.inventory.count_of("planks") == 4)
 	_clear()
 
 	# Vertical: cofre = cubo de 2x2x2 tablones (apilados).
 	_check("Al principio no se sabe hacer el cofre", not _p.known_recipes.has("chest"))
 	var chest := _put("chest", 30, 30)
 	_check("Un cofre solo en el suelo se puede desmontar", _recipes() == ["chest"] and _g.prompt() == "" or _g._matches[0]["dismantle"])
+	_p.inventory.clear()
 	_g.craft(_g._matches[0])
-	_check("Desmontarlo da 8 tablones y enseña el cofre", _drops() == {"planks": 8} and _p.known_recipes.has("chest"))
+	_check("Desmontarlo da 8 tablones y enseña el cofre", _p.inventory.count_of("planks") == 8 and _p.known_recipes.has("chest"))
 	_clear()
 	var bottom: Array[PlacedItem] = []
 	for cell in [Vector2i(0, 0), Vector2i(1, 0), Vector2i(0, 1), Vector2i(1, 1)]:
@@ -178,6 +181,14 @@ func _run() -> void:
 	_clear()
 	_check("Con el pico, la piedra se rompe 3 veces más rápido", ItemDB.tool_speed("stone_pick", IslandGenerator.STONE) == 3.0)
 	_check("Cosas que se pueden coser o fabricar tienen dibujo", ItemDB.icon("stone_axe") != null)
+	_clear()
+	# Plantilla: la receta elegida en el recetario se dibuja en transparente; al ponerla, se va.
+	_g.set_template("rope", Vector3(20.0 * C, 0.0, 20.0 * C))
+	_g._find_matches()
+	_check("La plantilla de la cuerda dibuja 3 hojas en transparente", _g._ghosts.get_child_count() == 3)
+	_put("leaves", 20, 20)
+	_g._find_matches()
+	_check("Al poner una hoja en su sitio quedan 2", _g._ghosts.get_child_count() == 2)
 	print("RESULTADO: ", "TODO OK" if _fails == 0 else "%d FALLOS" % _fails)
 	quit()
 

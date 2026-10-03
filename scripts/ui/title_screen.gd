@@ -9,7 +9,9 @@ signal quit_pressed
 
 const TIPS := [
 	"El diario del capitán está en la arena, cerca del barco.",
-	"Los objetos dejados en el suelo con G forman recetas: la forma importa, no el sitio exacto.",
+	"Abre el inventario (E) y pulsa Fabricar: arrastra los objetos al suelo con la forma de la receta.",
+	"En el recetario de Fabricar, elige una receta y verás su forma dibujada en el suelo.",
+	"Junto a una mesa de trabajo, el personaje fabrica sobre ella: hay recetas que solo salen ahí.",
 	"Si una forma está a medias, verás en transparente lo que falta.",
 	"Lo que no sepas hacer, desmóntalo: así se aprende cómo está hecho.",
 	"Camiseta, pantalón y cinturón tienen bolsillos: más huecos en la barra.",

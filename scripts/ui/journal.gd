@@ -219,10 +219,10 @@ func _build_pages() -> void:
 	]})
 	_pages.append({"kind": "map"})
 	_pages.append({"kind": "text", "title": "Trabajar en tierra", "body": [
-		["Aquí no hay banco ni taller. Se trabaja en el suelo: se ponen las cosas una junto a otra (G), cada una en su sitio, con la forma de lo que se quiere hacer, y se trabaja con las manos (mantener R).", false],
-		["\n\nLo que va encima se apila sobre lo de abajo (G apuntando a la cara de arriba).", false],
+		["Aquí no hay banco ni taller. Se trabaja de rodillas, en el suelo (E y luego Fabricar): se ponen las cosas una junto a otra, cada una en su sitio, con la forma de lo que se quiere hacer, y se trabaja con las manos.", false],
+		["\n\nLo que va encima se apila sobre lo de abajo (se suelta encima).", false],
 		["\n\nLas herramientas, como el cuchillo, se ponen al lado y no se gastan.", false],
-		["\n\nLo que no sepas hacer, desmóntalo (déjalo solo en el suelo y mantén R): así se aprende cómo está hecho.", false],
+		["\n\nLo que no sepas hacer, desmóntalo (déjalo solo en el suelo y pulsa Desmontar): así se aprende cómo está hecho.", false],
 	]})
 	for recipe_id in GroundRecipes.JOURNAL_RECIPES:
 		if _player.known_recipes.has(recipe_id):
@@ -342,7 +342,7 @@ func _page_recipe(box: VBoxContainer, page: Dictionary) -> void:
 	if int(recipe["count"]) > 1:
 		title += " (salen %d)" % int(recipe["count"])
 	box.add_child(_label(title, 22, ink))
-	box.add_child(_label("%s (mantener R)" % recipe["action"], 15, ink))
+	box.add_child(_label(recipe["action"], 15, ink))
 	if recipe.get("surface", "") == "workbench":
 		box.add_child(_label("Sobre la mesa de trabajo (una o varias juntas).", 14, ink))
 	var layers: Array = recipe["layers"]

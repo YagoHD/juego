@@ -274,8 +274,6 @@ func _unhandled_input(event: InputEvent) -> void:
 				_select_slot(key.keycode - KEY_1)
 		elif key.keycode == KEY_Q:
 			_throw_held(key.ctrl_pressed)
-		elif key.keycode == KEY_G:
-			_place_on_ground(_target())
 		elif key.keycode == KEY_C:
 			set_creative(not creative)
 		elif key.keycode == KEY_F:
@@ -556,7 +554,7 @@ func _edit_block(place: bool) -> void:
 		return
 	if target.has("item"):
 		if place:
-			_place_on_ground(target)  # otro objeto al lado del que se apunta
+			_place_torch(target)  # otra antorcha al lado
 		else:
 			_pick_up_placed(target["item"], Input.is_key_pressed(KEY_SHIFT))
 		return
@@ -571,7 +569,7 @@ func _edit_block(place: bool) -> void:
 		var cell: Vector3i = target["place"]
 		var id := get_current_block()
 		if id < 0:
-			_place_on_ground(target)  # un objeto que no es bloque se deja en el suelo
+			_place_torch(target)  # las antorchas se clavan en el suelo; el resto no se coloca
 			return
 		if id != IslandGenerator.WATER and _overlaps_body(cell):
 			return  # no colocar un bloque dentro de uno mismo
@@ -914,6 +912,13 @@ func _pay_step_debt(delta: float) -> void:
 
 # ------------------------------------------------------------------ objetos en el suelo y recetas
 
+## Clic derecho con una antorcha en la mano: se clava en el suelo, donde se apunta.
+func _place_torch(target: Dictionary) -> void:
+	var stack := active_inventory().get_slot(_hotbar_index)
+	if not stack.is_empty() and stack["id"] == "torch":
+		_place_on_ground(target)
+
+
 ## Deja en el suelo uno del objeto de la mano, donde se apunta (sobre la cara de arriba de un
 ## bloque, o junto a otro objeto ya dejado). Queda en ese punto exacto, girado al azar.
 func _place_on_ground(target: Dictionary) -> bool:
@@ -1126,13 +1131,12 @@ func _reset_breaking() -> void:
 		_cracks.visible = false
 
 
-## Con un objeto que no es bloque en la mano, apuntando al suelo (o encima de otro objeto):
-## se ve en transparente dónde quedaría al dejarlo con G o clic derecho.
+## Con una antorcha en la mano, apuntando al suelo (o encima de otro objeto):
+## se ve en transparente dónde quedaría al clavarla con clic derecho.
 func _update_place_ghost() -> void:
 	var stack := active_inventory().get_slot(_hotbar_index)
 	var id: String = "" if stack.is_empty() else stack["id"]
-	var target := _target() if _captured and not ui_open and id != "" and ItemDB.block_of(id) < 0 \
-		and ItemDB.teaches(id) == "" else {}
+	var target := _target() if _captured and not ui_open and id == "torch" else {}
 	var normal: Vector3 = target.get("normal", Vector3.ZERO)
 	if target.is_empty() or normal.y < 0.7:
 		_place_ghost.visible = false
@@ -1152,3 +1156,39 @@ func _update_place_ghost() -> void:
 	_place_ghost.global_transform = Transform3D(Basis(Vector3.UP, rotation.y) * Basis(Vector3.RIGHT, -PI / 2.0),
 		pos + Vector3.UP * 0.012)
 	_place_ghost.visible = true
+
+
+# ------------------------------------------------------------------ inventario de rodillas
+
+var _kneeling := false
+
+
+## Arrodillarse (inventario y fabricar): el muñeco se arrodilla y el brazo de primera persona
+## se oculta (la cámara de la escena muestra al personaje desde fuera).
+func set_kneeling(on: bool) -> void:
+	_kneeling = on
+	_avatar.set_kneeling(on)
+	if on:
+		_held.visible = false
+		velocity = Vector3.ZERO
+		_sprinting = false
+	else:
+		_apply_camera_mode()
+
+
+func is_kneeling() -> bool:
+	return _kneeling
+
+
+func get_camera() -> Camera3D:
+	return _camera
+
+
+## Altura (mundo) de los ojos, para colocar cámaras de escena.
+func eye_position() -> Vector3:
+	return global_position + Vector3.UP * EYE_HEIGHT
+
+
+## ¿Puede arrodillarse ahora? (no en el agua, ni en el aire, ni volando)
+func can_kneel() -> bool:
+	return is_on_floor() and not _flying and not _in_water(global_position + Vector3.UP * BODY_HEIGHT * 0.28)

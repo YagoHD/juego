@@ -59,8 +59,13 @@
   ropa y la mochila están en los cofres del naufragio. Objetos no-bloque (cuerda, ropa) se ven
   con grosor en la mano y en el suelo (`scripts/items/item_mesh.gd`).
 - **Cofres** (clic derecho) y **naufragio** en la playa con botín (`scripts/world/structures.gd`).
-- **Fabricar en el suelo** (`scripts/crafting/`): G deja un objeto en el punto exacto donde se
-  apunta (sin anclarse); G sobre la cara de arriba de otro lo apila (hasta 4). Una cuadrícula
+- **Fabricar de rodillas** (`scripts/crafting/craft_session.gd`): E arrodilla al personaje (mochila al
+  suelo, cámara de escena, inventario semitransparente a la izquierda); "Fabricar" acerca la
+  cámara a la zona de trabajo (o a la mesa cercana) y se ARRASTRAN objetos del inventario al
+  mundo (rueda: girar; encima de otro: apilar, hasta 4); botón con la receta lista; recetario a
+  la derecha que dibuja la forma elegida; al cerrar, lo no usado vuelve al inventario. Sin G/R.
+- **Fabricar en el suelo** (`scripts/crafting/`): cada objeto queda en el punto exacto donde se
+  suelta (sin anclarse). Una cuadrícula
   invisible de 0,25 m lee la FORMA en 3D (vale girada o reflejada); si es una receta conocida
   brilla y "Mantén R" la trabaja (animación agachado). Si es un trozo de una receta conocida,
   dice qué falta y lo muestra en transparente. Herramientas (cuchillo) no se gastan. Un objeto

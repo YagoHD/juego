@@ -30,6 +30,8 @@ var _backpack: Node3D      # mochila a la espalda (visible si la lleva puesta)
 var _backpack_kind := ""     # id de la mochila que lleva ("" = ninguna)
 var _working := false
 var _work := 0.0             # 0..1: mezcla de la postura de trabajar agachado
+var _kneeling := false
+var _kneel := 0.0            # 0..1: mezcla de la postura de rodillas (inventario y fabricar)
 
 var _time := 0.0
 var _walk_phase := 0.0
@@ -173,6 +175,13 @@ func update_walk(speed01: float, on_floor: bool, delta: float) -> void:
 		_cancel_idle()
 
 
+## Arrodillarse (al abrir el inventario): una rodilla en el suelo, mirando hacia abajo.
+func set_kneeling(on: bool) -> void:
+	_kneeling = on
+	if on:
+		_cancel_idle()
+
+
 ## Agacharse a trabajar con las manos (fabricar en el suelo).
 func set_working(on: bool) -> void:
 	_working = on
@@ -254,6 +263,9 @@ func _process(delta: float) -> void:
 	}
 	if ACTIONS.has(_action):
 		_blend_action(pose)
+	_kneel = move_toward(_kneel, 1.0 if _kneeling else 0.0, delta * 3.0)
+	if _kneel > 0.0:
+		_kneel_pose(pose, smoothstep(0.0, 1.0, _kneel))
 	_work = move_toward(_work, 1.0 if _working else 0.0, delta * 4.0)
 	if _work > 0.0:
 		_work_pose(pose, _work)
@@ -298,6 +310,26 @@ func _update_blink(delta: float) -> void:
 
 # ------------------------------------------------------------------ acciones de reposo largo
 
+## De rodillas: la pierna derecha con la rodilla en el suelo, la izquierda delante en ángulo
+## recto; el cuerpo algo inclinado y las manos sobre la rodilla.
+func _kneel_pose(pose: Dictionary, w: float) -> void:
+	var target := {
+		"root_y": -0.3 * K,
+		"root_rot": Vector3(-0.12, 0.0, 0.0),
+		"head": Vector3(-0.3, 0.0, 0.0),
+		"leg_l": Vector3(1.45, 0.0, -0.05),
+		"knee_l": -1.45,
+		"leg_r": Vector3(-0.15, 0.0, 0.08),
+		"knee_r": -1.5,
+		"arm_l": Vector3(0.55, 0.0, -0.08),
+		"elbow_l": 0.7,
+		"arm_r": Vector3(0.45, 0.0, 0.1),
+		"elbow_r": 0.6,
+	}
+	for key in target:
+		pose[key] = _mix(pose[key], target[key], w)
+
+
 ## En cuclillas, inclinado hacia delante, con las manos trabajando en el suelo por turnos.
 func _work_pose(pose: Dictionary, w: float) -> void:
 	var a := sin(_time * 8.0)
@@ -314,6 +346,10 @@ func _work_pose(pose: Dictionary, w: float) -> void:
 		"arm_l": Vector3(1.0 - 0.3 * a, 0.0, -0.12),
 		"elbow_l": 0.55 + 0.35 * a,
 	}
+	if _kneeling:  # de rodillas: las piernas se quedan como están; trabajan los brazos
+		for key in ["root_y", "leg_r", "leg_l", "knee_r", "knee_l"]:
+			target.erase(key)
+		target["root_rot"] = Vector3(-0.3, 0.0, 0.0)
 	for key in target:
 		pose[key] = _mix(pose[key], target[key], w)
 

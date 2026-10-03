@@ -10,6 +10,10 @@ class_name InventoryScreen
 
 signal closed
 signal overflow(id: String, count: int)  # lo que no cupo al cerrar: se tira al suelo
+## En el modo "fabricar": clics, movimiento y rueda del ratón sobre el mundo (fuera de los paneles).
+signal world_input(event: InputEvent)
+## En el modo "fabricar": se ha soltado sobre el mundo un montón arrastrado desde un hueco.
+signal world_drop
 
 const SLOT := 48
 const GAP := 4
@@ -22,6 +26,14 @@ var _cursor_view: Control
 var _box: VBoxContainer
 var _row: HBoxContainer
 var _side: Control                        # panel opcional a la izquierda (equipo y fabricación)
+var _dim: ColorRect
+var _center: CenterContainer
+var _panel: PanelContainer
+var _panel_style: StyleBoxFlat
+var _layout := "normal"
+var _press_pos := Vector2.ZERO           # dónde se pulsó en un hueco (para saber si se arrastra)
+## Capa para paneles extra (botón Fabricar, recetario...) por encima de todo menos el cursor.
+var overlay: Control
 
 
 func _ready() -> void:
@@ -29,31 +41,38 @@ func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_STOP
 	visible = false
 
-	var dim := ColorRect.new()
-	dim.color = Color(0, 0, 0, 0.45)
-	dim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	dim.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	add_child(dim)
+	_dim = ColorRect.new()
+	_dim.color = Color(0, 0, 0, 0.45)
+	_dim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_dim.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(_dim)
 
-	var center := CenterContainer.new()
-	center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	center.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	add_child(center)
+	_center = CenterContainer.new()
+	_center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_center.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(_center)
 	var panel := PanelContainer.new()
+	_panel = panel
 	var style := StyleBoxFlat.new()
+	_panel_style = style
 	style.bg_color = Color(0.13, 0.12, 0.11, 0.94)
 	style.set_corner_radius_all(8)
 	style.set_content_margin_all(14)
 	style.border_color = Color(0.45, 0.38, 0.3)
 	style.set_border_width_all(2)
 	panel.add_theme_stylebox_override("panel", style)
-	center.add_child(panel)
+	_center.add_child(panel)
 	_row = HBoxContainer.new()
 	_row.add_theme_constant_override("separation", 18)
 	panel.add_child(_row)
 	_box = VBoxContainer.new()
 	_box.add_theme_constant_override("separation", 10)
 	_row.add_child(_box)
+
+	overlay = Control.new()
+	overlay.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	overlay.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(overlay)
 
 	_cursor_view = _make_slot_visual(null)
 	_cursor_view.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -115,6 +134,8 @@ func close() -> void:
 	if not visible:
 		return
 	_return_cursor()
+	for child in overlay.get_children():
+		child.queue_free()
 	for section in _sections:
 		var inv: Inventory = section["inventory"]
 		if inv.changed.is_connected(_refresh):
@@ -123,20 +144,34 @@ func close() -> void:
 		_side.queue_free()
 		_side = null
 	visible = false
+	set_layout("normal")
 	closed.emit()
 
 
 func _process(_delta: float) -> void:
-	if visible and _cursor_view.visible:
-		_cursor_view.position = get_global_mouse_position() - Vector2(SLOT, SLOT) * 0.5
+	if not visible:
+		return
+	var mouse := get_global_mouse_position()
+	# Sobre el mundo, en el modo fabricar, el objeto cogido se ve en 3D (vista previa) y no aquí.
+	_cursor_view.visible = not _cursor.is_empty() and (_layout != "craft" or is_over_ui(mouse))
+	if _cursor_view.visible:
+		_cursor_view.position = mouse - Vector2(SLOT, SLOT) * 0.5
 
 
 # ------------------------------------------------------------------ clics
 
 func _on_slot_input(event: InputEvent, section: int, index: int) -> void:
 	var button := event as InputEventMouseButton
-	if button == null or not button.pressed:
+	if button == null:
 		return
+	if not button.pressed:
+		# Arrastrar un montón desde un hueco y soltarlo sobre el mundo (modo fabricar).
+		var mouse := get_global_mouse_position()
+		if _layout == "craft" and button.button_index == MOUSE_BUTTON_LEFT and not _cursor.is_empty() \
+				and mouse.distance_to(_press_pos) > 8.0 and not is_over_ui(mouse):
+			world_drop.emit()
+		return
+	_press_pos = get_global_mouse_position()
 	var inv: Inventory = _sections[section]["inventory"]
 	if button.shift_pressed and _cursor.is_empty():
 		_quick_move(section, index)
@@ -306,10 +341,41 @@ func _show_stack(icon: TextureRect, label: Label, stack: Dictionary) -> void:
 
 
 func _gui_input(event: InputEvent) -> void:
-	# Clic fuera de los huecos con algo cogido: se suelta al suelo (lo hace main.gd al cerrar);
-	# aquí simplemente se ignora para no perderlo.
-	if event is InputEventMouseButton:
+	# Fuera de los paneles: en el modo fabricar, el ratón trabaja sobre el mundo; en los demás,
+	# un clic fuera se ignora (para no perder lo que se lleva cogido).
+	if _layout == "craft" and (event is InputEventMouseButton or event is InputEventMouseMotion):
+		world_input.emit(event)
 		accept_event()
+	elif event is InputEventMouseButton:
+		accept_event()
+
+
+## Cómo se coloca la pantalla:
+##   "normal": centrada y con el fondo oscurecido (cofres);
+##   "kneel":  a la izquierda y casi transparente, para ver al personaje arrodillado;
+##   "craft":  a la izquierda, sin oscurecer: el ratón trabaja sobre el mundo.
+func set_layout(mode: String) -> void:
+	_layout = mode
+	_dim.color.a = 0.45 if mode == "normal" else (0.12 if mode == "kneel" else 0.0)
+	_center.anchor_right = 1.0 if mode == "normal" else (0.55 if mode == "kneel" else 0.42)
+	_panel_style.bg_color.a = 0.94 if mode == "normal" else 0.8
+	if _side != null:
+		_side.visible = mode != "craft"
+
+
+func layout() -> String:
+	return _layout
+
+
+## ¿Está el ratón sobre algún panel (inventario o los de la capa extra)?
+func is_over_ui(pos: Vector2) -> bool:
+	if _panel.get_global_rect().has_point(pos):
+		return true
+	for child in overlay.get_children():
+		var c := child as Control
+		if c != null and c.visible and c.mouse_filter != Control.MOUSE_FILTER_IGNORE and c.get_global_rect().has_point(pos):
+			return true
+	return false
 
 
 # ------------------------------------------------------------------ para el panel lateral

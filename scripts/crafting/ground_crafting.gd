@@ -2,12 +2,13 @@ extends Node3D
 class_name GroundCrafting
 ## Fabricar en el suelo: guarda los objetos dejados a mano (PlacedItem), mira qué formas hacen
 ## entre ellos (también apilados hacia arriba) y:
-##   - si una es una receta que el personaje conoce, la hace brillar; manteniendo R cerca, el
-##     personaje se agacha a trabajar y los objetos se convierten en el resultado (las
+##   - si una es una receta que el personaje conoce, la hace brillar; desde la vista de fabricar
+##     (CraftSession) aparece un botón y los objetos se convierten en el resultado (las
 ##     herramientas, como el cuchillo, no se gastan);
 ##   - si es un trozo de una receta conocida, muestra en transparente lo que falta;
-##   - un objeto que se puede desmontar, dejado solo, se desmonta con R: devuelve sus
-##     materiales y el personaje aprende a hacerlo.
+##   - un objeto que se puede desmontar, dejado solo, se puede desmontar: devuelve sus
+##     materiales y el personaje aprende a hacerlo;
+##   - una "plantilla" (receta elegida en el recetario) se dibuja en transparente en su sitio.
 ##
 ## Los objetos se dejan donde sea, sin anclarse; solo para leer la forma se mira en qué celda
 ## invisible (GroundRecipes.CELL) cae cada uno. Dos objetos en la misma celda estropean la forma.
@@ -18,7 +19,6 @@ const HINT_DISTANCE := 6.0   # metros: hasta dónde se ven las piezas que faltan
 signal crafted(recipe_id: String)
 
 var player: Player
-var debug_hold := false  # solo capturas: como si se mantuviera R
 ## Solo pruebas: qué bloque hay en una celda (si no, se mira el terreno del jugador).
 var block_at := Callable()
 var _items: Array[PlacedItem] = []
@@ -28,9 +28,8 @@ var _matches: Array[Dictionary] = []
 var _partials: Array[Dictionary] = []
 var _ghosts: Node3D
 var _dirty := true
-var _progress := 0.0
-var _working_on: Dictionary = {}
-var _active := false  # el personaje está trabajando por orden nuestra
+## Plantilla: {"recipe", "origin": Vector3i(celda x, capa 0, celda z), "base_y", "support"} o {}.
+var _template := {}
 
 
 func _ready() -> void:
@@ -119,55 +118,73 @@ func on_block_removed(cell: Vector3i) -> void:
 			_dirty = true
 
 
-## Texto de ayuda para la pantalla ("" si no hay nada que hacer cerca).
+## Nombre de lo que se hace con una forma completa: "Coser · Mochila improvisada".
+static func label_of(m: Dictionary) -> String:
+	var recipe: Dictionary = GroundRecipes.RECIPES[m["recipe"]]
+	var action: String = "Desmontar" if m["dismantle"] else recipe["action"]
+	return "%s · %s" % [action, ItemDB.display_name(recipe["result"])]
+
+
+## Qué le falta a un trozo de receta: "Mochila improvisada: falta 1 Cuerda".
+static func missing_text(p: Dictionary) -> String:
+	var parts: PackedStringArray = []
+	var lack: Dictionary = p["missing"]
+	for id in lack:
+		parts.append("%d %s" % [lack[id], ItemDB.display_name(id)])
+	var verb := "falta" if lack.size() == 1 and int(lack.values()[0]) == 1 else "faltan"
+	return "%s: %s %s" % [ItemDB.display_name(GroundRecipes.RECIPES[p["recipe"]]["result"]), verb, ", ".join(parts)]
+
+
+## Texto de lo más cercano al jugador ("" si no hay nada).
 func prompt() -> String:
 	var m := _nearest(_matches, WORK_DISTANCE)
 	if not m.is_empty():
-		var recipe: Dictionary = GroundRecipes.RECIPES[m["recipe"]]
-		var text: String
-		if m["dismantle"]:
-			text = "Mantén R: Desmontar · %s" % ItemDB.display_name(recipe["result"])
-		else:
-			text = "Mantén R: %s · %s" % [recipe["action"], ItemDB.display_name(recipe["result"])]
-		if _progress > 0.0:
-			text += "  %d%%" % int(_progress / float(recipe["time"]) * 100.0)
-		return text
+		return label_of(m)
 	var p := _nearest(_partials, WORK_DISTANCE)
-	if not p.is_empty():
-		var parts: PackedStringArray = []
-		var lack: Dictionary = p["missing"]
-		for id in lack:
-			parts.append("%d %s" % [lack[id], ItemDB.display_name(id)])
-		var verb := "falta" if lack.size() == 1 and int(lack.values()[0]) == 1 else "faltan"
-		return "%s: %s %s" % [ItemDB.display_name(GroundRecipes.RECIPES[p["recipe"]]["result"]), verb, ", ".join(parts)]
-	return ""
+	return "" if p.is_empty() else missing_text(p)
 
 
-func _process(delta: float) -> void:
+## Formas completas (o para desmontar) cerca de un punto.
+func matches_near(center: Vector3, radius: float) -> Array[Dictionary]:
 	if _dirty:
 		_dirty = false
 		_find_matches()
-	if player == null:
-		return
-	var m := _nearest(_matches, WORK_DISTANCE)
-	var holding := debug_hold or (not player.ui_open and Input.is_key_pressed(KEY_R))
-	if m.is_empty() or not holding or (not _working_on.is_empty() and _working_on["center"] != m["center"]):
-		_progress = 0.0
-		_working_on = {}
-		if _active:
-			_active = false
-			player.set_working(false)
-		return
-	_working_on = m
-	_active = true
-	player.set_working(true)
-	_progress += delta
-	if _progress >= float(GroundRecipes.RECIPES[m["recipe"]]["time"]):
-		craft(m)
+	var out: Array[Dictionary] = []
+	for m in _matches:
+		if (m["center"] as Vector3).distance_to(center) < radius:
+			out.append(m)
+	return out
 
 
-## Termina una receta: quita los materiales y deja el resultado (salta hacia el jugador).
-## Si es desmontar: quita el objeto, suelta sus materiales y enseña la receta.
+## Trozos de recetas cerca de un punto.
+func partials_near(center: Vector3, radius: float) -> Array[Dictionary]:
+	var out: Array[Dictionary] = []
+	for p in _partials:
+		if (p["center"] as Vector3).distance_to(center) < radius:
+			out.append(p)
+	return out
+
+
+## Dibuja en transparente la receta elegida en el recetario, empezando en el punto "at" (su
+## celda) y apoyada en el bloque "support". recipe_id "" la quita.
+func set_template(recipe_id: String, at: Vector3 = Vector3.ZERO, support := Vector3i.ZERO) -> void:
+	if recipe_id == "":
+		_template = {}
+	else:
+		_template = {"recipe": recipe_id, "base_y": at.y, "support": support,
+			"origin": Vector3i(floori(at.x / GroundRecipes.CELL), 0, floori(at.z / GroundRecipes.CELL))}
+	_dirty = true
+
+
+func _process(_delta: float) -> void:
+	if _dirty:
+		_dirty = false
+		_find_matches()
+
+
+## Termina una receta: quita los materiales y el resultado va a la mochila del jugador (lo que
+## no quepa cae al suelo). Si es desmontar: quita el objeto, devuelve sus materiales y enseña
+## la receta.
 func craft(m: Dictionary) -> void:
 	var recipe_id: String = m["recipe"]
 	var recipe: Dictionary = GroundRecipes.RECIPES[recipe_id]
@@ -177,7 +194,7 @@ func craft(m: Dictionary) -> void:
 			remove(item)
 		var mats := GroundRecipes.materials_of(recipe_id)
 		for id in mats:
-			ItemDrop.spawn(get_parent(), center + Vector3.UP * 0.3, id, int(mats[id]))
+			_give(id, int(mats[id]), center)
 		Sfx.play("aprender", center)
 		if player != null and player.learn(recipe_id):
 			player.notice.emit("Al desmontarlo has aprendido a hacer: %s. Está en el diario (J)." % ItemDB.display_name(recipe["result"]))
@@ -186,16 +203,20 @@ func craft(m: Dictionary) -> void:
 		for item: PlacedItem in m["items"]:
 			if not tools.has(item.item_id):
 				remove(item)
-		ItemDrop.spawn(get_parent(), center + Vector3.UP * 0.3, recipe["result"], int(recipe["count"]))
+		_give(recipe["result"], int(recipe["count"]), center)
 		Sfx.play("fabricado", center)
 		crafted.emit(recipe_id)
-	_progress = 0.0
-	_working_on = {}
+		if not _template.is_empty() and _template["recipe"] == recipe_id:
+			_template = {}  # hecha: la plantilla ya no hace falta
 	_spawn_dust(center)
-	if player != null and _active:
-		_active = false
-		player.set_working(false)
 	_find_matches()
+
+
+## Da objetos al jugador (a sus huecos disponibles); lo que no cabe, al suelo.
+func _give(id: String, count: int, at: Vector3) -> void:
+	var left := count if player == null else player.pick_up(id, count)
+	if left > 0:
+		ItemDrop.spawn(get_parent(), at + Vector3.UP * 0.3, id, left)
 
 
 func _nearest(list: Array[Dictionary], max_distance: float) -> Dictionary:
@@ -245,6 +266,7 @@ func _find_matches() -> void:
 	_matches.clear()
 	_partials.clear()
 	for ghost in _ghosts.get_children():
+		_ghosts.remove_child(ghost)  # fuera ya (si no, cuentan hasta el siguiente fotograma)
 		ghost.queue_free()
 	var known: Array = player.known_recipes if player != null else GroundRecipes.KNOWN_AT_START
 	var by_cell := _by_cell()
@@ -287,6 +309,7 @@ func _find_matches() -> void:
 			_matches.append({"recipe": recipe, "items": members, "center": center, "dismantle": dismantle})
 		elif members.size() >= 2 and not group.values().has(""):
 			_add_partial(group, members, center, known, bench)
+	_draw_template()
 
 
 ## ¿Está todo el grupo encima de mesas de trabajo?
@@ -303,6 +326,27 @@ func _block_at(cell: Vector3i) -> int:
 	if player == null or player._tool == null:
 		return IslandGenerator.AIR
 	return player._tool.get_voxel(cell)
+
+
+## La plantilla del recetario: cada pieza que aún no está puesta, en transparente en su sitio.
+func _draw_template() -> void:
+	if _template.is_empty():
+		return
+	var origin: Vector3i = _template["origin"]
+	var cells := GroundRecipes.cells_of(_template["recipe"])
+	for c: Vector3i in cells:
+		var col := Vector2i(origin.x + c.x, origin.z + c.z)
+		var id: String = cells[c]
+		var done := false
+		var y: float = _template["base_y"] + c.y * 0.18
+		for it in _items:
+			if it.column == col and it.level == c.y and it.item_id == id:
+				done = true
+			if it.column == col and it.level == c.y - 1:
+				y = it.global_position.y + it.height()
+		if not done:
+			var pos := Vector3((col.x + 0.5) * GroundRecipes.CELL, y, (col.y + 0.5) * GroundRecipes.CELL)
+			_ghosts.add_child(_make_ghost(id, pos))
 
 
 ## Receta de desmontar este objeto ("" si no se puede).
@@ -384,6 +428,11 @@ func _spawn_dust(center: Vector3) -> void:
 	particles.global_position = center + Vector3.UP * 0.1
 	particles.emitting = true
 	get_tree().create_timer(1.0).timeout.connect(particles.queue_free)
+
+
+## ¿Sigue este objeto en el suelo?
+func has_placed(item: PlacedItem) -> bool:
+	return _items.has(item)
 
 
 ## ¿Hay en el suelo algún objeto de este tipo?

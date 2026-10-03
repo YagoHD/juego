@@ -32,12 +32,11 @@ Hecho en **Godot 4.7** con el módulo **godot_voxel** (de Zylann).
 | Alt o botón central (mantener) | Girar la cámara alrededor del personaje |
 | F | Volar (Espacio sube, Ctrl baja, Shift rápido) |
 | T (mantener) | Acelerar el tiempo (para ver el ciclo de día y noche) |
-| E | Inventario (clic: coger/soltar · clic derecho: la mitad o de uno en uno · Mayús+clic: mover rápido) |
+| E | Inventario: el personaje se arrodilla y deja la mochila en el suelo. Botón **Fabricar**: la cámara se acerca a la zona de trabajo (o a la mesa, si hay una cerca); se arrastran objetos del inventario al suelo con la forma de la receta (soltados encima de otro, se apilan; la rueda los gira; botón derecho gira la vista) y, cuando brilla, un botón la fabrica. Lo que no se use vuelve al inventario al cerrar. |
+| Clic derecho con una antorcha | Clavarla en el suelo |
 | Q (Ctrl + Q) | Tirar uno (el montón entero) del objeto de la mano |
-| G | Dejar el objeto de la mano en el suelo, justo donde se apunta (para fabricar); apuntando a la cara de arriba de otro objeto, se apila encima |
 | Mayús + clic izquierdo | Sobre un objeto del suelo: recoger todo el montón de una vez |
 | J | Diario del capitán (A / D o flechas: pasar página) |
-| R (mantener) | Fabricar: junto a una forma que brilla, el personaje se agacha a trabajarla |
 | Clic derecho con una nota | Leerla y aprender una receta (se apunta en el diario) |
 | C | Modo creativo (todos los bloques infinitos) / supervivencia |
 | Esc | Menú de pausa: continuar, opciones (sensibilidad, campo de visión, volumen, invertir ratón, FPS), controles, guardar y salir |

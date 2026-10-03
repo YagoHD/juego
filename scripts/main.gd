@@ -36,7 +36,7 @@ const AUTOSAVE_SECONDS := 60.0
 var _player: Player
 var _hud: Label
 var _ground: GroundCrafting     # objetos dejados en el suelo para fabricar
-var _prompt: Label             # "Mantén R: Coser..." junto a una receta
+var _prompt: Label             # avisos cortos sobre la barra (de momento sin uso)
 var _notice: Label             # mensajes cortos ("Has aprendido...")
 var _notice_time := 0.0
 var _journal: Journal
@@ -47,6 +47,8 @@ var _help_on := false
 var _sfx: Sfx
 var _sea_check := 0.0
 var _objectives: Objectives
+var _session: CraftSession     # inventario de rodillas y vista de fabricar
+var _crosshair: Label
 var _hotbar: Hotbar
 var _underwater: ColorRect
 var _day_night: DayNight
@@ -237,6 +239,14 @@ func _build_player() -> void:
 	_ground.player = _player
 	_ground.crafted.connect(func(recipe_id: String) -> void: _objectives.mark("hecho_" + recipe_id))
 	_objectives.player = _player
+	_session = CraftSession.new()
+	add_child(_session)
+	_session.player = _player
+	_session.ground = _ground
+	_session.screen = _inventory_screen
+	_session.ended.connect(func() -> void:
+		_player.ui_open = false
+		_player._set_captured(true))
 	_player.ground = _ground
 	_ground.load_from(_ground_save_path())
 	_player.notice.connect(_show_notice)
@@ -345,6 +355,7 @@ func _build_hud() -> void:
 
 	# Punto de mira, centrado de verdad (la etiqueta se centra sobre el centro de la pantalla).
 	var crosshair := Label.new()
+	_crosshair = crosshair
 	crosshair.text = "+"
 	crosshair.mouse_filter = Control.MOUSE_FILTER_IGNORE  # no robar clics del juego
 	crosshair.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -427,12 +438,14 @@ func _process(delta: float) -> void:
 		return
 	_hotbar.select(_player.get_hotbar_index())
 	var reading := _journal != null and _journal.visible  # con el diario abierto, nada encima
-	_hotbar.visible = not reading
+	var kneeling := _session != null and _session.active()  # de rodillas: el inventario ya enseña la barra
+	_hotbar.visible = not reading and not kneeling
+	_crosshair.visible = not kneeling
 	_hud.visible = not reading
 	_prompt.visible = not reading
-	_objectives.show_panel(not reading and not _help_on)
+	_objectives.show_panel(not reading and not _help_on and not kneeling)
 	_underwater.visible = _player.is_head_underwater()
-	_prompt.text = _ground.prompt()
+	_prompt.text = ""  # (los avisos de fabricar están ahora en la vista de fabricar)
 	_notice_time -= delta
 	_notice.modulate.a = clampf(_notice_time, 0.0, 1.0)
 	_hud.text = _day_night.get_clock_text()
@@ -517,6 +530,17 @@ func _update_capture() -> void:
 			_help_on = true
 		if OS.get_cmdline_user_args().has("--inventory"):
 			open_inventory()
+		if OS.get_cmdline_user_args().has("--craft"):  # inventario de rodillas y vista de fabricar
+			_player.inventory.add("leaves", 3)
+			open_inventory()
+			_session._enter_craft()
+			_player.learn("rope")
+			var c := GroundRecipes.CELL
+			var base := (_session._area_center / c).floor() * c + Vector3(0.5, 0, 0.5) * c
+			for i in 3:
+				var p := base + Vector3(c * (i - 1) + randf_range(-0.07, 0.07), 0, randf_range(-0.07, 0.07))
+				p.y = _session._ground_y(p)
+				_session._placed.append(_ground.place(p, "leaves", randf() * TAU, Vector3i((p / VOXEL_SIZE - Vector3(0, 0.5, 0)).floor())))
 		if OS.get_cmdline_user_args().has("--open-chest"):  # abrir el cofre de la playa del naufragio
 			var cells: Array = Structures._chest_loot.keys()
 			_on_block_used(cells[cells.size() - 1], IslandGenerator.CHEST)
@@ -622,7 +646,7 @@ func _input(event: InputEvent) -> void:
 	elif _inventory_screen.visible and (key.keycode == KEY_ESCAPE or key.keycode == KEY_E):
 		_inventory_screen.close()
 		get_viewport().set_input_as_handled()
-	elif not _inventory_screen.visible and key.keycode == KEY_E:
+	elif not _inventory_screen.visible and key.keycode == KEY_E and not _session.active():
 		open_inventory()
 		get_viewport().set_input_as_handled()
 
@@ -634,6 +658,7 @@ func open_inventory() -> void:
 	if not _player.creative:  # equipo (en creativo no hace falta)
 		side = EquipmentPanel.new(_player, _inventory_screen)
 	_show_screen(_screen_sections.call(), side)
+	_session.begin()  # de rodillas (si se puede); si no, el inventario normal
 
 
 ## Huecos del jugador que se ven en pantalla: solo los disponibles según su ropa y mochila.
@@ -675,6 +700,9 @@ func _drop_in_front(id: String, count: int) -> void:
 
 func _on_screen_closed() -> void:
 	_screen_sections = Callable()
+	if _session != null and _session.active():
+		_session.end()  # el jugador recupera el control cuando la cámara vuelve (ended)
+		return
 	_player.ui_open = false
 	_player._set_captured(true)
 
