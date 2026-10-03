@@ -17,7 +17,10 @@ const TIPS := [
 	"Camiseta, pantalón y cinturón tienen bolsillos: más huecos en la barra.",
 	"Con el hacha, los troncos se cortan cuatro veces más rápido.",
 	"Mayúsculas + clic recoge de una vez todo un montón del suelo.",
-	"Pulsa T para que pase el tiempo más deprisa.",
+	"La hierba alta da fibra; las piedrecitas del suelo, piedras y a veces pedernal.",
+	"Una piedra encima de otra, golpeadas, dan una piedra afilada: tu primera herramienta.",
+	"Cada mañana el mar trae restos del naufragio a la orilla. Recorre la playa.",
+	"Con pedernal se enciende la hoguera; con palos o troncos se le echa leña.",
 	"Esc abre el menú de pausa; F1 muestra todos los controles.",
 	"Q tira el objeto de la mano; Ctrl + Q, el montón entero.",
 ]

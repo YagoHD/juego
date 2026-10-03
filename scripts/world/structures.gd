@@ -97,8 +97,8 @@ static func _build_ruins(gen: IslandGenerator) -> void:
 	var ruin_chest := Vector3i(int(center.x), gen.get_ground_height(int(center.x), int(center.y)), int(center.y))
 	_put(ruin_chest, IslandGenerator.CHEST)
 	_chest_loot[ruin_chest] = [
-		{"id": "backpack", "count": 1}, {"id": "note_pick", "count": 1}, {"id": "stone", "count": 6},
-		{"id": "sticks", "count": 6}, {"id": "rope", "count": 3}, {"id": "berries", "count": 8},
+		{"id": "backpack", "count": 1}, {"id": "note_pick", "count": 1}, {"id": "rock", "count": 4},
+		{"id": "sticks", "count": 4}, {"id": "berries", "count": 6},
 	]
 
 	# Piedras caídas y cubiertas de musgo junto a la base de los muros.
@@ -162,10 +162,9 @@ static func _build_shipwreck(gen: IslandGenerator) -> void:
 	var hull_chest := Vector3i((ship_basis * chest_local + origin).floor())
 	_put(hull_chest, IslandGenerator.CHEST)
 	_chest_loot[hull_chest] = [
-		{"id": "planks", "count": 24}, {"id": "cloth", "count": 8}, {"id": "rope", "count": 4},
-		{"id": "wood", "count": 6}, {"id": "sticks", "count": 4},
-		{"id": "stone_knife", "count": 1},
-		{"id": "wheat", "count": 5}, {"id": "note_backpack", "count": 1}, {"id": "shirt", "count": 1},
+		# Casi nada: lo que se salvó del agua. El resto lo irá trayendo el mar.
+		{"id": "cloth", "count": 3}, {"id": "note_backpack", "count": 1}, {"id": "shirt", "count": 1},
+		{"id": "berries", "count": 4},
 	]
 
 	# En la playa: el mástil caído hacia tierra, con la vela tirada al lado.
@@ -203,10 +202,7 @@ static func _build_shipwreck(gen: IslandGenerator) -> void:
 	var beach_chest := Vector3i(int(buried.x), bh - 1, int(buried.y))
 	_put(beach_chest, IslandGenerator.CHEST)
 	_chest_loot[beach_chest] = [
-		{"id": "planks", "count": 10}, {"id": "cloth", "count": 3}, {"id": "rope", "count": 2},
-		{"id": "chest", "count": 1}, {"id": "pants", "count": 1}, {"id": "note_belt", "count": 1},
-		{"id": "stone_axe", "count": 1},
-		{"id": "berries", "count": 6},
+		{"id": "chest", "count": 1}, {"id": "note_belt", "count": 1}, {"id": "rope", "count": 1},
 	]
 
 	# El jugador aparece en la playa, unos metros tierra adentro, mirando al barco.

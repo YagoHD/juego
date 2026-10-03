@@ -47,6 +47,7 @@ var _help_on := false
 var _sfx: Sfx
 var _sea_check := 0.0
 var _objectives: Objectives
+var _last_drift_day := 1        # último día en que el mar trajo restos
 var _session: CraftSession     # inventario de rodillas y vista de fabricar
 var _crosshair: Label
 var _hotbar: Hotbar
@@ -457,6 +458,10 @@ func _process(delta: float) -> void:
 		_hud.text += "  ·  %d FPS" % Engine.get_frames_per_second()
 	_help.visible = _help_on and not reading
 	_update_ambience(delta)
+	# Cada mañana, el mar trae restos del naufragio a la orilla.
+	if _day_night.day > _last_drift_day and _day_night.hour >= 6.5 and not _is_test():
+		_last_drift_day = _day_night.day
+		_drift_ashore()
 	if _help.visible:  # ajustada a su contenido, pegada a la derecha y centrada en alto
 		var help_size := _help.get_combined_minimum_size()
 		_help.offset_left = -16 - help_size.x
@@ -590,6 +595,7 @@ func _save_player() -> void:
 		"recipes": _player.known_recipes,
 		"journal": _player.has_journal,
 		"objectives": _objectives.to_data(),
+		"drift_day": _last_drift_day,
 		"hour": _day_night.hour,
 		"day": _day_night.day,
 	}
@@ -610,6 +616,7 @@ func _load_player() -> void:
 	if d.get("equipment") is Dictionary:
 		_player.set_equipment(d["equipment"])
 	_player.has_journal = bool(d.get("journal", false))
+	_last_drift_day = int(d.get("drift_day", 1))
 	if d.get("objectives") is Dictionary:
 		_objectives.from_data(d["objectives"])
 	if d.get("recipes") is Array:
@@ -886,3 +893,47 @@ func _debug_bench() -> void:
 	_ground.place(top + Vector3(0, 0, cell), "sticks", -0.2, cells[0])
 	_ground.place(top + Vector3(cell, 0, 0), "rope", 0.5, cells[0])
 	_ground.stack_on(a, "stone", 0.1)
+
+
+# ------------------------------------------------------------------ el mar trae cosas
+
+## Lo que puede venir en una caja a la deriva: [objeto, mínimo, máximo, probabilidad].
+const DRIFT_LOOT := [
+	["cloth", 1, 3, 0.7], ["rope", 1, 2, 0.5], ["planks", 2, 5, 0.5], ["board", 1, 2, 0.35],
+	["wood", 1, 2, 0.3], ["berries", 2, 5, 0.5], ["shell", 1, 2, 0.3], ["sticks", 1, 3, 0.3],
+	["pants", 1, 1, 0.12], ["belt", 1, 1, 0.08], ["resin", 1, 2, 0.15], ["flint", 1, 1, 0.15],
+]
+
+## 2 o 3 cajas aparecen en la arena de la orilla, cerca del naufragio, con restos al azar.
+func _drift_ashore() -> void:
+	var rng := RandomNumberGenerator.new()
+	rng.randomize()
+	var tool := _terrain.get_voxel_tool()
+	tool.channel = VoxelBuffer.CHANNEL_TYPE
+	var ship := Structures.ship_voxel()
+	var placed := 0
+	var wanted := rng.randi_range(2, 3)
+	for attempt in 80:
+		if placed >= wanted:
+			break
+		var x := ship.x + rng.randi_range(-70, 70)
+		var z := ship.y + rng.randi_range(-70, 70)
+		var h := _generator.get_ground_height(x, z)
+		if h < IslandGenerator.SEA_LEVEL or h > IslandGenerator.SEA_LEVEL + 2:
+			continue  # solo en la franja de arena junto al agua
+		var cell := Vector3i(x, h, z)
+		if tool.get_voxel(cell - Vector3i.UP) != IslandGenerator.SAND or tool.get_voxel(cell) != IslandGenerator.AIR:
+			continue
+		tool.set_voxel(cell, IslandGenerator.CHEST)
+		var box := _chests.get_or_create(cell)
+		var any := false
+		for entry in DRIFT_LOOT:
+			if rng.randf() < float(entry[3]):
+				box.add(entry[0], rng.randi_range(int(entry[1]), int(entry[2])))
+				any = true
+		if not any:
+			box.add("cloth", 1)
+		placed += 1
+	if placed > 0:
+		_show_notice("El mar ha traído restos a la orilla durante la noche.")
+		Sfx.play("aprender", null, -8.0)
