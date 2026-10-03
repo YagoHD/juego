@@ -143,6 +143,7 @@ func _spawn_gull() -> void:
 			wing.name = "wing_l" if s < 0 else "wing_r"
 		add_child(gull)
 		var center := Vector3(p.x, IslandGenerator.SEA_LEVEL * voxel_size + _rng.randf_range(8.0, 16.0), p.z)
+		gull.global_position = center  # ya en su sitio (si no, nace en el origen y se borra por lejana)
 		_gulls.append({"node": gull, "center": center, "radius": _rng.randf_range(4.0, 10.0),
 			"angle": _rng.randf() * TAU, "speed": _rng.randf_range(0.25, 0.45) * (1.0 if _rng.randf() < 0.5 else -1.0)})
 		return
