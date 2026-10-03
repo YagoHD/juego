@@ -89,3 +89,28 @@ nivel del mar y aparecías "buceando" con la pantalla azul. Se volvió al mapa a
 - **Nada regalado**: los cofres del barco casi no traen nada; **cada mañana el mar trae cajas a
   la orilla** con restos al azar.
 - El cofre tiene la cerradura solo delante.
+
+## Con los recursos descargados (3 de octubre, tarde)
+
+Todo lo de Kenney y OpenGameArt es CC0 (créditos en `assets/third_party/*/` y
+`assets/third_party_raw/LEEME.md`).
+
+- **Palmeras, rocas, arbustos, tocones, setas, troncos caídos y árboles nuevos** de Kenney,
+  pasados a cubitos y **troceados en bloques**: se rompen pieza a pieza (madera, piedras o
+  pedernal, bayas, setas) y los troncos se talan con física como los demás árboles. Colores
+  pasados a la paleta de la isla. Herramientas: `tools/bake_prefabs.gd`, `tools/voxelize_model.gd`.
+- **Sonidos grabados** de Kenney (pasos por suelo, golpes, páginas, crujidos, clics) y **música**
+  (3 piezas CC0 que suenan de vez en cuando; volumen en Opciones).
+- **Interfaz de madera** (Kenney UI Pack RPG): paneles, huecos de pergamino, botones, cursor.
+- **Texturas 16x16** opcionales (Opciones > Texturas 16x16; al volver a entrar).
+- **Hacha y pico en cubitos** en la mano; **hoguera** con su anillo de piedras.
+- **Saco de dormir** (lona + cuerda): de noche, clic derecho para dormir hasta el amanecer; marca
+  dónde reapareces.
+- **Hambre y sed** suaves (barras abajo a la izquierda): comer con clic derecho (asado alimenta
+  más), beber con la mano vacía mirando agua de río o lago. Sin ellas no se corre.
+- **Pesca**: lanza (tabla + cuerda + piedra afilada); peces en el mar cerca de la orilla; clic
+  izquierdo con la lanza. Pescado asado = la mejor comida.
+- **Agricultura**: semillas en hierba o tierra (clic derecho); el trigo madura en unos minutos;
+  trigo asado = torta de pan.
+- Pendiente: la librería de animaciones de Quaternius se descarga a mano desde itch.io (para
+  cuando toque el "personaje vivo").
