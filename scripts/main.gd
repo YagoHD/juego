@@ -263,6 +263,11 @@ func _build_player() -> void:
 	fish_school.generator = _generator
 	fish_school.voxel_size = VOXEL_SIZE
 	_player.fish = fish_school
+	var weather := Weather.new()
+	add_child(weather)
+	weather.player = _player
+	weather.day_night = _day_night
+	_player.weather = weather
 	var farming := Farming.new()
 	farming.name = "Farming"
 	add_child(farming)
@@ -538,6 +543,8 @@ func _update_capture() -> void:
 			for entry in give.split(","):
 				var pair := entry.split(":")
 				_player.pick_up(pair[0], int(pair[1]))
+		if OS.get_cmdline_user_args().has("--rain"):  # que llueva ya
+			_player.weather.force(true)
 		if OS.get_cmdline_user_args().has("--campfire"):  # hoguera encendida delante
 			var cf := -_player.global_basis.z
 			var cp: Vector3 = _player.global_position + Vector3(cf.x, 0, cf.z).normalized() * 2.2

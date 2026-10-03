@@ -49,6 +49,8 @@ const MOON_COLOR := Color(0.62, 0.72, 1.0)
 ## Hora actual (0..24) y número de día (empieza en 1).
 var hour := START_HOUR
 var day := 1
+## 0 despejado .. 1 cubierto de lluvia: menos sol y un cielo más gris (lo pone Weather).
+var overcast := 0.0
 
 var _sun: DirectionalLight3D
 var _moon: DirectionalLight3D
@@ -136,7 +138,7 @@ func _apply() -> void:
 	_place_light(_sun, sun_dir)
 	var sun_up := smoothstep(-0.04, 0.12, sun_dir.y)
 	_sun.visible = sun_dir.y > -0.05
-	_sun.light_energy = SUN_ENERGY * sun_up
+	_sun.light_energy = SUN_ENERGY * sun_up * (1.0 - 0.6 * overcast)
 	_sun.light_color = k["sun"]
 	_sun.shadow_enabled = sun_dir.y > 0.02
 
@@ -150,17 +152,20 @@ func _apply() -> void:
 	_moon.light_energy = MOON_ENERGY * moon_up
 	_moon.shadow_enabled = moon_dir.y > 0.05 and not _sun.shadow_enabled
 
-	_sky_material.set_shader_parameter("top_color", k["top"])
-	_sky_material.set_shader_parameter("horizon_color", k["horizon"])
-	_sky_material.set_shader_parameter("ground_color", (k["horizon"] as Color).darkened(0.55))
+	var grey := Color(0.42, 0.45, 0.5) * (0.35 + 0.65 * sun_up)
+	var top: Color = (k["top"] as Color).lerp(grey, 0.65 * overcast)
+	var horizon: Color = (k["horizon"] as Color).lerp(grey.lightened(0.15), 0.65 * overcast)
+	_sky_material.set_shader_parameter("top_color", top)
+	_sky_material.set_shader_parameter("horizon_color", horizon)
+	_sky_material.set_shader_parameter("ground_color", horizon.darkened(0.55))
 	_sky_material.set_shader_parameter("sun_glow_color", k["glow"])
 	_sky_material.set_shader_parameter("stars", k["stars"])
 
 	_env.ambient_light_color = k["ambient"]
 	_env.ambient_light_sky_contribution = k["sky_ambient"]
-	_env.fog_light_color = k["fog"]
+	_env.fog_light_color = (k["fog"] as Color).lerp(grey, 0.6 * overcast)
 	if _clouds != null:
-		_clouds.set_color(k["cloud"])
+		_clouds.set_color((k["cloud"] as Color).lerp(grey.darkened(0.2), 0.7 * overcast))
 
 
 ## Dirección hacia el astro para t = 0 (sale por el este) .. 1 (se pone por el oeste).

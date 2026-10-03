@@ -91,6 +91,7 @@ var has_journal := false     # lleva el diario del capitán
 var needs: Needs             # hambre y sed (lo pone main.gd)
 var fish: FishSchool         # peces del mar (lo pone main.gd)
 var farm: Farming           # cultivos (lo pone main.gd)
+var weather: Weather        # el tiempo (lo pone main.gd)
 var _working := false        # agachado fabricando
 var _work_swing := 0.0
 var _crouch := 0.0           # 0..1: cuánto baja la vista al agacharse
@@ -1318,6 +1319,11 @@ func _try_eat() -> bool:
 func _try_drink() -> bool:
 	if needs == null or not active_inventory().get_slot(_hotbar_index).is_empty():
 		return false
+	if weather != null and weather.is_raining() and _pitch > 0.6:  # mirando al cielo bajo la lluvia
+		if needs.drink():
+			Sfx.play("paso_agua", null, -2.0, 0.2)
+			notice.emit("Bebes agua de lluvia.")
+		return true
 	var from := _camera.global_position
 	var water := _decor_hit(from, -_camera.global_transform.basis.z, REACH, true)
 	if water.is_empty():

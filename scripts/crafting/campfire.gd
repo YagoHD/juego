@@ -22,6 +22,7 @@ var _crackle := 0.0
 
 
 func _ready() -> void:
+	add_to_group("campfires")  # la lluvia avisa con call_group("campfires", "rained_on")
 	var pit_path := "res://assets/models/voxel/campfire_pit.res"
 	if ResourceLoader.exists(pit_path):
 		# Anillo de piedras con leña (Kenney Survival Kit, en cubitos).
@@ -130,6 +131,19 @@ func interact(held: Dictionary, player: Player) -> int:
 	else:
 		player.notice.emit("Hoguera apagada: enciéndela con pedernal (clic derecho).")
 	return 0
+
+
+## Llueve: si no hay nada encima que la tape, puede apagarse.
+func rained_on() -> void:
+	if not lit or randf() > 0.35:
+		return
+	var from := global_position + Vector3.UP * 0.6
+	var hit := get_world_3d().direct_space_state.intersect_ray(PhysicsRayQueryParameters3D.create(from, from + Vector3.UP * 8.0, 1))
+	if not hit.is_empty():
+		return  # a cubierto
+	lit = false
+	_show_lit()
+	Sfx.play("romper_hierba", global_position, -2.0)
 
 
 func _sparks() -> void:

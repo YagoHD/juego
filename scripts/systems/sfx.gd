@@ -41,6 +41,8 @@ var _pool2d: Array[AudioStreamPlayer] = []
 var _waves: AudioStreamPlayer
 var _rng := RandomNumberGenerator.new()
 var _chirp_timer := 3.0
+var _rain_player: AudioStreamPlayer
+var _rain := 0.0
 var _music: AudioStreamPlayer
 var _music_wait := 25.0          # silencio antes de la siguiente pieza (s)
 var _last_track := -1
@@ -72,9 +74,20 @@ func _ready() -> void:
 	_waves.volume_db = -80.0
 	add_child(_waves)
 	_waves.play()
+	_rain_player = AudioStreamPlayer.new()
+	_rain_player.stream = _stream("lluvia")
+	_rain_player.volume_db = -80.0
+	add_child(_rain_player)
+	_rain_player.play()
 	_music = AudioStreamPlayer.new()
 	add_child(_music)
 	_music.finished.connect(func() -> void: _music_wait = _rng.randf_range(90.0, 240.0))
+
+
+## Cuánto llueve (0..1): el sonido de la lluvia sube y baja con eso.
+static func set_rain(amount: float) -> void:
+	if _instance != null:
+		_instance._rain = amount
 
 
 ## Suena un efecto. pos = null: sin posición (interfaz o el propio jugador).
@@ -136,6 +149,7 @@ func _process(delta: float) -> void:
 	if get_tree().paused:
 		_waves.volume_db = -80.0
 		return
+	_rain_player.volume_db = lerpf(-60.0, -6.0, clampf(_rain, 0.0, 1.0)) if _rain > 0.01 else -80.0
 	# Olas: más fuertes cuanto más cerca del mar.
 	var target := lerpf(-50.0, -9.0, clampf(sea_amount, 0.0, 1.0))
 	_waves.volume_db = lerpf(_waves.volume_db, target, 1.0 - exp(-2.0 * delta))
@@ -178,7 +192,7 @@ static func _stream(sound: String) -> AudioStreamWAV:
 	for i in data.size():
 		bytes.encode_s16(i * 2, int(clampf(data[i], -1.0, 1.0) * 32000.0))
 	wav.data = bytes
-	if sound == "olas":
+	if sound == "olas" or sound == "lluvia":
 		wav.loop_mode = AudioStreamWAV.LOOP_FORWARD
 		wav.loop_end = data.size()
 	_streams[sound] = wav
@@ -225,6 +239,7 @@ static func _synth(sound: String) -> PackedFloat32Array:
 		"pajaro": return _bird(rng)
 		"grillos": return _crickets(rng)
 		"olas": return _waves_loop(rng)
+		"lluvia": return _rain_loop(rng)
 	return PackedFloat32Array()
 
 
@@ -368,3 +383,26 @@ func _update_music(delta: float) -> void:
 		return
 	_music.stream = stream
 	_music.play()
+
+
+static func _rain_loop(rng: RandomNumberGenerator) -> PackedFloat32Array:
+	# 4 s de lluvia: siseo continuo y gotitas sueltas; enlaza sin cortes.
+	var length := 4.0
+	var n := int(length * RATE)
+	var out := PackedFloat32Array()
+	out.resize(n)
+	var low := 0.0
+	for i in n:
+		low += 0.35 * (rng.randf_range(-1.0, 1.0) - low)
+		out[i] = low * 0.35
+	for k in 120:  # gotas
+		var start := rng.randi_range(0, n - 600)
+		var amp := rng.randf_range(0.05, 0.2)
+		for j in 400:
+			out[start + j] += rng.randf_range(-1.0, 1.0) * amp * exp(-j / 60.0)
+	var fade := int(0.05 * RATE)
+	for i in fade:
+		var k2 := float(i) / fade
+		out[i] *= k2
+		out[n - 1 - i] *= k2
+	return out
