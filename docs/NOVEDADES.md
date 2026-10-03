@@ -131,3 +131,17 @@ Todo lo de Kenney y OpenGameArt es CC0 (créditos en `assets/third_party/*/` y
 - **Balsa** (receta en el diario): 4 tablas en cuadrado y 2 cuerdas encima. Con ella en la mano,
   clic derecho al mar para echarla; clic derecho sobre ella para subir; W/S remar, A/D girar,
   Espacio bajar (a tierra si hay cerca). No entra en tierra. Clic izquierdo la recoge. Se guarda.
+
+## Árboles de un solo estilo y agua que corre (3 de octubre, noche)
+
+- **Rocas y árboles Kenney macizos**: al picarlos ya no se ve hueco por dentro.
+- **Todos los árboles del mismo estilo**: nuestros robles, pinos, gigantes y muertos se hacen
+  ahora con piezas como las de Kenney (colores lisos, copa con bordes redondeados, tronco fino;
+  los gigantes, tronco gordo). Las hojas se atraviesan, como las de las palmeras.
+- **Rendimiento**: vuelve a ir a ~60 FPS (las piezas juntan sus caras).
+- **Agua que corre (como Minecraft)**: el agua de ríos y lagos es "fuente". Si le abres hueco se
+  derrama: cae por los agujeros y se extiende a los lados perdiendo nivel (hasta 7 bloques),
+  buscando por dónde bajar. Si quitas la fuente, se retira. Dos fuentes juntas crean otra.
+- **Los ríos corren**: la superficie tiene ondas que bajan con la corriente y la corriente te
+  arrastra al nadar. El agua que corre también empuja.
+- Nota: el mundo se ha vuelto a generar (los cambios de árboles y agua lo necesitan).

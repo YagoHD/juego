@@ -114,9 +114,14 @@ func _build_world() -> void:
 	# Todos los bloques comparten un material con el atlas de texturas (se dibujan más rápido);
 	# el agua lleva su propia versión translúcida.
 	var solid := BlockTextures.make_material()
-	var water := BlockTextures.make_material(true)
+	_generator = IslandGenerator.new()
+	var water := _make_water_material()
 	for id in range(1, Blocks.LAST_ID + 1):
-		if id == IslandGenerator.WATER:
+		if id == IslandGenerator.WATER_FALL:
+			library.add_model(_make_flow(1.0, water))
+		elif id >= IslandGenerator.WATER_FLOW_1 and id <= Blocks.LAST_ID:
+			library.add_model(_make_flow(WaterFlow.level_of(id) / 8.0, water))
+		elif id == IslandGenerator.WATER:
 			library.add_model(_make_water(water))
 		elif id == IslandGenerator.CLOTH:
 			library.add_model(_make_carpet(id, solid))
@@ -136,7 +141,6 @@ func _build_world() -> void:
 	var mesher := VoxelMesherBlocky.new()
 	mesher.library = library
 
-	_generator = IslandGenerator.new()
 
 	var terrain := VoxelTerrain.new()
 	terrain.mesher = mesher
@@ -152,6 +156,10 @@ func _build_world() -> void:
 	terrain.add_to_group("voxel_terrain")
 	add_child(terrain)
 	_terrain = terrain
+	var water_flow := WaterFlow.new()  # el agua que corre al abrirle hueco
+	water_flow.name = "WaterFlow"
+	water_flow.terrain = terrain
+	add_child(water_flow)
 
 	_build_sea()
 
@@ -234,6 +242,38 @@ func _make_carpet(id: int, material: Material) -> VoxelBlockyModelCube:
 	cube.height = 1.0 / 16.0
 	cube.culls_neighbors = false
 	return cube
+
+
+## Material del agua (ríos, lagos y la que corre): color liso con ondas que siguen la corriente.
+func _make_water_material() -> ShaderMaterial:
+	var mat := ShaderMaterial.new()
+	mat.shader = load("res://assets/shaders/water.gdshader")
+	mat.set_shader_parameter("flow_map", ImageTexture.create_from_image(_generator.build_flow()))
+	mat.set_shader_parameter("map_half", IslandGenerator.MAP_HALF)
+	mat.set_shader_parameter("voxel_size", VOXEL_SIZE)
+	mat.set_shader_parameter("water_color", Blocks.color_of(IslandGenerator.WATER))
+	return mat
+
+
+## Agua que corre: una caja de la altura de su nivel (1 = bloque entero, la que cae).
+func _make_flow(height: float, material: Material) -> VoxelBlockyModelMesh:
+	var box := BoxMesh.new()
+	box.size = Vector3(1.0, height, 1.0)
+	var arrays := box.get_mesh_arrays()
+	var verts: PackedVector3Array = arrays[Mesh.ARRAY_VERTEX]
+	for i in verts.size():
+		verts[i] += Vector3(0.5, height * 0.5, 0.5)
+	arrays[Mesh.ARRAY_VERTEX] = verts
+	var mesh := ArrayMesh.new()
+	mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
+	var model := VoxelBlockyModelMesh.new()
+	model.mesh = mesh
+	model.set_material_override(0, material)
+	model.transparency_index = 1  # como el agua quieta: no se dibujan las caras entre aguas
+	model.culls_neighbors = true
+	model.set_mesh_collision_enabled(0, false)
+	model.collision_aabbs = []
+	return model
 
 
 func _make_water(material: Material) -> VoxelBlockyModelCube:

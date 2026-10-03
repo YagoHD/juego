@@ -406,6 +406,9 @@ func _physics_process(delta: float) -> void:
 		speed *= needs.speed_factor()
 	velocity.x = dir.x * speed
 	velocity.z = dir.z * speed
+	var push := _water_push()  # la corriente del río o del agua que corre arrastra
+	velocity.x += push.x
+	velocity.z += push.y
 	_pay_step_debt(delta)
 
 	if _key(KEY_SPACE) and is_on_floor() and not feet_wet:
@@ -622,9 +625,10 @@ func _edit_block(place: bool) -> void:
 		if id < 0:
 			_place_torch(target)  # las antorchas se clavan en el suelo; el resto no se coloca
 			return
-		if id != IslandGenerator.WATER and _overlaps_body(cell):
+		if not Blocks.is_water(id) and _overlaps_body(cell):
 			return  # no colocar un bloque dentro de uno mismo
 		tool.set_voxel(cell, id)
+		get_tree().call_group("water_flow", "touch", cell)  # el agua de al lado puede moverse
 		Sfx.play("colocar", _terrain.to_global(Vector3(cell)) + Vector3.ONE * _terrain.scale.x * 0.5)
 		if not creative:
 			inventory.take(_hotbar_index, 1)
@@ -632,6 +636,7 @@ func _edit_block(place: bool) -> void:
 		var cell: Vector3i = target["voxel"]
 		var broken := tool.get_voxel(cell)
 		tool.set_voxel(cell, IslandGenerator.AIR)
+		get_tree().call_group("water_flow", "touch", cell)  # ¿entra el agua por el hueco?
 		var size := _terrain.scale.x
 		var center := _terrain.to_global(Vector3(cell)) + Vector3.ONE * size * 0.5
 		_spawn_break_particles(center, broken)
@@ -916,7 +921,7 @@ func _in_water(world_pos: Vector3) -> bool:
 		return false
 	var cell := _world_to_voxel(world_pos)
 	var id := _tool.get_voxel(cell)
-	if id == IslandGenerator.WATER:
+	if id == IslandGenerator.WATER or WaterFlow.level_of(id) >= 4:  # los charquitos no cubren
 		return true
 	if world_pos.y < _sea_y and id == IslandGenerator.AIR and _generator != null:
 		return _generator.get_ground_height(cell.x, cell.z) < IslandGenerator.SEA_LEVEL
@@ -1286,13 +1291,13 @@ func _decor_hit(from: Vector3, dir: Vector3, max_dist: float, want_water := fals
 	while t <= max_t:
 		var id := _tool.get_voxel(cell)
 		if want_water:
-			if id == IslandGenerator.WATER:
+			if Blocks.is_water(id):
 				return {"cell": cell, "dist": t * vs}
 		elif Blocks.is_decor(id):
 			if _terrain.to_global(Vector3(cell) + Vector3.ONE * 0.5).distance_to(_head.global_position) <= REACH + 0.3:
 				return {"cell": cell, "dist": t * vs}
 			return {}
-		if id != IslandGenerator.AIR and id != IslandGenerator.WATER:
+		if id != IslandGenerator.AIR and not Blocks.is_water(id):
 			return {}
 		if t_max.x <= t_max.y and t_max.x <= t_max.z:
 			t = t_max.x
@@ -1522,3 +1527,29 @@ func _dismount() -> void:
 				global_position = Vector3(p.x, h * vs + 0.05, p.z)
 				return
 	global_position = boat.global_position + Vector3(1.2, 0.3, 0).rotated(Vector3.UP, rotation.y)
+
+
+# ------------------------------------------------------------------ corriente
+
+const RIVER_PUSH := 1.6   # m/s con la corriente más fuerte de un río
+const FLOW_PUSH := 1.4    # m/s del agua que corre cuesta abajo
+
+
+## Empuje del agua en la que se está (x, z): la corriente del río, o el agua que corre hacia
+## donde su nivel baja.
+func _water_push() -> Vector2:
+	if _tool == null or _generator == null:
+		return Vector2.ZERO
+	var cell := _world_to_voxel(global_position + Vector3.UP * 0.1)
+	var id := _tool.get_voxel(cell)
+	if id == IslandGenerator.WATER:
+		return _generator.water_current(cell.x, cell.z) * RIVER_PUSH
+	var level := WaterFlow.level_of(id)
+	if level == 0 or id == IslandGenerator.WATER_FALL:
+		return Vector2.ZERO
+	var dir := Vector2.ZERO
+	for d in WaterFlow.HORIZONTAL:
+		var n := _tool.get_voxel(cell + d)
+		var other := WaterFlow.level_of(n) if Blocks.is_water(n) else (0 if n == IslandGenerator.AIR or Blocks.DECOR.has(n) else level)
+		dir += Vector2(d.x, d.z) * float(level - other)
+	return dir.normalized() * FLOW_PUSH if dir.length() > 0.01 else Vector2.ZERO

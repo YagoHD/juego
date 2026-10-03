@@ -73,7 +73,12 @@ const HOTBAR: Array[int] = [
 	IslandGenerator.LEAVES, IslandGenerator.WATER, IslandGenerator.WHEAT,
 ]
 
-const LAST_ID := IslandGenerator.ORE
+const LAST_ID := IslandGenerator.WATER_FLOW_1 + 6
+
+
+## Agua de cualquier tipo (fuente, cayendo o corriendo).
+static func is_water(id: int) -> bool:
+	return id == IslandGenerator.WATER or (id >= IslandGenerator.WATER_FALL and id <= IslandGenerator.WATER_FLOW_1 + 6)
 
 ## Cosas pequeñas del suelo: no son cubos, no chocan y se recogen con la mano al momento.
 const DECOR := [IslandGenerator.TALL_GRASS, IslandGenerator.FLOWER_RED, IslandGenerator.FLOWER_YELLOW,

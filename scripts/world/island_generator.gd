@@ -40,6 +40,9 @@ const PEBBLES := 26
 const GROUND_STICKS := 27
 const SHELL := 28
 const ORE := 29          # mineral verde de las montañas (brilla un poco)
+# Agua que corre (ver WaterFlow): cayendo, y de lado con nivel 1 (casi nada) a 7.
+const WATER_FALL := 30
+const WATER_FLOW_1 := 31   # ... hasta 37 (nivel 7)
 
 const MAP_DIR := "res://assets/island/"
 const MAP_HALF := 512.0       # los mapas cubren [-MAP_HALF, MAP_HALF] voxels en X y Z (la isla a la mitad
@@ -587,3 +590,72 @@ func get_ground_height(wx: int, wz: int) -> int:
 	var i := _index(wx, wz)
 	var water_top := int(roundf(_w[i])) if i >= 0 else 0
 	return maxi(_height_at(wx, wz), water_top)
+
+
+# ------------------------------------------------------------------ corriente de los ríos
+
+var _flow := PackedVector2Array()   # por píxel del mapa: hacia dónde corre el agua (y cuánto)
+
+
+## Calcula la corriente de ríos y lagos (no del mar): el agua baja hacia donde su superficie
+## está más baja. Se suaviza para que corra seguida entre escalón y escalón del río; en los
+## lagos, planos, queda casi quieta. Devuelve una imagen (RG = dirección, B = fuerza) para el
+## dibujo del agua.
+func build_flow() -> Image:
+	_flow.resize(_n * _n)
+	_flow.fill(Vector2.ZERO)
+	var wet := PackedInt32Array()
+	var is_wet := PackedByteArray()
+	is_wet.resize(_n * _n)
+	for i in _n * _n:
+		if _w[i] > SEA_LEVEL + 0.5 and _w[i] > _h[i] + 0.25:
+			wet.append(i)
+			is_wet[i] = 1
+	for i in wet:
+		var x := i % _n
+		var z := i / _n
+		var g := Vector2.ZERO
+		if x > 0 and x < _n - 1:
+			var l := _w[i - 1] if is_wet[i - 1] else _w[i]
+			var r := _w[i + 1] if is_wet[i + 1] else _w[i]
+			g.x = l - r
+		if z > 0 and z < _n - 1:
+			var u := _w[i - _n] if is_wet[i - _n] else _w[i]
+			var d := _w[i + _n] if is_wet[i + _n] else _w[i]
+			g.y = u - d
+		_flow[i] = g
+	# Suavizado: cada píxel mojado toma la media de sus vecinos mojados, varias veces.
+	for pass_i in 10:
+		var next := _flow.duplicate()
+		for i in wet:
+			var sum := _flow[i]
+			var count := 1
+			for o in [-1, 1, -_n, _n]:
+				var j: int = i + o
+				if j >= 0 and j < _n * _n and is_wet[j]:
+					sum += _flow[j]
+					count += 1
+			next[i] = sum / count
+		_flow = next
+	var img := Image.create(_n, _n, false, Image.FORMAT_RGB8)
+	img.fill(Color(0.5, 0.5, 0.0))
+	for i in wet:
+		var v := _flow[i]
+		var strength := clampf(v.length() * 6.0, 0.0, 1.0)
+		var dir := v.normalized() if v.length() > 0.0001 else Vector2.ZERO
+		_flow[i] = dir * strength
+		img.set_pixel(i % _n, i / _n, Color(dir.x * 0.5 + 0.5, dir.y * 0.5 + 0.5, strength))
+	return img
+
+
+## Corriente del agua en esta columna (dirección x/z por fuerza 0..1); cero fuera de ríos.
+func water_current(wx: int, wz: int) -> Vector2:
+	var i := _index(wx, wz)
+	if i < 0 or _flow.is_empty():
+		return Vector2.ZERO
+	return _flow[i]
+
+
+## Lado del mapa en píxeles y voxels por píxel (para dibujar la corriente).
+func map_pixels() -> int:
+	return _n
