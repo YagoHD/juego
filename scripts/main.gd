@@ -268,6 +268,10 @@ func _build_player() -> void:
 	weather.player = _player
 	weather.day_night = _day_night
 	_player.weather = weather
+	var exploration := Exploration.new()
+	exploration.name = "Exploration"
+	add_child(exploration)
+	exploration.player = _player
 	var farming := Farming.new()
 	farming.name = "Farming"
 	add_child(farming)
@@ -481,7 +485,7 @@ func _process(delta: float) -> void:
 	var reading := _journal != null and _journal.visible  # con el diario abierto, nada encima
 	var kneeling := _session != null and _session.active()  # de rodillas: el inventario ya enseña la barra
 	_hotbar.visible = not reading and not kneeling
-	_hunger_bar.get_parent().visible = _hotbar.visible and not _player.creative
+	_hunger_bar.get_parent().get_parent().visible = _hotbar.visible and not _player.creative  # las dos barras
 	if _needs != null:
 		_hunger_bar.value = _needs.hunger
 		_thirst_bar.value = _needs.thirst
@@ -661,6 +665,7 @@ func _save_player() -> void:
 		"objectives": _objectives.to_data(),
 		"drift_day": _last_drift_day,
 		"needs": _needs.to_data(),
+		"explored": (get_node("Exploration") as Exploration).to_data(),
 		"farm": _player.farm.to_data() if _player.farm != null else {},
 		"spawn": [_player.get_spawn_point().x, _player.get_spawn_point().y, _player.get_spawn_point().z],
 		"hour": _day_night.hour,
@@ -684,6 +689,8 @@ func _load_player() -> void:
 		_player.set_equipment(d["equipment"])
 	_player.has_journal = bool(d.get("journal", false))
 	_last_drift_day = int(d.get("drift_day", 1))
+	if d.get("explored") is String:
+		(get_node("Exploration") as Exploration).from_data(d["explored"])
 	if d.get("needs") is Dictionary:
 		_needs.from_data(d["needs"])
 	if d.get("farm") is Dictionary and _player.farm != null:

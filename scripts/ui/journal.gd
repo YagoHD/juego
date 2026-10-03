@@ -309,7 +309,8 @@ func _page_map(box: VBoxContainer) -> void:
 	holder.custom_minimum_size = Vector2(side, side)
 	box.add_child(holder)
 	var map := TextureRect.new()
-	map.texture = sepia_map()
+	var explored: Exploration = get_tree().get_first_node_in_group("exploration")
+	map.texture = explored.explored_map(sepia_map()) if explored != null else sepia_map()  # solo lo pisado
 	map.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	map.size = Vector2(side, side)
 	holder.add_child(map)
