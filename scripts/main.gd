@@ -264,6 +264,7 @@ func _build_player() -> void:
 	_player.ground = _ground
 	_ground.load_from(_ground_save_path())
 	_player.notice.connect(_show_notice)
+	_player.sleep_requested.connect(_sleep)
 	_player.block_used.connect(_on_block_used)
 	_player.block_broken.connect(_on_block_broken)
 	_rebind_hotbar()
@@ -625,6 +626,7 @@ func _save_player() -> void:
 		"journal": _player.has_journal,
 		"objectives": _objectives.to_data(),
 		"drift_day": _last_drift_day,
+		"spawn": [_player.get_spawn_point().x, _player.get_spawn_point().y, _player.get_spawn_point().z],
 		"hour": _day_night.hour,
 		"day": _day_night.day,
 	}
@@ -646,6 +648,9 @@ func _load_player() -> void:
 		_player.set_equipment(d["equipment"])
 	_player.has_journal = bool(d.get("journal", false))
 	_last_drift_day = int(d.get("drift_day", 1))
+	var spawn: Array = d.get("spawn", [])
+	if spawn.size() == 3:
+		_player.set_spawn_point(Vector3(float(spawn[0]), float(spawn[1]), float(spawn[2])))
 	if d.get("objectives") is Dictionary:
 		_objectives.from_data(d["objectives"])
 	if d.get("recipes") is Array:
@@ -966,3 +971,34 @@ func _drift_ashore() -> void:
 	if placed > 0:
 		_show_notice("El mar ha traído restos a la orilla durante la noche.")
 		Sfx.play("aprender", null, -8.0)
+
+
+# ------------------------------------------------------------------ dormir
+
+## Clic derecho en un saco de dormir: de noche, se duerme hasta la mañana (fundido a negro); de
+## día no. En los dos casos el saco queda como el sitio donde reaparecer.
+func _sleep(at: Vector3) -> void:
+	_player.set_spawn_point(at + Vector3.UP * 0.3)
+	var h := _day_night.hour
+	if h >= 6.0 and h < 19.0:
+		_show_notice("Aún es de día: solo se puede dormir al anochecer. (Este saco será tu sitio para reaparecer.)")
+		return
+	_player.ui_open = true
+	var black := ColorRect.new()
+	black.color = Color(0, 0, 0, 0)
+	black.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	black.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_ui_layer.add_child(black)
+	var tween := create_tween()
+	tween.tween_property(black, "color:a", 1.0, 1.2)
+	tween.tween_callback(func() -> void:
+		if h >= 19.0:
+			_day_night.day += 1
+		_day_night.set_hour(6.5)
+		_save_world())
+	tween.tween_interval(0.8)
+	tween.tween_property(black, "color:a", 0.0, 1.5)
+	tween.tween_callback(func() -> void:
+		black.queue_free()
+		_player.ui_open = false
+		_show_notice("Has dormido hasta el amanecer."))

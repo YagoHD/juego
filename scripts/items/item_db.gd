@@ -74,6 +74,7 @@ const OTHER_ITEMS := {
 	"resin": {"name": "Resina", "stack": 32},
 	"board": {"name": "Tabla", "stack": 16},
 	"campfire": {"name": "Hoguera", "stack": 4},
+	"bedroll": {"name": "Saco de dormir", "stack": 1},
 	"wheat": {"name": "Manojo de trigo", "stack": 32},
 	"sticks": {"name": "Palo", "stack": 32},
 	"stone_knife": {"name": "Cuchillo de piedra", "stack": 1},

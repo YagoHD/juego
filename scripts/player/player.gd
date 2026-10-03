@@ -12,6 +12,8 @@ signal notice(text: String)
 signal recipe_learned(recipe_id: String)
 ## Ha encontrado el diario del capitán (se lee con J).
 signal journal_found
+## Clic derecho en un saco de dormir: main.gd decide si se puede dormir.
+signal sleep_requested(at: Vector3)
 ## Jugador: camina, salta, vuela, mira con el ratón y rompe/coloca bloques.
 ## Cámara en primera o tercera persona (tecla V). Encuentra el VoxelTerrain por el grupo
 ## "voxel_terrain".
@@ -561,7 +563,9 @@ func _edit_block(place: bool) -> void:
 	if target.has("item"):
 		if place:
 			var placed: PlacedItem = target["item"]
-			if placed.campfire != null:  # hoguera: encender, echar leña, cocinar
+			if placed.item_id == "bedroll":
+				sleep_requested.emit(placed.global_position)
+			elif placed.campfire != null:  # hoguera: encender, echar leña, cocinar
 				var spent := placed.campfire.interact(active_inventory().get_slot(_hotbar_index), self)
 				if spent > 0 and not creative:
 					inventory.take(_hotbar_index, spent)
@@ -936,7 +940,7 @@ func _pay_step_debt(delta: float) -> void:
 ## Clic derecho con una antorcha o una hoguera en la mano: se pone en el suelo, donde se apunta.
 func _place_torch(target: Dictionary) -> void:
 	var stack := active_inventory().get_slot(_hotbar_index)
-	if not stack.is_empty() and (stack["id"] == "torch" or stack["id"] == "campfire"):
+	if not stack.is_empty() and (stack["id"] in ["torch", "campfire", "bedroll"]):
 		_place_on_ground(target)
 
 
@@ -1262,3 +1266,12 @@ func _decor_target(cell: Vector3i) -> Dictionary:
 	var center := _terrain.to_global(Vector3(cell) + Vector3(0.5, 0.0, 0.5))
 	# Colocar un bloque apuntando a la hierba la sustituye (como en Minecraft).
 	return {"voxel": cell, "place": cell, "point": center, "normal": Vector3.UP, "decor": true}
+
+
+## Punto donde reaparece (al caer del mundo): lo cambia dormir en un saco.
+func set_spawn_point(p: Vector3) -> void:
+	_spawn_point = p
+
+
+func get_spawn_point() -> Vector3:
+	return _spawn_point

@@ -41,6 +41,7 @@ static func paint(id: String) -> Image:
 		"resin": _resin(img)
 		"board": _board(img)
 		"campfire": _campfire(img)
+		"bedroll": _bedroll(img)
 		_: img.fill(Color.MAGENTA)
 	_outline(img)
 	return img
@@ -389,3 +390,14 @@ static func _mushroom(img: Image) -> void:
 		img.set_pixel(p.x, p.y, Color(0.95, 0.9, 0.85))
 	_rect(img, 6, 8, 9, 13, Color(0.9, 0.85, 0.75))
 	_rect(img, 6, 13, 9, 13, Color(0.75, 0.68, 0.58))
+
+
+static func _bedroll(img: Image) -> void:
+	# Saco de lona enrollado con dos correas.
+	var c := Color(0.45, 0.55, 0.42)
+	_rect(img, 2, 5, 13, 11, c)
+	_rect(img, 1, 6, 1, 10, c.darkened(0.2))
+	_rect(img, 14, 6, 14, 10, c.darkened(0.2))
+	_rect(img, 2, 5, 13, 5, c.lightened(0.15))
+	for x in [5, 10]:
+		_rect(img, x, 4, x, 12, Color(0.45, 0.3, 0.16))

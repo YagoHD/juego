@@ -30,6 +30,8 @@ static func height_of(id: String) -> float:
 		return 0.05
 	if id == "campfire":
 		return 0.15
+	if id == "bedroll":
+		return 0.12
 	return 0.18 if ItemDB.block_of(id) >= 0 else 0.3 / ItemPainter.S * 2.6
 
 
@@ -44,6 +46,9 @@ func _ready() -> void:
 		return
 	if item_id == "campfire":
 		_build_campfire()
+		return
+	if item_id == "bedroll" and ResourceLoader.exists("res://assets/models/voxel/bedroll.res"):
+		_build_model("res://assets/models/voxel/bedroll.res")
 		return
 	var is_block := ItemDB.block_of(item_id) >= 0
 	var size := 0.18 if is_block else (0.42 if item_id == "captain_journal" else 0.3)
@@ -171,4 +176,21 @@ func _build_campfire() -> void:
 	shape.position.y = 0.075
 	add_child(shape)
 	_box = AABB(Vector3(-0.22, 0.0, -0.22), box.size).grow(0.01)
+	set_process(false)
+
+
+## Objeto con modelo de cubitos (saco de dormir...): su malla tal cual y un choque a su medida.
+func _build_model(path: String) -> void:
+	var mesh := MeshInstance3D.new()
+	mesh.mesh = load(path)
+	add_child(mesh)
+	_material = StandardMaterial3D.new()  # (para el brillo de las recetas; aquí no se usa)
+	var aabb: AABB = mesh.mesh.get_aabb()
+	var shape := CollisionShape3D.new()
+	var box := BoxShape3D.new()
+	box.size = Vector3(aabb.size.x, maxf(aabb.size.y, 0.08), aabb.size.z)
+	shape.shape = box
+	shape.position = aabb.get_center()
+	add_child(shape)
+	_box = aabb.grow(0.01)
 	set_process(false)
