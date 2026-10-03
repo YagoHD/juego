@@ -130,9 +130,9 @@ func _spawn_gull() -> void:
 		return
 	for attempt in 6:
 		var a := _rng.randf() * TAU
-		var p := player.global_position + Vector3(cos(a), 0, sin(a)) * _rng.randf_range(10.0, NEAR)
-		if _sand_height(p) < 0.0 and generator.get_ground_height(int(p.x / voxel_size), int(p.z / voxel_size)) > IslandGenerator.SEA_LEVEL:
-			continue  # sobre la costa o el mar
+		var p := player.global_position + Vector3(cos(a), 0, sin(a)) * _rng.randf_range(10.0, NEAR + 10.0)
+		if generator.get_ground_height(int(floorf(p.x / voxel_size)), int(floorf(p.z / voxel_size))) > IslandGenerator.SEA_LEVEL + 7:
+			continue  # solo sobre la costa o el mar
 		var gull := Node3D.new()
 		var white := Color(0.95, 0.95, 0.93)
 		_box(gull, Vector3.ZERO, Vector3(0.12, 0.08, 0.3), white)
