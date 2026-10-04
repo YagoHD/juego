@@ -46,7 +46,7 @@ func _process(_delta: float) -> bool:
 			player.debug_pose(false, -1.55, 0.0, 0.0)  # mirar al suelo
 			_step = 1
 		1:
-			var target: Dictionary = player._target()
+			var target: Dictionary = player.aim.target()
 			if target.is_empty():
 				print("FALLO: no apunta a ningún bloque mirando al suelo")
 				return true
@@ -79,7 +79,7 @@ func _process(_delta: float) -> bool:
 		3:
 			if _wait < 5:
 				return false
-			var target: Dictionary = player._target()
+			var target: Dictionary = player.aim.target()
 			if target.is_empty():
 				print("AVISO: al frente no hay bloque al alcance (prueba de colocar omitida)")
 				return true
@@ -100,15 +100,15 @@ func _process(_delta: float) -> bool:
 		4:
 			if _wait < 5:
 				return false
-			var ok := player._place_on_ground(player._target())
+			var ok := player._place_on_ground(player.aim.target())
 			print("G deja una cuerda en el suelo: %s" % ("OK" if ok and player.inventory.count_of("rope") == 2 else "FALLO"))
 			_step = 5
 			_wait = 0
 		5:
 			if _wait < 5:
 				return false  # unos fotogramas apuntando al objeto (el recuadro lo rodea)
-			var target: Dictionary = player._target()
-			var highlight: MeshInstance3D = player.get("_highlight")
+			var target: Dictionary = player.aim.target()
+			var highlight: MeshInstance3D = player.aim.highlight
 			print("Apuntar a la cuerda del suelo la recuadra: %s" % ("OK" if target.has("item") and highlight.visible else "FALLO"))
 			player._edit_block(false)
 			print("Clic izquierdo la recoge: %s" % ("OK" if player.inventory.count_of("rope") == 3 else "FALLO"))
@@ -120,7 +120,7 @@ func _process(_delta: float) -> bool:
 			if _wait < 33:
 				return false  # que desaparezca del todo la cuerda recogida
 			if _wait == 33:
-				_hold_target = player._target()
+				_hold_target = player.aim.target()
 				_hold_block = tool.get_voxel(_hold_target["voxel"])
 				var press := InputEventMouseButton.new()
 				press.button_index = MOUSE_BUTTON_LEFT

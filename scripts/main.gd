@@ -132,7 +132,7 @@ func _build_world() -> void:
 		elif Blocks.THIN.has(id):
 			library.add_model(_make_partial(id, Blocks.THIN[id], solid, false))
 		elif id == IslandGenerator.CHEST or id == IslandGenerator.CHEST_OPEN:  # cofre de cubitos (como el del concepto)
-			library.add_model(PrefabLibrary.make_model(PrefabLibrary.first_id(Player.SHAPED[id])))
+			library.add_model(PrefabLibrary.make_model(PrefabLibrary.first_id(BlockAim.SHAPED[id])))
 		elif id == IslandGenerator.STUMP:
 			library.add_model(PrefabLibrary.make_model(PrefabLibrary.first_id("stump_block")))
 		elif id == IslandGenerator.WORKBENCH:
@@ -669,7 +669,7 @@ func _update_capture() -> void:
 			_journal._spread = int(_arg("--page=", "0"))
 			_journal.open()
 		if _arg("--cracks=") != "":  # grietas en el bloque apuntado, con ese avance (0..1)
-			var t := _player._target()
+			var t := _player.aim.target()
 			if t.has("voxel"):
 				_player.debug_cracks = true
 				_player._cracks.show_on(_terrain.to_global(Vector3(t["voxel"])), VOXEL_SIZE, float(_arg("--cracks=")))

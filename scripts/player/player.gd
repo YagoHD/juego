@@ -119,9 +119,7 @@ var _spring: SpringArm3D
 var _camera: Camera3D
 var _held: HeldBlock
 var _avatar: PlayerAvatar
-var _highlight: MeshInstance3D
-var _cube_outline: Mesh            # recuadro de un cubo
-var _outlines := {}                # id de bloque -> recuadro con la forma de ese bloque
+var aim: BlockAim                 # qué se apunta y su recuadro (componente)
 var _terrain: VoxelTerrain
 var _generator: IslandGenerator
 var _tool: VoxelTool
@@ -179,8 +177,10 @@ func _ready() -> void:
 	collision_viewer.requires_visuals = false
 	_head.add_child(collision_viewer)
 
-	_highlight = _make_highlight()
-	add_child(_highlight)
+	aim = BlockAim.new()  # apuntar y el recuadro
+	aim.name = "Aim"
+	aim.player = self
+	add_child(aim)
 	_cracks = BlockCracks.new()
 	add_child(_cracks)
 	_hand_light = TorchLight.make_light()
@@ -477,7 +477,7 @@ func _process(delta: float) -> void:
 	_camera.fov = lerpf(_camera.fov, target_fov, 1.0 - exp(-8.0 * delta))
 
 	_avatar.set_look_pitch(_pitch)
-	_update_highlight()
+	aim.update_highlight()
 	_update_breaking(delta)
 	_update_place_ghost()
 	if _hand_light.visible:
@@ -542,48 +542,12 @@ func _try_step_up(dir: Vector3) -> void:
 
 # ------------------------------------------------------------------ romper y colocar
 
-## Bloque al que apunta el centro de la pantalla: {"voxel": Vector3i, "place": Vector3i}
-## (el bloque golpeado y la celda vacía junto a la cara golpeada), o vacío si no hay ninguno.
-func _target() -> Dictionary:
-	if _terrain == null:
-		return {}
-	var from := _camera.global_position
-	var forward := -_camera.global_transform.basis.z
-	var to := from + forward * (REACH + _spring.spring_length)
-	var query := PhysicsRayQueryParameters3D.create(from, to)
-	query.exclude = [get_rid()]  # en tercera persona el rayo pasa junto al propio jugador
-	var result := get_world_3d().direct_space_state.intersect_ray(query)
-	if result.is_empty():
-		var only_decor := _decor_hit(from, forward, REACH + _spring.spring_length)
-		return {} if only_decor.is_empty() else _decor_target(only_decor["cell"])
-	var hit_point: Vector3 = result.position
-	if hit_point.distance_to(_head.global_position) > REACH:
-		return {}  # demasiado lejos de los ojos del personaje
-	var hit_normal: Vector3 = result.normal
-	# La hierba, flores, piedrecitas... no chocan: se buscan aparte, y gana lo que esté más cerca.
-	var decor := _decor_hit(from, forward, from.distance_to(hit_point))
-	if not decor.is_empty():
-		return _decor_target(decor["cell"])
-	if result.collider is Raft:
-		return {"raft": result.collider, "point": hit_point, "normal": hit_normal}
-	if result.collider is PlacedItem:
-		return {"item": result.collider, "point": hit_point, "normal": hit_normal}
-	return {
-		"point": hit_point,
-		"normal": hit_normal,
-		# El bloque golpeado: un pelín hacia dentro del punto de impacto (no medio bloque: con
-		# piezas que no llenan su bloque, como un tronco, medio bloque caía en el de detrás).
-		"voxel": _hit_cell(hit_point, hit_normal),
-		"place": _hit_cell(hit_point, hit_normal) + Vector3i(hit_normal.round()),  # el hueco de al lado
-	}
-
-
 func _edit_block(place: bool) -> void:
 	_held.swing()
 	_avatar.swing()
 	if place and _read_note():
 		return
-	var target := _target()
+	var target := aim.target()
 	if target.has("raft"):
 		if place:
 			_board(target["raft"])
@@ -700,97 +664,6 @@ func _overlaps_body(cell: Vector3i) -> bool:
 	var body_box := AABB(global_position - Vector3(BODY_RADIUS, 0, BODY_RADIUS),
 		Vector3(BODY_RADIUS * 2.0, BODY_HEIGHT, BODY_RADIUS * 2.0))
 	return cell_box.grow(-0.01).intersects(body_box)
-
-
-## Bloque golpeado por el rayo en 'point' (cara con normal 'normal'): un pelín hacia dentro. Si el
-## punto cae justo en la frontera entre dos bloques (el borde de una alfombra, de un trozo de
-## tronco...) y ese lado está vacío, es el bloque del otro lado.
-func _hit_cell(point: Vector3, normal: Vector3) -> Vector3i:
-	var local := _terrain.to_local(point - normal * 0.02)
-	var cell := Vector3i(local.floor())
-	if _tool == null or _tool.get_voxel(cell) != IslandGenerator.AIR:
-		return cell
-	for axis in 3:
-		if absf(normal[axis]) > 0.5:
-			continue
-		var f := local[axis] - floorf(local[axis])
-		var other := cell
-		if f < 0.02:
-			other[axis] -= 1
-		elif f > 0.98:
-			other[axis] += 1
-		else:
-			continue
-		if _tool.get_voxel(other) != IslandGenerator.AIR:
-			return other
-	return cell
-
-func _world_to_voxel(world_pos: Vector3) -> Vector3i:
-	var local := _terrain.to_local(world_pos)
-	return Vector3i(floori(local.x), floori(local.y), floori(local.z))
-
-
-# ------------------------------------------------------------------ recuadro del bloque apuntado
-
-func _make_highlight() -> MeshInstance3D:
-	# Las 12 aristas de un cubo de 1x1x1, en líneas oscuras.
-	var corners: Array[Vector3] = []
-	for i in 8:
-		corners.append(Vector3(i & 1, (i >> 1) & 1, (i >> 2) & 1))
-	var edges := [[0, 1], [2, 3], [4, 5], [6, 7], [0, 2], [1, 3], [4, 6], [5, 7], [0, 4], [1, 5], [2, 6], [3, 7]]
-	var lines := PackedVector3Array()
-	for edge in edges:
-		lines.append(corners[edge[0]])
-		lines.append(corners[edge[1]])
-	var arrays := []
-	arrays.resize(Mesh.ARRAY_MAX)
-	arrays[Mesh.ARRAY_VERTEX] = lines
-	var mesh := ArrayMesh.new()
-	mesh.add_surface_from_arrays(Mesh.PRIMITIVE_LINES, arrays)
-
-	var material := StandardMaterial3D.new()
-	material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	material.albedo_color = Color(0.05, 0.05, 0.05)
-
-	var highlight := MeshInstance3D.new()
-	highlight.mesh = mesh
-	_cube_outline = mesh
-	highlight.material_override = material
-	highlight.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	highlight.top_level = true  # se coloca en coordenadas del mundo, no relativo al jugador
-	highlight.visible = false
-	return highlight
-
-
-func _update_highlight() -> void:
-	var target := _target() if _captured else {}
-	if target.is_empty():
-		_highlight.visible = false
-		return
-	if target.has("item"):
-		# Un objeto dejado en el suelo: recuadro ajustado a su tamaño.
-		var item: PlacedItem = target["item"]
-		var box := item.get_box()
-		_highlight.global_transform = Transform3D(item.global_basis * Basis.from_scale(box.size),
-			item.global_transform * box.position)
-		_highlight.visible = true
-		return
-	if target.has("raft"):
-		var boat: Raft = target["raft"]
-		_highlight.global_transform = Transform3D(boat.global_basis * Basis.from_scale(Vector3(1.6, 0.25, 1.7)), boat.global_position)
-		_highlight.visible = true
-		return
-	var cell: Vector3i = target["voxel"]
-	var size := _terrain.scale.x
-	var grow := 0.004  # un pelín más grande que el bloque para que no parpadee con sus caras
-	# Bloques que no son cubos (piezas de árbol y roca, la mesa, la alfombra, la hierba...): el
-	# recuadro sigue su forma.
-	_highlight.mesh = _shape_outline(_tool.get_voxel(cell)) if _tool != null else _cube_outline
-	_highlight.global_transform = Transform3D(
-		Basis.from_scale(Vector3.ONE * (size + grow * 2.0)),
-		_terrain.to_global(Vector3(cell)) - Vector3.ONE * grow)
-	_highlight.visible = true
-
 
 # ------------------------------------------------------------------ consultas
 
@@ -951,7 +824,7 @@ func is_third_person() -> bool:
 func _in_water(world_pos: Vector3) -> bool:
 	if _tool == null:
 		return false
-	var cell := _world_to_voxel(world_pos)
+	var cell := aim.world_to_voxel(world_pos)
 	var id := _tool.get_voxel(cell)
 	if id == IslandGenerator.WATER or WaterFlow.level_of(id) >= 4:  # los charquitos no cubren
 		return true
@@ -1170,7 +1043,7 @@ func _footsteps(delta: float, feet_wet: bool) -> void:
 func _play_step(feet_wet: bool, volume_db: float) -> void:
 	var material := "agua"
 	if not feet_wet and _tool != null:
-		material = Sfx.material_of(_tool.get_voxel(_world_to_voxel(global_position - Vector3.UP * 0.1)))
+		material = Sfx.material_of(_tool.get_voxel(aim.world_to_voxel(global_position - Vector3.UP * 0.1)))
 	Sfx.play("paso_" + material, null, volume_db, 0.12)
 
 
@@ -1179,7 +1052,7 @@ func _play_step(feet_wet: bool, volume_db: float) -> void:
 ## Clic izquierdo en supervivencia: un objeto del suelo se coge al momento; un bloque empieza a
 ## romperse y hay que mantener el clic (cuánto, según el bloque y la herramienta de la mano).
 func _start_breaking() -> void:
-	var target := _target()
+	var target := aim.target()
 	if target.has("item") or target.has("raft"):
 		_edit_block(false)
 		return
@@ -1201,7 +1074,7 @@ func _update_breaking(delta: float) -> void:
 		return  # solo capturas: grietas fijas
 	if _breaking and (ui_open or not _captured or not Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT)):
 		_breaking = false
-	var target := _target() if _breaking else {}
+	var target := aim.target() if _breaking else {}
 	if not target.has("voxel") or _tool == null:
 		_reset_breaking()
 		return
@@ -1227,7 +1100,7 @@ func _update_breaking(delta: float) -> void:
 		_break_progress = 0.0
 		_break_cell = Vector3i(0, -99999, 0)
 		_break_swing = 0.15  # breve pausa antes de empezar el siguiente
-	_cracks.show_on(corner, size, _break_progress, shape_box(_tool.get_voxel(_break_cell)) if _tool != null else AABB(Vector3.ZERO, Vector3.ONE))
+	_cracks.show_on(corner, size, _break_progress, BlockAim.shape_box(_tool.get_voxel(_break_cell)) if _tool != null else AABB(Vector3.ZERO, Vector3.ONE))
 
 
 func _reset_breaking() -> void:
@@ -1242,7 +1115,7 @@ func _reset_breaking() -> void:
 func _update_place_ghost() -> void:
 	var stack := active_inventory().get_slot(_hotbar_index)
 	var id: String = "" if stack.is_empty() else stack["id"]
-	var target := _target() if _captured and not ui_open and id == "torch" else {}
+	var target := aim.target() if _captured and not ui_open and id == "torch" else {}
 	var normal: Vector3 = target.get("normal", Vector3.ZERO)
 	if target.is_empty() or normal.y < 0.7:
 		_place_ghost.visible = false
@@ -1300,58 +1173,6 @@ func can_kneel() -> bool:
 	return is_on_floor() and not _flying and not _in_water(global_position + Vector3.UP * BODY_HEIGHT * 0.28)
 
 
-# ------------------------------------------------------------------ decoración del suelo
-
-## La decoración no tiene choque (se atraviesa): se busca recorriendo el rayo bloque a bloque.
-## Devuelve {"cell", "dist"} de la primera que encuentre antes de max_dist (o de un bloque sólido).
-func _decor_hit(from: Vector3, dir: Vector3, max_dist: float, want_water := false) -> Dictionary:
-	if _tool == null:
-		return {}
-	var vs := _terrain.scale.x
-	var p := _terrain.to_local(from)
-	var cell := Vector3i(p.floor())
-	var step := Vector3i(int(signf(dir.x)), int(signf(dir.y)), int(signf(dir.z)))
-	var t_max := Vector3(INF, INF, INF)
-	var t_delta := Vector3(INF, INF, INF)
-	for axis in 3:
-		if absf(dir[axis]) > 0.000001:
-			var boundary := float(cell[axis] + (1 if dir[axis] > 0.0 else 0))
-			t_max[axis] = (boundary - p[axis]) / dir[axis]
-			t_delta[axis] = absf(1.0 / dir[axis])
-	var t := 0.0
-	var max_t := minf(max_dist, REACH + _spring.spring_length) / vs
-	while t <= max_t:
-		var id := _tool.get_voxel(cell)
-		if want_water:
-			if Blocks.is_water(id):
-				return {"cell": cell, "dist": t * vs}
-		elif Blocks.is_decor(id) and shape_box(id).intersects_ray(p - Vector3(cell), dir) != null:
-			# Solo si se apunta a la planta o a la hoja de verdad, no al hueco de su cubo.
-			if _terrain.to_global(Vector3(cell) + Vector3.ONE * 0.5).distance_to(_head.global_position) <= REACH + 0.3:
-				return {"cell": cell, "dist": t * vs}
-			return {}
-		if id != IslandGenerator.AIR and not Blocks.is_water(id) and not Blocks.is_decor(id):
-			return {}
-		if t_max.x <= t_max.y and t_max.x <= t_max.z:
-			t = t_max.x
-			t_max.x += t_delta.x
-			cell.x += step.x
-		elif t_max.y <= t_max.z:
-			t = t_max.y
-			t_max.y += t_delta.y
-			cell.y += step.y
-		else:
-			t = t_max.z
-			t_max.z += t_delta.z
-			cell.z += step.z
-	return {}
-
-
-func _decor_target(cell: Vector3i) -> Dictionary:
-	var center := _terrain.to_global(Vector3(cell) + Vector3(0.5, 0.0, 0.5))
-	# Colocar un bloque apuntando a la hierba la sustituye (como en Minecraft).
-	return {"voxel": cell, "place": cell, "point": center, "normal": Vector3.UP, "decor": true}
-
 
 ## Punto donde reaparece (al caer del mundo): lo cambia dormir en un saco.
 func set_spawn_point(p: Vector3) -> void:
@@ -1390,7 +1211,7 @@ func _try_drink() -> bool:
 			notice.emit("Bebes agua de lluvia.")
 		return true
 	var from := _camera.global_position
-	var water := _decor_hit(from, -_camera.global_transform.basis.z, REACH, true)
+	var water := aim.decor_hit(from, -_camera.global_transform.basis.z, REACH, true)
 	if water.is_empty():
 		return false
 	if needs.drink():
@@ -1478,7 +1299,7 @@ func _launch_raft() -> bool:
 	var stack := active_inventory().get_slot(_hotbar_index)
 	if stack.is_empty() or stack["id"] != "raft":
 		return false
-	var water := _decor_hit(_camera.global_position, -_camera.global_transform.basis.z, REACH, true)
+	var water := aim.decor_hit(_camera.global_position, -_camera.global_transform.basis.z, REACH, true)
 	if water.is_empty():
 		notice.emit("La balsa se echa al agua del mar: apunta al agua.")
 		return true
@@ -1573,7 +1394,7 @@ const FLOW_PUSH := 1.4    # m/s del agua que corre cuesta abajo
 func _water_push() -> Vector2:
 	if _tool == null or _generator == null:
 		return Vector2.ZERO
-	var cell := _world_to_voxel(global_position + Vector3.UP * 0.1)
+	var cell := aim.world_to_voxel(global_position + Vector3.UP * 0.1)
 	var id := _tool.get_voxel(cell)
 	if id == IslandGenerator.WATER:
 		return _generator.water_current(cell.x, cell.z) * RIVER_PUSH
@@ -1586,64 +1407,6 @@ func _water_push() -> Vector2:
 		var other := WaterFlow.level_of(n) if Blocks.is_water(n) else (0 if n == IslandGenerator.AIR or Blocks.DECOR.has(n) else level)
 		dir += Vector2(d.x, d.z) * float(level - other)
 	return dir.normalized() * FLOW_PUSH if dir.length() > 0.01 else Vector2.ZERO
-
-
-# ------------------------------------------------------------------ forma de los bloques
-
-## Bloques con modelo de cubitos propio (un prefab de una pieza).
-const SHAPED := {IslandGenerator.WORKBENCH: "workbench", IslandGenerator.STUMP: "stump_block",
-	IslandGenerator.CHEST: "chest_closed", IslandGenerator.CHEST_OPEN: "chest_open"}
-
-## Caja que ocupa de verdad un bloque dentro de su celda (0..1): la alfombra es fina, la hierba
-## no llena el cubo, cada trozo de árbol o roca tiene su tamaño...
-static func shape_box(id: int) -> AABB:
-	if Blocks.SLABS.has(id):
-		return Blocks.SLABS[id]
-	if Blocks.THIN.has(id):
-		return Blocks.THIN[id]
-	if SHAPED.has(id):
-		return PrefabLibrary.box(PrefabLibrary.first_id(SHAPED[id]))
-	if id == IslandGenerator.CLOTH:
-		return AABB(Vector3.ZERO, Vector3(1.0, 1.0 / 16.0, 1.0))
-	if id == IslandGenerator.TALL_GRASS:
-		return AABB(Vector3(0.12, 0.0, 0.12), Vector3(0.76, 0.9, 0.76))
-	if DecorModels.piece_of(id) >= 0:
-		return PrefabLibrary.box(DecorModels.piece_of(id))
-	if PrefabLibrary.is_prefab(id):
-		return PrefabLibrary.box(id)
-	return AABB(Vector3.ZERO, Vector3.ONE)
-
-
-## Recuadro de selección con la forma del bloque (sus aristas de cubitos, o su caja).
-func _shape_outline(id: int) -> Mesh:
-	if _outlines.has(id):
-		return _outlines[id]
-	var lines := PackedVector3Array()
-	var piece := id
-	if SHAPED.has(id):
-		piece = PrefabLibrary.first_id(SHAPED[id])
-	elif DecorModels.piece_of(id) >= 0:
-		piece = DecorModels.piece_of(id)
-	if PrefabLibrary.is_prefab(piece):
-		lines = PrefabLibrary.outline(piece)
-	if lines.is_empty():
-		var b := shape_box(id)
-		if b == AABB(Vector3.ZERO, Vector3.ONE):
-			_outlines[id] = _cube_outline
-			return _cube_outline
-		var edges := [[0, 1], [2, 3], [4, 5], [6, 7], [0, 2], [1, 3], [4, 6], [5, 7], [0, 4], [1, 5], [2, 6], [3, 7]]
-		for e in edges:
-			for k: int in e:
-				lines.append(b.position + b.size * Vector3(k & 1, (k >> 1) & 1, (k >> 2) & 1))
-	var arrays := []
-	arrays.resize(Mesh.ARRAY_MAX)
-	arrays[Mesh.ARRAY_VERTEX] = lines
-	var mesh := ArrayMesh.new()
-	mesh.add_surface_from_arrays(Mesh.PRIMITIVE_LINES, arrays)
-	_outlines[id] = mesh
-	return mesh
-
-
 # ------------------------------------------------------------------ losas, velas y cuerdas
 
 ## La forma del bloque según dónde se coloca: la media losa, abajo si se pone encima de algo,
