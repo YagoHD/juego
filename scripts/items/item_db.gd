@@ -82,6 +82,9 @@ const OTHER_ITEMS := {
 	"flower_red": {"name": "Flor roja", "stack": 32},
 	"flower_yellow": {"name": "Flor amarilla", "stack": 32},
 	"resin": {"name": "Resina", "stack": 32},
+	"leaf": {"name": "Hoja", "stack": 64},
+	"pine_needles": {"name": "Agujas de pino", "stack": 64},
+	"bark": {"name": "Corteza", "stack": 64},
 	"board": {"name": "Tabla", "stack": 16},
 	"campfire": {"name": "Hoguera", "stack": 4},
 	"green_ore": {"name": "Mineral verde", "stack": 32},
@@ -216,11 +219,11 @@ static func drops_for(block_id: int, rng: RandomNumberGenerator) -> Array:
 			var item := PrefabLibrary.tree_item(block_id)
 			if PrefabLibrary.kind(block_id) != "leaves":  # tronco o raíz
 				return [[item, 1]]
-			return [[item, 1]] if roll < 0.3 else ([["fiber", 1]] if roll < 0.5 else [])
+			return [[item, 1 + int(roll < 0.25)]] if roll < 0.6 else ([["fiber", 1]] if roll < 0.75 else [])
 		match PrefabLibrary.kind(block_id):
 			"wood": return [["wood", 1]]
 			"rock": return [["rock", 1 + int(roll < 0.5)]] if roll > 0.08 else [["flint", 1]]
-			"leaves": return [["leaves", 1]] if roll < 0.3 else ([["fiber", 1]] if roll < 0.5 else [])
+			"leaves": return [["leaf", 1 + int(roll < 0.25)]] if roll < 0.6 else ([["fiber", 1]] if roll < 0.75 else [])
 			"mushroom": return [["mushroom", 1 + int(roll < 0.3)]]
 		return []
 	match block_id:

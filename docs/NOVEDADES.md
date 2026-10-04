@@ -179,3 +179,10 @@ Todo lo de Kenney y OpenGameArt es CC0 (créditos en `assets/third_party/*/` y
 - **Talar a lo ancho**: el tronco es grueso (3x3 bloques; el gigante, más). El árbol cae cuando
   cortas todo el ancho del tronco a una altura. El tocón queda en el centro y rebrota igual.
 - Los arbustos de bayas dan bayas; los pinos, agujas y resina; los árboles secos, madera seca.
+- **Picar troncos**: ahora se rompe justo el trozo que apuntas (antes a veces el de detrás y
+  quedaban huecos). Los objetos que salen disparados ya no atraviesan el suelo.
+- **Troncos caídos, arbustos y tocones de adorno** nuestros (adiós a los de Kenney).
+- **Hojas sueltas y agujas de pino** como objetos (no bloques de hoja: esos, con herramienta más
+  adelante). **Corteza**: los trozos de fuera del tronco dan corteza; los de dentro, madera.
+- **Sonido de la caída** nuevo: crujido, susurro de hojas y golpe sordo.
+- **Los objetos flotan** en el agua (ríos, lagos y mar) y la corriente de los ríos los arrastra.

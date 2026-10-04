@@ -1,7 +1,8 @@
 extends Node3D
 class_name ItemDrop
 ## Objeto tirado en el suelo: un cubito con la textura del objeto que salta al aparecer, cae
-## hasta apoyarse, gira y flota un poco. Al acercarse el jugador vuela hacia él y se mete en su
+## hasta apoyarse, gira y flota un poco (en el agua, sube a la superficie y flota; en los ríos, la
+## corriente lo arrastra). Al acercarse el jugador vuela hacia él y se mete en su
 ## inventario. Los montones iguales que caen juntos se fusionan. Desaparece a los LIFETIME s.
 
 const SIZE := 0.22
@@ -11,6 +12,9 @@ const PICKUP_RADIUS := 0.9  # m
 const MAGNET_RADIUS := 2.5  # m: a esta distancia vuela hacia el jugador
 const MERGE_RADIUS := 0.8   # m
 const LIFETIME := 300.0
+const FLOAT_RISE := 1.6     # m/s: sube a la superficie del agua
+const DRIFT := 0.7          # m/s con la corriente más fuerte de un río
+
 
 var item_id := ""
 var count := 1
@@ -21,6 +25,8 @@ var pickup_delay := PICKUP_DELAY  # al tirarlo con Q es mayor, para que no vuelv
 var _resting := false
 var _visual: MeshInstance3D
 var _base_y := 0.0
+var _tool: VoxelTool
+var _terrain: VoxelTerrain
 
 
 ## Crea un objeto en el suelo en 'pos' con un pequeño salto en dirección aleatoria.
@@ -65,6 +71,10 @@ func _physics_process(delta: float) -> void:
 			_spin(delta)
 			return
 
+	_unbury()
+	if _float(delta):
+		_spin(delta)
+		return
 	if not _resting:
 		_velocity.y -= GRAVITY * delta
 		var motion := _velocity * delta
@@ -124,3 +134,77 @@ static func throw(parent: Node, pos: Vector3, direction: Vector3, id: String, am
 	drop._velocity = direction * 4.5 + Vector3.UP * 1.5
 	drop.pickup_delay = 2.0
 	return drop
+
+
+## Si ha quedado metido dentro de algo sólido (salió disparado contra una cuesta o un tronco), se
+## sube al primer hueco de encima: desde dentro, el rayo no ve el suelo y lo atravesaría.
+func _unbury() -> void:
+	if not _setup_tool():
+		return
+	var cell := Vector3i(_terrain.to_local(global_position + Vector3.UP * 0.01).floor())
+	if _free(_tool.get_voxel(cell)):
+		return
+	for i in 8:
+		cell.y += 1
+		if _free(_tool.get_voxel(cell)):
+			global_position.y = _terrain.to_global(Vector3(cell)).y
+			_velocity = Vector3.ZERO
+			_resting = false
+			return
+
+
+## En el agua (ríos, lagos o el mar): sube hasta la superficie, se mece y la corriente lo arrastra.
+## Devuelve true si está flotando.
+func _float(delta: float) -> bool:
+	if not _setup_tool():
+		return false
+	var surface := _water_surface()
+	if surface == -INF or global_position.y > surface + 0.1:
+		return false
+	_resting = false
+	_velocity.x = move_toward(_velocity.x, 0.0, delta * 3.0)
+	_velocity.z = move_toward(_velocity.z, 0.0, delta * 3.0)
+	_velocity.y = 0.0
+	var gen := _terrain.generator as IslandGenerator
+	if gen != null:
+		var cell := Vector3i(_terrain.to_local(global_position).floor())
+		var current := gen.water_current(cell.x, cell.z) * DRIFT
+		_velocity.x += current.x * delta * 3.0
+		_velocity.z += current.y * delta * 3.0
+	global_position.x += _velocity.x * delta
+	global_position.z += _velocity.z * delta
+	var bob := sin(_age * 2.0) * 0.03
+	global_position.y = move_toward(global_position.y, surface - 0.08 + bob, FLOAT_RISE * delta)
+	return true
+
+
+## Altura de la superficie del agua en la que está (o -INF si no está en el agua).
+func _water_surface() -> float:
+	var vs := _terrain.scale.x
+	var cell := Vector3i(_terrain.to_local(global_position).floor())
+	if Blocks.is_water(_tool.get_voxel(cell)):
+		while Blocks.is_water(_tool.get_voxel(cell + Vector3i.UP)) and cell.y < 512:
+			cell.y += 1
+		var level := WaterFlow.level_of(_tool.get_voxel(cell))
+		return (cell.y + (1.0 if level >= 8 else level / 8.0)) * vs
+	# El mar es un plano: bajo él, donde el fondo está por debajo del nivel del mar.
+	var sea := IslandGenerator.SEA_LEVEL * vs - 0.08
+	var gen := _terrain.generator as IslandGenerator
+	if global_position.y < sea + 0.05 and gen != null and gen.get_ground_height(cell.x, cell.z) < IslandGenerator.SEA_LEVEL:
+		return sea
+	return -INF
+
+
+func _setup_tool() -> bool:
+	if _tool != null:
+		return true
+	_terrain = get_tree().get_first_node_in_group("voxel_terrain") as VoxelTerrain
+	if _terrain == null:
+		return false
+	_tool = _terrain.get_voxel_tool()
+	_tool.channel = VoxelBuffer.CHANNEL_TYPE
+	return true
+
+
+static func _free(id: int) -> bool:
+	return id == IslandGenerator.AIR or Blocks.is_decor(id) or Blocks.is_water(id)

@@ -568,12 +568,13 @@ func _target() -> Dictionary:
 		return {"raft": result.collider, "point": hit_point, "normal": hit_normal}
 	if result.collider is PlacedItem:
 		return {"item": result.collider, "point": hit_point, "normal": hit_normal}
-	var half_voxel: float = _terrain.scale.x * 0.5
 	return {
 		"point": hit_point,
 		"normal": hit_normal,
-		"voxel": _world_to_voxel(hit_point - hit_normal * half_voxel),  # hacia dentro: el bloque
-		"place": _world_to_voxel(hit_point + hit_normal * half_voxel),  # hacia fuera: el hueco
+		# El bloque golpeado: un pelín hacia dentro del punto de impacto (no medio bloque: con
+		# piezas que no llenan su bloque, como un tronco, medio bloque caía en el de detrás).
+		"voxel": _hit_cell(hit_point, hit_normal),
+		"place": _hit_cell(hit_point, hit_normal) + Vector3i(hit_normal.round()),  # el hueco de al lado
 	}
 
 
@@ -698,6 +699,29 @@ func _overlaps_body(cell: Vector3i) -> bool:
 		Vector3(BODY_RADIUS * 2.0, BODY_HEIGHT, BODY_RADIUS * 2.0))
 	return cell_box.grow(-0.01).intersects(body_box)
 
+
+## Bloque golpeado por el rayo en 'point' (cara con normal 'normal'): un pelín hacia dentro. Si el
+## punto cae justo en la frontera entre dos bloques (el borde de una alfombra, de un trozo de
+## tronco...) y ese lado está vacío, es el bloque del otro lado.
+func _hit_cell(point: Vector3, normal: Vector3) -> Vector3i:
+	var local := _terrain.to_local(point - normal * 0.02)
+	var cell := Vector3i(local.floor())
+	if _tool == null or _tool.get_voxel(cell) != IslandGenerator.AIR:
+		return cell
+	for axis in 3:
+		if absf(normal[axis]) > 0.5:
+			continue
+		var f := local[axis] - floorf(local[axis])
+		var other := cell
+		if f < 0.02:
+			other[axis] -= 1
+		elif f > 0.98:
+			other[axis] += 1
+		else:
+			continue
+		if _tool.get_voxel(other) != IslandGenerator.AIR:
+			return other
+	return cell
 
 func _world_to_voxel(world_pos: Vector3) -> Vector3i:
 	var local := _terrain.to_local(world_pos)

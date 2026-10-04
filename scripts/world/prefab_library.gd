@@ -10,7 +10,7 @@ const NAMES := ["palm_tall", "palm_bend", "palm_short", "rock_a", "rock_d", "roc
 	"oak_k", "fat_k", "pine_k", "log_fallen", "bush_large", "wheat_a", "wheat_b", "tree_parts", "workbench", "decor_pebbles", "decor_sticks", "decor_shell", "decor_flower_red", "decor_flower_yellow", "stump_block",
 	"t_oak_1", "t_oak_2", "t_oak_3", "t_lean_1", "t_lean_2", "t_giant_1", "t_pine_1", "t_pine_2",
 	"t_pine_small_1", "t_pine_small_2", "t_pine_tier_1", "t_pine_tier_2", "t_dead_1", "t_dead_2",
-	"t_bush_1", "t_bush_2", "t_berry_1", "t_berry_2"]
+	"t_bush_1", "t_bush_2", "t_berry_1", "t_berry_2", "t_log_1", "t_log_2"]
 const FIRST_ID := 64
 
 static var _loaded := false
@@ -21,6 +21,7 @@ static var _owner := {}                  # id -> nombre del prefab al que perten
 static var _color := {}                  # id -> Color
 static var _mesh := {}                   # id -> ArrayMesh (espacio 0..1)
 static var _outline := {}                # id -> PackedVector3Array (contorno, pares de puntos)
+static var _fill := {}                   # id -> cuánto llena su bloque (0..1)
 static var _last_id := FIRST_ID - 1
 static var _material: StandardMaterial3D
 
@@ -42,6 +43,7 @@ static func load_all() -> void:
 			_color[next + i] = p.colors[i]
 			_mesh[next + i] = p.meshes[i]
 			_outline[next + i] = p.outlines[i] if i < p.outlines.size() else PackedVector3Array()
+			_fill[next + i] = p.fills[i] if i < p.fills.size() else 1.0
 		next += p.cells.size()
 	_last_id = next - 1
 
@@ -183,8 +185,11 @@ static func is_dead(id: int) -> bool:
 	return prefab_of(id).begins_with("t_dead")
 
 
-## El objeto que da un trozo de árbol: hojas, agujas de pino, madera o madera seca.
+## El objeto que da un trozo de árbol: hojas, agujas de pino, corteza (los trozos de fuera, que
+## no llenan su bloque), madera o madera seca (los de dentro).
 static func tree_item(id: int) -> String:
 	if kind(id) == "leaves":
-		return "pine_leaves" if is_pine(id) else "leaves"
+		return "pine_needles" if is_pine(id) else "leaf"  # hojas sueltas (los bloques de hoja, con herramienta)
+	if float(_fill.get(id, 1.0)) < 0.5:
+		return "bark"  # trozo de fuera del tronco (o una raíz): corteza, no un bloque de madera
 	return "dead_wood" if is_dead(id) else "wood"

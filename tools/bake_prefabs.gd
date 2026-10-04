@@ -269,6 +269,7 @@ var TREES := [
 	["t_dead_1", TreeBuilder.dead.bind(101)], ["t_dead_2", TreeBuilder.dead.bind(102)],
 	["t_bush_1", TreeBuilder.bush.bind(111, false)], ["t_bush_2", TreeBuilder.bush.bind(112, false)],
 	["t_berry_1", TreeBuilder.bush.bind(121, true)], ["t_berry_2", TreeBuilder.bush.bind(122, true)],
+	["t_log_1", TreeBuilder.fallen_log.bind(131)], ["t_log_2", TreeBuilder.fallen_log.bind(132)],
 ]
 
 
@@ -311,6 +312,7 @@ func _cut_tree(prefab_name: String, build: Callable) -> Prefab:
 		p.meshes.append(_piece_mesh(sub, {}, Vector3i.ZERO, res))
 		p.outlines.append(_outline(sub, res))
 		p.kinds.append({"leaf": "leaves", "wood": "wood", "root": "root"}[best])
+		p.fills.append(float(sub.size()) / (res * res * res))
 		var avg := Color(0, 0, 0)
 		for col: Color in sub.values():
 			avg += col

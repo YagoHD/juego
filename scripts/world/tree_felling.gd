@@ -315,8 +315,7 @@ func _break_leaves() -> void:
 	# Sin las hojas, el centro de masas es el del tronco.
 	mass = maxf(_woods.size() * 15.0, 1.0)
 	_burst_leaves(center)
-	Sfx.play("romper_hierba", center, 4.0, 0.1)
-	Sfx.play("romper_madera", center, 2.0, 0.05)
+	Sfx.play("romper_tela", center, 0.0, 0.15)  # susurro de las hojas
 
 
 # ------------------------------------------------------------------ contra el suelo: revienta
@@ -350,12 +349,11 @@ func _shatter() -> void:
 			var amount := maxi(1, ceili(float(counts[item]) / piles))
 			amount = mini(amount, left)
 			var at: Vector3 = spots[(k * 7) % spots.size()]
-			ItemDrop.spawn(get_parent(), at + Vector3.UP * 0.4, item, amount)
+			ItemDrop.spawn(get_parent(), _above_ground(at) + Vector3.UP * 0.4, item, amount)
 			left -= amount
 			k += 1
 	_burst_chips(center, spots)
-	Sfx.play("romper_madera", center, 4.0, 0.1)
-	Sfx.play("golpe", center, 2.0, 0.2)
+	Sfx.play("romper_arena", center, 2.0, 0.1)  # golpe sordo contra el suelo
 	queue_free()
 
 
@@ -417,3 +415,15 @@ func _burst_leaves(at: Vector3) -> void:
 static func _leaf_item(id: int) -> String:
 	return PrefabLibrary.tree_item(id) if PrefabLibrary.is_prefab(id) else ItemDB.drop_of(id)
 
+
+
+## El punto, subido hasta el primer hueco si ha quedado dentro del suelo (un tronco que cae medio
+## enterrado en una cuesta): si no, el objeto nacería dentro del terreno y lo atravesaría.
+func _above_ground(p: Vector3) -> Vector3:
+	var cell := Vector3i((p / _vs).floor())
+	for i in 8:
+		var id := _tool.get_voxel(cell)
+		if id == IslandGenerator.AIR or Blocks.is_decor(id) or Blocks.is_water(id):
+			break
+		cell.y += 1
+	return Vector3(p.x, maxf(p.y, cell.y * _vs + 0.05), p.z)

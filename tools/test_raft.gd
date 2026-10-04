@@ -7,6 +7,7 @@ var _main: Node
 var _boat: Raft
 var _frames := 0
 var _start := Vector3.ZERO
+var _drop: ItemDrop
 
 
 func _init() -> void:
@@ -36,6 +37,8 @@ func _physics_process(delta: float) -> bool:
 		_start = _boat.global_position
 		return false
 	_frames += 1
+	if _drop != null:
+		return _check_float()
 	if _frames <= 240:
 		_boat.steer(1.0, 0.0, delta)  # remar recto 4 segundos
 		return false
@@ -48,7 +51,10 @@ func _physics_process(delta: float) -> bool:
 	var saved: Array = get_nodes_in_group("rafts").map(func(r: Node) -> Dictionary: return (r as Raft).to_data())
 	print("bajar=%s, guardado=%s" % [off, saved])
 	print("OK" if moved > 3.0 and on_water and follows and off and saved.size() == 1 else "FALLO")
-	return true
+	# Un objeto que cae al mar flota en la superficie (no se va al fondo).
+	_drop = ItemDrop.spawn(_main, _boat.global_position + Vector3(0, 1, -6).rotated(Vector3.UP, _boat.rotation.y), "wood", 1)  # lejos del jugador (no lo recoge)
+	_frames = 0
+	return false
 
 
 func _find_sea(gen: IslandGenerator, from: Vector3) -> Vector3:
@@ -60,3 +66,16 @@ func _find_sea(gen: IslandGenerator, from: Vector3) -> Vector3:
 			if h <= IslandGenerator.SEA_LEVEL - 10:
 				return p
 	return Vector3.INF
+
+
+func _check_float() -> bool:
+	_frames += 1
+	if _frames < 240:
+		return false
+	if not is_instance_valid(_drop):
+		print("objeto en el mar: FALLO (desapareció)")
+		return true
+	var sea := IslandGenerator.SEA_LEVEL * 0.5
+	var y := _drop.global_position.y
+	print("objeto en el mar a %.2f m (superficie %.2f): %s" % [y, sea, "OK" if absf(y - sea) < 0.3 else "FALLO"])
+	return true

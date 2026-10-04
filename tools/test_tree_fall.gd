@@ -53,14 +53,15 @@ func _process(_delta: float) -> bool:
 		1:
 			if Time.get_ticks_msec() - _t0 < 9000:
 				return false
-			var wood := 0
+			# (lo que el jugador haya recogido solo al pasar por encima, también cuenta)
+			var wood: int = player.inventory.count_of("wood") + player.inventory.count_of("bark")
 			var leaves := 0
 			for d: ItemDrop in get_nodes_in_group("item_drops"):
-				if d.item_id == "wood" or d.item_id == "dead_wood":
+				if d.item_id in ["wood", "dead_wood", "bark"]:
 					wood += d.count
-				if d.item_id == "leaves" or d.item_id == "pine_leaves":
+				if d.item_id == "leaf" or d.item_id == "pine_needles":
 					leaves += d.count
-			_check("El tronco revienta en madera para recoger (%d, tronco de %d)" % [wood, _trunk_above], wood >= _trunk_above)
+			_check("El tronco revienta en madera y corteza para recoger (%d, tronco de %d)" % [wood, _trunk_above], wood >= _trunk_above)
 			_check("Las hojas dejan objetos por el suelo (%d)" % leaves, leaves > 0)
 			_check("Queda un tocón en el pie", tool.get_voxel(_base) == IslandGenerator.STUMP)
 			var regrowth: TreeRegrowth = _main.get_node("TreeRegrowth")

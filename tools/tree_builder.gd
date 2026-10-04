@@ -258,3 +258,31 @@ static func bush(seed_value: int, with_berries := false) -> TreeBuilder:
 		b.berries(0.035)
 	b.shade()
 	return b
+
+
+## Tronco caído de adorno (el de la hoja 4 del concepto): tumbado, hueco por dentro, con anillos
+## en las puntas y manchas de musgo por arriba.
+static func fallen_log(seed_value: int) -> TreeBuilder:
+	var b := TreeBuilder.new(seed_value)
+	var length := b.rng.randi_range(36, 52)
+	var r := b.rng.randf_range(5.5, 7.0)
+	var along_z := b.rng.randf() < 0.5
+	var moss := Color(0.36, 0.56, 0.16)
+	for s in length:
+		for u in range(-int(r) - 1, int(r) + 2):
+			for v in range(-int(r) - 1, int(r) + 2):
+				var d := Vector2(u + 0.5, v + 0.5)
+				var dist := d.length()
+				if dist > r or dist < r * 0.55:
+					continue  # fuera, o el hueco de dentro
+				var y := int(r) + v
+				var p := Vector3i(int(b._center.x) - length / 2 + s, y, int(b._center.z) + u)
+				if along_z:
+					p = Vector3i(int(b._center.x) + u, y, int(b._center.z) - length / 2 + s)
+				var col := b._bark(BARK, d.angle(), s)
+				if s == 0 or s == length - 1:
+					col = BARK[2].lightened(0.1) if int(dist * 1.5) % 2 == 0 else BARK[1]  # anillos
+				elif v > r * 0.5 and (s * 7 + u * 3) % 11 < 4:
+					col = moss.lightened(0.1 * ((s + u) % 2))  # musgo por arriba
+				b._put(p, col, "wood")
+	return b

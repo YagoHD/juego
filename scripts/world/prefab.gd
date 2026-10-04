@@ -11,3 +11,4 @@ class_name Prefab
 @export var kinds: PackedStringArray = []    # tipo de cada pieza
 @export var colors: PackedColorArray = []    # color medio de cada pieza (partículas, mapa)
 @export var outlines: Array[PackedVector3Array] = []  # contorno de cada pieza (pares de puntos, 0..1): el recuadro al apuntarla
+@export var fills: PackedFloat32Array = []   # cuánto llena cada pieza su bloque (0..1): la corteza de fuera, poco

@@ -289,20 +289,20 @@ func _prefab_at(wx: int, wz: int) -> int:
 			if h < 0.006 and height <= SEA_LEVEL + 6:
 				return _palms[int(pick * _palms.size()) % _palms.size()]
 			if h < 0.0068:
-				return PrefabLibrary.index_of("log_fallen")
+				return PrefabLibrary.index_of("t_log_1" if pick < 0.5 else "t_log_2")  # tronco caído (hueco)
 		GRASS:
 			if h < 0.0010:
 				return _rocks[int(pick * _rocks.size()) % _rocks.size()]
 			if h < 0.0035:
-				return PrefabLibrary.index_of("bush")
+				return PrefabLibrary.index_of("t_bush_1" if pick < 0.5 else "t_bush_2")
 			if h < 0.0045:
-				return PrefabLibrary.index_of("stump")
+				return PrefabLibrary.index_of("stump_block")  # tocón viejo (no rebrota)
 			if h < 0.0075:
 				return PrefabLibrary.index_of("mushrooms_red" if pick < 0.5 else "mushrooms_tan")
 			if h < 0.0085:
-				return PrefabLibrary.index_of("bush_large")
+				return PrefabLibrary.index_of("t_berry_1" if pick < 0.5 else "t_berry_2")
 			if h < 0.009:
-				return PrefabLibrary.index_of("log_fallen")
+				return PrefabLibrary.index_of("t_log_1" if pick < 0.5 else "t_log_2")  # tronco caído (hueco)
 		STONE, MOSSY_STONE, DIRT:
 			if h < 0.004:
 				return _rocks[int(pick * _rocks.size()) % _rocks.size()]

@@ -49,6 +49,9 @@ static func paint(id: String) -> Image:
 		"raw_crab": _crab(img, false)
 		"cooked_crab": _crab(img, true)
 		"cooked_fish": _fish(img, true)
+		"leaf": _leaf(img)
+		"pine_needles": _pine_needles(img)
+		"bark": _bark(img)
 		_: img.fill(Color.MAGENTA)
 	_outline(img)
 	return img
@@ -463,3 +466,36 @@ static func _crab(img: Image, cooked: bool) -> void:
 		_rect(img, x, 12, x, 13, c.darkened(0.3))  # patas
 	img.set_pixel(6, 5, Color(0.1, 0.1, 0.1))
 	img.set_pixel(9, 5, Color(0.1, 0.1, 0.1))
+
+
+static func _leaf(img: Image) -> void:
+	# Hoja suelta: forma de gota con el nervio central.
+	var c := Color(0.32, 0.6, 0.16)
+	for y in range(2, 15):
+		var t := float(y - 2) / 12.0
+		var half := int(round(sin(t * PI) * 5.0))
+		_rect(img, 8 - half, y, 7 + half, y, c.lightened(0.1) if y < 8 else c)
+	_line(img, Vector2i(8, 15), Vector2i(8, 3), c.darkened(0.3))  # nervio
+	for k in [5, 8, 11]:
+		_line(img, Vector2i(8, k + 2), Vector2i(5, k), c.darkened(0.15))
+		_line(img, Vector2i(8, k + 2), Vector2i(10, k), c.darkened(0.15))
+
+
+static func _pine_needles(img: Image) -> void:
+	# Ramita de agujas de pino: un tallo con agujas a los lados.
+	var c := Color(0.12, 0.38, 0.2)
+	_line(img, Vector2i(3, 14), Vector2i(12, 2), Color(0.42, 0.28, 0.15))
+	for k in range(2, 12, 2):
+		var p := Vector2i(3 + k * 9 / 12, 14 - k)
+		_line(img, p, p + Vector2i(-3, -2), c.lightened(0.1 * (k % 4)))
+		_line(img, p, p + Vector2i(3, 0), c)
+
+
+static func _bark(img: Image) -> void:
+	# Tira de corteza curvada, con surcos oscuros a lo largo.
+	var c := Color(0.45, 0.28, 0.14)
+	for y in range(3, 14):
+		var x0 := 4 + int(round(sin(y * 0.35) * 1.5))
+		_rect(img, x0, y, x0 + 7, y, c)
+		for k in [x0 + 1, x0 + 4, x0 + 6]:
+			img.set_pixel(k, y, c.darkened(0.35) if (y + k) % 3 != 0 else c.lightened(0.15))
