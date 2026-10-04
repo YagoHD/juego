@@ -52,9 +52,6 @@ func target() -> Dictionary:
 	}
 
 
-
-
-
 ## Bloque golpeado por el rayo en 'point' (cara con normal 'normal'): un pelín hacia dentro. Si el
 ## punto cae justo en la frontera entre dos bloques (el borde de una alfombra, de un trozo de
 ## tronco...) y ese lado está vacío, es el bloque del otro lado.
@@ -78,10 +75,10 @@ func hit_cell(point: Vector3, normal: Vector3) -> Vector3i:
 			return other
 	return cell
 
+
 func world_to_voxel(world_pos: Vector3) -> Vector3i:
 	var local := player._terrain.to_local(world_pos)
 	return Vector3i(floori(local.x), floori(local.y), floori(local.z))
-
 
 
 func _make_highlight() -> MeshInstance3D:
@@ -200,6 +197,7 @@ func decor_target(cell: Vector3i) -> Dictionary:
 ## Bloques con modelo de cubitos propio (un prefab de una pieza).
 const SHAPED := {IslandGenerator.WORKBENCH: "workbench", IslandGenerator.STUMP: "stump_block",
 	IslandGenerator.CHEST: "chest_closed", IslandGenerator.CHEST_OPEN: "chest_open"}
+
 
 ## Caja que ocupa de verdad un bloque dentro de su celda (0..1): la alfombra es fina, la hierba
 ## no llena el cubo, cada trozo de árbol o roca tiene su tamaño...

@@ -56,6 +56,7 @@ const SWIM_UP_SPEED := 4.0 * B     # nadar hacia arriba (Espacio con la cabeza b
 const WATER_GRAVITY := 6.0 * B     # en el agua se hunde despacio...
 const MAX_SINK_SPEED := 3.0 * B    # ...y sin pasar de esta velocidad
 
+
 ## Radio (en voxels) de terreno detallado alrededor del jugador. Lo fija main.gd.
 var near_view_voxels := 320
 
@@ -74,6 +75,7 @@ var _camera_lag := Vector3.ZERO  # desfase de la cámara (en el mundo) que se va
 var _step_debt := 0.0            # metros adelantados al subir escalones, pendientes de descontar
 var _pitch := 0.0
 var _hotbar_index := 0
+
 
 ## Inventario del jugador (36 huecos: 0-8 la barra). En modo creativo se usa otro, con todos
 ## los bloques e infinitos.
@@ -120,6 +122,7 @@ var _camera: Camera3D
 var _held: HeldBlock
 var _avatar: PlayerAvatar
 var aim: BlockAim                 # qué se apunta y su recuadro (componente)
+var rafts: RaftRider              # la balsa: echarla, subir, remar, bajar (componente)
 var _terrain: VoxelTerrain
 var _generator: IslandGenerator
 var _tool: VoxelTool
@@ -181,6 +184,10 @@ func _ready() -> void:
 	aim.name = "Aim"
 	aim.player = self
 	add_child(aim)
+	rafts = RaftRider.new()
+	rafts.name = "Rafts"
+	rafts.player = self
+	add_child(rafts)
 	_cracks = BlockCracks.new()
 	add_child(_cracks)
 	_hand_light = TorchLight.make_light()
@@ -277,7 +284,7 @@ func _unhandled_input(event: InputEvent) -> void:
 		if not key.pressed:
 			return
 		if key.keycode == KEY_SPACE and raft != null:
-			_dismount()
+			rafts.dismount()
 			return
 		if key.keycode == KEY_W:
 			# Doble toque de W rápido = correr (como en Minecraft).
@@ -377,7 +384,7 @@ func _physics_process(delta: float) -> void:
 		_held.update_walk(0.0, delta)
 		return
 	if raft != null:
-		_ride(delta)
+		rafts.ride(delta)
 		return
 
 	var feet_wet := _in_water(global_position + Vector3.UP * BODY_HEIGHT * 0.28)
@@ -550,11 +557,11 @@ func _edit_block(place: bool) -> void:
 	var target := aim.target()
 	if target.has("raft"):
 		if place:
-			_board(target["raft"])
+			rafts.board(target["raft"])
 		else:
-			_pick_up_raft(target["raft"])
+			rafts.pick_up_boat(target["raft"])
 		return
-	if place and _launch_raft():
+	if place and rafts.launch():
 		return
 	var at_campfire: bool = target.has("item") and (target["item"] as PlacedItem).campfire != null
 	if place and _try_plant(target):
@@ -664,6 +671,7 @@ func _overlaps_body(cell: Vector3i) -> bool:
 	var body_box := AABB(global_position - Vector3(BODY_RADIUS, 0, BODY_RADIUS),
 		Vector3(BODY_RADIUS * 2.0, BODY_HEIGHT, BODY_RADIUS * 2.0))
 	return cell_box.grow(-0.01).intersects(body_box)
+
 
 # ------------------------------------------------------------------ consultas
 
@@ -805,6 +813,7 @@ func update_appearance() -> void:
 	options["straps"] = equipment["backpack"] != ""
 	apply_skin(SkinComposer.load_player_skin(options), options["slim"])
 	_avatar.set_backpack(equipment["backpack"])
+
 
 ## Cambia la skin del jugador (cuerpo y brazo). El futuro editor de personaje la usará.
 func apply_skin(texture: Texture2D, slim: bool) -> void:
@@ -1173,7 +1182,6 @@ func can_kneel() -> bool:
 	return is_on_floor() and not _flying and not _in_water(global_position + Vector3.UP * BODY_HEIGHT * 0.28)
 
 
-
 ## Punto donde reaparece (al caer del mundo): lo cambia dormir en un saco.
 func set_spawn_point(p: Vector3) -> void:
 	_spawn_point = p
@@ -1290,97 +1298,6 @@ func _grab_crab() -> bool:
 		ItemDrop.spawn(get_parent(), global_position + Vector3.UP, "raw_crab", 1)
 	notice.emit("¡Has cogido un cangrejo!")
 	return true
-
-
-# ------------------------------------------------------------------ balsa
-
-## Con la balsa en la mano, clic derecho apuntando al mar: se echa al agua.
-func _launch_raft() -> bool:
-	var stack := active_inventory().get_slot(_hotbar_index)
-	if stack.is_empty() or stack["id"] != "raft":
-		return false
-	var water := aim.decor_hit(_camera.global_position, -_camera.global_transform.basis.z, REACH, true)
-	if water.is_empty():
-		notice.emit("La balsa se echa al agua del mar: apunta al agua.")
-		return true
-	var cell: Vector3i = water["cell"]
-	var boat := Raft.new()
-	boat.generator = _generator
-	boat.voxel_size = _terrain.scale.x
-	var spot := _terrain.to_global(Vector3(cell) + Vector3(0.5, 0.0, 0.5))
-	if not boat.is_water(spot):
-		boat.free()
-		notice.emit("Aquí no flota: hace falta el mar, con algo de fondo.")
-		return true
-	get_parent().add_child(boat)
-	boat.add_to_group("rafts")
-	boat.global_position = Vector3(spot.x, boat.sea_y(), spot.z)
-	boat.rotation.y = rotation.y
-	if not creative:
-		inventory.take(_hotbar_index, 1)
-	Sfx.play("paso_agua", spot, 0.0, 0.2)
-	notice.emit("Balsa al agua. Clic derecho sobre ella para subir.")
-	return true
-
-
-## Clic izquierdo sobre la balsa (sin ir montado): se recoge.
-func _pick_up_raft(boat: Raft) -> void:
-	if raft == boat:
-		return
-	if not creative and not can_pick_up("raft"):
-		notice.emit("No te cabe la balsa.")
-		return
-	boat.queue_free()
-	if not creative:
-		pick_up("raft", 1)
-	Sfx.play("recoger", null, -6.0, 0.15)
-
-
-func _board(boat: Raft) -> void:
-	raft = boat
-	_flying = false
-	_sprinting = false
-	velocity = Vector3.ZERO
-	notice.emit("W/S: remar  ·  A/D: girar  ·  Espacio: bajar")
-
-
-## Montado: W/S reman, A/D giran la balsa (y la vista con ella). No entra en tierra.
-func _ride(delta: float) -> void:
-	if not is_instance_valid(raft):
-		raft = null
-		return
-	var forward := (1.0 if _key(KEY_W) else 0.0) - (1.0 if _key(KEY_S) else 0.0)
-	var turn := (1.0 if _key(KEY_A) else 0.0) - (1.0 if _key(KEY_D) else 0.0)
-	var yaw_before := raft.rotation.y
-	raft.steer(forward, turn, delta)
-	rotate_y(raft.rotation.y - yaw_before)
-	velocity = Vector3.ZERO
-	global_position = raft.global_position + Vector3.UP * 0.1
-	_avatar.update_walk(0.0, true, delta)
-	_held.update_walk(0.0, delta)
-	if absf(forward) > 0.01:
-		_step_distance += delta
-		if _step_distance > 0.9:
-			_step_distance = 0.0
-			Sfx.play("paso_agua", raft.global_position, -6.0, 0.2)
-
-
-## Espacio: bajar. Si hay tierra al lado se baja a ella; si no, al agua.
-func _dismount() -> void:
-	var boat := raft
-	raft = null
-	if not is_instance_valid(boat):
-		return
-	var vs := _terrain.scale.x
-	for k in 16:
-		var a := TAU * k / 16.0
-		for dist in [1.4, 2.2]:
-			var p := boat.global_position + Vector3(cos(a), 0, sin(a)) * float(dist)
-			var h := _generator.get_ground_height(int(floorf(p.x / vs)), int(floorf(p.z / vs)))
-			if h > IslandGenerator.SEA_LEVEL:
-				global_position = Vector3(p.x, h * vs + 0.05, p.z)
-				return
-	global_position = boat.global_position + Vector3(1.2, 0.3, 0).rotated(Vector3.UP, rotation.y)
 
 
 # ------------------------------------------------------------------ corriente

@@ -33,7 +33,7 @@ func _physics_process(delta: float) -> bool:
 		_boat.global_position = Vector3(sea.x, _boat.sea_y(), sea.z)
 		var out := sea - player.global_position
 		_boat.rotation.y = atan2(-out.x, -out.z)  # proa mar adentro
-		player.call("_board", _boat)
+		player.rafts.board(_boat)
 		_start = _boat.global_position
 		return false
 	_frames += 1
@@ -46,7 +46,7 @@ func _physics_process(delta: float) -> bool:
 	var on_water := _boat.is_water(_boat.global_position)
 	var follows := player.global_position.distance_to(_boat.global_position) < 0.5
 	print("balsa: recorrido %.1f m, sigue en el mar=%s, jugador encima=%s" % [moved, on_water, follows])
-	player.call("_dismount")
+	player.rafts.dismount()
 	var off := player.raft == null
 	var saved: Array = get_nodes_in_group("rafts").map(func(r: Node) -> Dictionary: return (r as Raft).to_data())
 	print("bajar=%s, guardado=%s" % [off, saved])
