@@ -24,6 +24,7 @@ param(
     [string]$Cracks = "", # grietas en el bloque apuntado (avance 0..1)
     [switch]$Title,     # foto de la pantalla de título (mundo ya cargado)
     [switch]$Bench,     # dos mesas de trabajo delante, con el pico a medio montar
+    [switch]$Showroom,  # sala de muestras: suelo plano con todos los bloques en fila (carga rápida)
     [switch]$Torches,   # dos antorchas clavadas delante
     [switch]$Craft,     # inventario de rodillas y vista de fabricar
     [switch]$Showcase,  # modelos voxelizados delante
@@ -57,6 +58,7 @@ if ($Help) { $gameArgs += "--help" }
 if ($Cracks -ne "") { $gameArgs += "--cracks=$Cracks" }
 if ($Title) { $gameArgs += "--title" }
 if ($Bench) { $gameArgs += "--bench" }
+if ($Showroom) { $gameArgs += "--showroom" }
 if ($Torches) { $gameArgs += "--torches" }
 if ($Craft) { $gameArgs += "--craft" }
 if ($Showcase) { $gameArgs += "--showcase" }

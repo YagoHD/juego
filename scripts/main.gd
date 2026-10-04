@@ -72,13 +72,16 @@ var _world_is_new := false
 
 func _ready() -> void:
 	Settings.load_settings()
+	if _showroom():
+		test_mode = true  # mundo de pruebas: no toca la partida
 	if _arg("--textures=") != "":  # capturas: probar un paquete de texturas
 		Settings.texture_pack = _arg("--textures=")
 	UiTheme.apply_cursor()
 	_sfx = Sfx.new()
 	add_child(_sfx)
 	_build_world()
-	_build_far_terrain()
+	if not _showroom():  # la sala de muestras no tiene isla lejana
+		_build_far_terrain()
 	_build_environment()
 	_build_hud()
 	_build_player()
@@ -114,7 +117,7 @@ func _build_world() -> void:
 	# Todos los bloques comparten un material con el atlas de texturas (se dibujan más rápido);
 	# el agua lleva su propia versión translúcida.
 	var solid := BlockTextures.make_terrain_material()  # con relieve, como en el arte conceptual
-	_generator = IslandGenerator.new()
+	_generator = ShowroomGenerator.new() if _showroom() else IslandGenerator.new()
 	var water := _make_water_material()
 	for id in range(1, Blocks.LAST_ID + 1):
 		if id == IslandGenerator.WATER_FALL:
@@ -147,7 +150,7 @@ func _build_world() -> void:
 	var terrain := VoxelTerrain.new()
 	terrain.mesher = mesher
 	terrain.generator = _generator
-	terrain.stream = _make_world_stream()
+	terrain.stream = null if _showroom() else _make_world_stream()  # la sala no se guarda
 	terrain.generate_collisions = true
 	# Solo existen voxels dentro de la isla y entre el fondo marino y las cimas.
 	terrain.bounds = AABB(Vector3(-IslandGenerator.MAP_HALF, 0, -IslandGenerator.MAP_HALF), Vector3(IslandGenerator.MAP_HALF * 2.0, 256, IslandGenerator.MAP_HALF * 2.0))
@@ -163,7 +166,8 @@ func _build_world() -> void:
 	water_flow.terrain = terrain
 	add_child(water_flow)
 
-	_build_sea()
+	if not _showroom():
+		_build_sea()
 
 
 func _build_far_terrain() -> void:
@@ -296,6 +300,8 @@ func _build_player() -> void:
 	_player.position = Vector3(Structures.spawn_voxel().x, ground + 4, Structures.spawn_voxel().y) * VOXEL_SIZE
 	add_child(_player)
 	_player.rotation.y = Structures.spawn_yaw()  # mirando al barco naufragado
+	if _showroom():
+		_player.rotation.y = PI  # mirando a la fila de muestras
 	_chests.load_from(_chests_save_path())
 	_ground = GroundCrafting.new()
 	add_child(_ground)
@@ -892,6 +898,11 @@ func _on_block_broken(cell: Vector3i, block_id: int) -> void:
 
 func _world_dir() -> String:
 	return TEST_WORLD_DIR if _is_test() else WORLD_DIR
+
+
+## Sala de muestras (ShowroomGenerator): "godot --path . -- --showroom".
+func _showroom() -> bool:
+	return OS.get_cmdline_user_args().has("--showroom")
 
 
 func _is_test() -> bool:
