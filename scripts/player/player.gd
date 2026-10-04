@@ -102,8 +102,6 @@ var _crouch := 0.0           # 0..1: cuánto baja la vista al agacharse
 var _step_distance := 0.0     # metros andados desde el último paso (para el sonido)
 var _was_in_air := false
 var _loot_rng := RandomNumberGenerator.new()
-var _place_ghost: MeshInstance3D   # dónde caería el objeto de la mano al dejarlo (G)
-var _place_ghost_id := ""
 var _hand_light: OmniLight3D  # luz de la antorcha que se lleva en la mano
 var _hand_light_time := 0.0
 ## true mientras hay una pantalla abierta (inventario, cofre...): no se mueve ni mira.
@@ -119,6 +117,7 @@ var aim: BlockAim                 # qué se apunta y su recuadro (componente)
 var rafts: RaftRider              # la balsa: echarla, subir, remar, bajar (componente)
 var survival: PlayerSurvival      # comer, beber, pescar, plantar, desgaste (componente)
 var breaker: BlockBreaker         # romper manteniendo el clic, grietas (componente)
+var builder: PlayerBuilder        # colocar objetos, losas, velas y cuerdas (componente)
 var _terrain: VoxelTerrain
 var _generator: IslandGenerator
 var _tool: VoxelTool
@@ -192,15 +191,14 @@ func _ready() -> void:
 	breaker.name = "Breaker"
 	breaker.player = self
 	add_child(breaker)
+	builder = PlayerBuilder.new()
+	builder.name = "Builder"
+	builder.player = self
+	add_child(builder)
 	_hand_light = TorchLight.make_light()
 	_hand_light.position = Vector3(0.25, EYE_HEIGHT - 0.25, -0.3)
 	_hand_light.visible = false
 	add_child(_hand_light)
-	_place_ghost = MeshInstance3D.new()
-	_place_ghost.top_level = true
-	_place_ghost.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	_place_ghost.visible = false
-	add_child(_place_ghost)
 
 	var terrains := get_tree().get_nodes_in_group("voxel_terrain")
 	if terrains.size() > 0:
@@ -488,7 +486,7 @@ func _process(delta: float) -> void:
 	_avatar.set_look_pitch(_pitch)
 	aim.update_highlight()
 	breaker.update(delta)
-	_update_place_ghost()
+	builder.update_place_ghost()
 	if _hand_light.visible:
 		_hand_light_time += delta
 		TorchLight.flicker(_hand_light, null, _hand_light_time)
@@ -584,9 +582,9 @@ func _edit_block(place: bool) -> void:
 				if spent > 0 and not creative:
 					inventory.take(_hotbar_index, spent)
 			else:
-				_place_torch(target)  # otra antorcha al lado
+				builder.place_torch(target)  # otra antorcha al lado
 		else:
-			_pick_up_placed(target["item"], Input.is_key_pressed(KEY_SHIFT))
+			builder.pick_up_placed(target["item"], Input.is_key_pressed(KEY_SHIFT))
 		return
 	var tool := _terrain.get_voxel_tool()
 	tool.channel = VoxelBuffer.CHANNEL_TYPE
@@ -597,11 +595,11 @@ func _edit_block(place: bool) -> void:
 			block_used.emit(used, used_id)  # abrir el cofre en vez de colocar encima
 			return
 		var cell: Vector3i = target["place"]
-		var id := _shaped_block(get_current_block(), target)
-		if _hang_rope(target):
+		var id := builder.shaped_block(get_current_block(), target)
+		if builder.hang_rope(target):
 			return
 		if id < 0:
-			_place_torch(target)  # las antorchas se clavan en el suelo; el resto no se coloca
+			builder.place_torch(target)  # las antorchas se clavan en el suelo; el resto no se coloca
 			return
 		if not Blocks.is_water(id) and _overlaps_body(cell):
 			return  # no colocar un bloque dentro de uno mismo
@@ -875,71 +873,6 @@ func _pay_step_debt(delta: float) -> void:
 
 # ------------------------------------------------------------------ objetos en el suelo y recetas
 
-## Clic derecho con una antorcha o una hoguera en la mano: se pone en el suelo, donde se apunta.
-func _place_torch(target: Dictionary) -> void:
-	var stack := active_inventory().get_slot(_hotbar_index)
-	if not stack.is_empty() and (stack["id"] in ["torch", "campfire", "bedroll"]):
-		_place_on_ground(target)
-
-
-## Deja en el suelo uno del objeto de la mano, donde se apunta (sobre la cara de arriba de un
-## bloque, o junto a otro objeto ya dejado). Queda en ese punto exacto, girado al azar.
-func _place_on_ground(target: Dictionary) -> bool:
-	if ground == null or target.is_empty():
-		return false
-	var stack := active_inventory().get_slot(_hotbar_index)
-	if stack.is_empty():
-		return false
-	var point: Vector3 = target["point"]
-	var support: Vector3i
-	var yaw := rotation.y + randf_range(-0.6, 0.6)
-	if target.has("item"):
-		var other: PlacedItem = target["item"]
-		var normal_up: Vector3 = target["normal"]
-		if normal_up.y > 0.7:
-			# Apuntando a la cara de arriba de un objeto: se apila encima (fabricar en vertical).
-			if ground.stack_on(other, stack["id"], yaw) == null:
-				notice.emit("No se puede apilar más alto.")
-				return false
-			Sfx.play("colocar", other.global_position, -8.0)
-			if not creative:
-				inventory.take(_hotbar_index, 1)
-			return true
-		point.y = other.base_y  # apuntando a un lado: al suelo, junto a él
-		support = other.support
-	else:
-		var normal: Vector3 = target["normal"]
-		if normal.y < 0.7:
-			return false  # solo sobre superficies horizontales
-		support = target["voxel"]
-	ground.place(point, stack["id"], yaw, support)
-	Sfx.play("colocar", point, -8.0)
-	if not creative:
-		inventory.take(_hotbar_index, 1)
-	return true
-
-
-## Recoge un objeto del suelo; con Mayúsculas, todo el montón que se toca con él.
-func _pick_up_placed(item: PlacedItem, whole_group := false) -> void:
-	var items: Array[PlacedItem] = [item]
-	if whole_group:
-		items = ground.group_of(item)
-	# De arriba abajo, para que no se "caigan" los de encima mientras se recogen.
-	items.sort_custom(func(a: PlacedItem, b: PlacedItem) -> bool: return a.level > b.level)
-	for it in items:
-		if it.item_id == "captain_journal":
-			ground.remove(it)
-			find_journal()
-			continue
-		if not creative and not can_pick_up(it.item_id):
-			notice.emit("No te cabe todo.")
-			return
-		var id := ground.remove(it)
-		if not creative:
-			pick_up(id, 1)
-	Sfx.play("recoger", null, -6.0, 0.15)
-
-
 ## Con una nota en la mano, clic derecho la lee y se aprende lo que enseña.
 func _read_note() -> bool:
 	var stack := active_inventory().get_slot(_hotbar_index)
@@ -1034,33 +967,6 @@ func _play_step(feet_wet: bool, volume_db: float) -> void:
 # ------------------------------------------------------------------ romper manteniendo el clic
 
 
-## Con una antorcha en la mano, apuntando al suelo (o encima de otro objeto):
-## se ve en transparente dónde quedaría al clavarla con clic derecho.
-func _update_place_ghost() -> void:
-	var stack := active_inventory().get_slot(_hotbar_index)
-	var id: String = "" if stack.is_empty() else stack["id"]
-	var target := aim.target() if _captured and not ui_open and id == "torch" else {}
-	var normal: Vector3 = target.get("normal", Vector3.ZERO)
-	if target.is_empty() or normal.y < 0.7:
-		_place_ghost.visible = false
-		return
-	if id != _place_ghost_id:
-		_place_ghost_id = id
-		_place_ghost.mesh = ItemMesh.make(id, 0.3)
-		var material := ItemMesh.make_material(id)
-		material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-		material.albedo_color = Color(1, 1, 1, 0.45)
-		material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-		_place_ghost.material_override = material
-	var pos: Vector3 = target["point"]
-	if target.has("item"):
-		var other: PlacedItem = ground._top_of(target["item"]) if ground != null else target["item"]
-		pos = other.global_position + Vector3.UP * other.height()
-	_place_ghost.global_transform = Transform3D(Basis(Vector3.UP, rotation.y) * Basis(Vector3.RIGHT, -PI / 2.0),
-		pos + Vector3.UP * 0.012)
-	_place_ghost.visible = true
-
-
 # ------------------------------------------------------------------ inventario de rodillas
 
 var _kneeling := false
@@ -1130,44 +1036,3 @@ func _water_push() -> Vector2:
 		var other := WaterFlow.level_of(n) if Blocks.is_water(n) else (0 if n == IslandGenerator.AIR or Blocks.DECOR.has(n) else level)
 		dir += Vector2(d.x, d.z) * float(level - other)
 	return dir.normalized() * FLOW_PUSH if dir.length() > 0.01 else Vector2.ZERO
-# ------------------------------------------------------------------ losas, velas y cuerdas
-
-## La forma del bloque según dónde se coloca: la media losa, abajo si se pone encima de algo,
-## arriba si se pone debajo, y de pie pegada a la cara de al lado si se pone en un lateral; la
-## tela, tendida en el suelo o de pie como una vela si se pone en un lateral.
-func _shaped_block(id: int, target: Dictionary) -> int:
-	var normal: Vector3 = target.get("normal", Vector3.UP)
-	if Blocks.SLABS.has(id):
-		if normal.y > 0.7:
-			return IslandGenerator.SLAB_DOWN
-		if normal.y < -0.7:
-			return IslandGenerator.SLAB_UP
-		if absf(normal.x) > absf(normal.z):
-			return IslandGenerator.SLAB_W if normal.x > 0.0 else IslandGenerator.SLAB_E
-		return IslandGenerator.SLAB_N if normal.z > 0.0 else IslandGenerator.SLAB_S
-	if id == IslandGenerator.CLOTH and absf(normal.y) < 0.7:
-		return IslandGenerator.SAIL_X if absf(normal.x) > absf(normal.z) else IslandGenerator.SAIL_Z
-	return id
-
-
-## Con una cuerda en la mano, clic derecho debajo de un bloque (o sobre una cuerda que cuelga):
-## la cuerda queda colgando (alarga la que ya hay). Devuelve true si se colgó.
-func _hang_rope(target: Dictionary) -> bool:
-	var stack := active_inventory().get_slot(_hotbar_index)
-	if stack.is_empty() or stack["id"] != "rope" or not target.has("voxel"):
-		return false
-	var cell: Vector3i = target["voxel"]
-	var normal: Vector3 = target["normal"]
-	if _tool.get_voxel(cell) == IslandGenerator.ROPE_HANGING:
-		while _tool.get_voxel(cell + Vector3i.DOWN) == IslandGenerator.ROPE_HANGING:
-			cell += Vector3i.DOWN
-	elif normal.y > -0.7:
-		return false  # se cuelga de la cara de abajo de algo
-	var spot := cell + Vector3i.DOWN
-	if _tool.get_voxel(spot) != IslandGenerator.AIR:
-		return false
-	_tool.set_voxel(spot, IslandGenerator.ROPE_HANGING)
-	Sfx.play("colocar", _terrain.to_global(Vector3(spot)) + Vector3.ONE * _terrain.scale.x * 0.5, -6.0)
-	if not creative:
-		inventory.take(_hotbar_index, 1)
-	return true

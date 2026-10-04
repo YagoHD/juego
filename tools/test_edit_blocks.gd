@@ -100,7 +100,7 @@ func _process(_delta: float) -> bool:
 		4:
 			if _wait < 5:
 				return false
-			var ok := player._place_on_ground(player.aim.target())
+			var ok := player.builder.place_on_ground(player.aim.target())
 			print("G deja una cuerda en el suelo: %s" % ("OK" if ok and player.inventory.count_of("rope") == 2 else "FALLO"))
 			_step = 5
 			_wait = 0

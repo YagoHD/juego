@@ -148,7 +148,7 @@ func _run() -> void:
 	var group := _g.group_of(bottom[1])
 	_check("El montón entero son los 7 que quedan", group.size() == 7)
 	_p.inventory.clear()
-	_p._pick_up_placed(bottom[1], true)
+	_p.builder.pick_up_placed(bottom[1], true)
 	_check("Mayús + clic recoge el montón entero", _g._items.is_empty() and _p.inventory.count_of("planks") == 7)
 	_clear()
 
