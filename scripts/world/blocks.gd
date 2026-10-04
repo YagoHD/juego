@@ -7,6 +7,10 @@ const COLORS := {
 	IslandGenerator.DIRT: Color(0.55, 0.40, 0.26),
 	IslandGenerator.STONE: Color(0.50, 0.50, 0.52),
 	IslandGenerator.SAND: Color(0.88, 0.80, 0.56),
+	IslandGenerator.WET_SAND: Color(0.72, 0.58, 0.32),
+	IslandGenerator.GRAVEL: Color(0.55, 0.53, 0.52),
+	IslandGenerator.CLAY: Color(0.78, 0.40, 0.20),
+	IslandGenerator.MUD: Color(0.40, 0.27, 0.16),
 	IslandGenerator.SNOW: Color(0.95, 0.96, 0.98),
 	IslandGenerator.WOOD: Color(0.45, 0.30, 0.17),
 	IslandGenerator.LEAVES: Color(0.24, 0.52, 0.22),
@@ -39,6 +43,10 @@ const NAMES := {
 	IslandGenerator.DIRT: "Tierra",
 	IslandGenerator.STONE: "Piedra",
 	IslandGenerator.SAND: "Arena",
+	IslandGenerator.WET_SAND: "Arena mojada",
+	IslandGenerator.GRAVEL: "Grava",
+	IslandGenerator.CLAY: "Arcilla",
+	IslandGenerator.MUD: "Barro",
 	IslandGenerator.SNOW: "Nieve",
 	IslandGenerator.WOOD: "Madera",
 	IslandGenerator.LEAVES: "Hoja",
@@ -73,7 +81,7 @@ const HOTBAR: Array[int] = [
 	IslandGenerator.LEAVES, IslandGenerator.WATER, IslandGenerator.WHEAT,
 ]
 
-const LAST_ID := IslandGenerator.WATER_FLOW_1 + 6
+const LAST_ID := IslandGenerator.MUD
 
 
 ## Agua de cualquier tipo (fuente, cayendo o corriendo).
@@ -94,6 +102,7 @@ static func is_decor(id: int) -> bool:
 const HARDNESS := {
 	IslandGenerator.LEAVES: 0.3, IslandGenerator.PINE_LEAVES: 0.3, IslandGenerator.WHEAT: 0.1,
 	IslandGenerator.CLOTH: 0.35, IslandGenerator.SNOW: 0.4, IslandGenerator.SAND: 0.55,
+	IslandGenerator.WET_SAND: 0.6, IslandGenerator.GRAVEL: 0.7, IslandGenerator.CLAY: 0.75, IslandGenerator.MUD: 0.5,
 	IslandGenerator.DIRT: 0.6, IslandGenerator.GRASS: 0.7, IslandGenerator.CORRUPT_SOIL: 0.9,
 	IslandGenerator.DRIFTWOOD: 1.6, IslandGenerator.DEAD_WOOD: 1.8, IslandGenerator.PLANKS: 1.8,
 	IslandGenerator.CHEST: 1.8, IslandGenerator.WORKBENCH: 1.8, IslandGenerator.WOOD: 2.4,

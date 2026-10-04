@@ -43,6 +43,11 @@ const ORE := 29          # mineral verde de las montañas (brilla un poco)
 # Agua que corre (ver WaterFlow): cayendo, y de lado con nivel 1 (casi nada) a 7.
 const WATER_FALL := 30
 const WATER_FLOW_1 := 31   # ... hasta 37 (nivel 7)
+# Orillas y fondos (hoja 2 del arte conceptual).
+const WET_SAND := 38     # arena mojada: la franja junto al mar
+const GRAVEL := 39       # grava: fondo de ríos y lagos
+const CLAY := 40         # arcilla: manchas en el fondo de ríos y lagos
+const MUD := 41          # barro: orillas de ríos y lagos
 
 const MAP_DIR := "res://assets/island/"
 const MAP_HALF := 512.0       # los mapas cubren [-MAP_HALF, MAP_HALF] voxels en X y Z (la isla a la mitad
@@ -219,6 +224,14 @@ func _generate_block(out_buffer: VoxelBuffer, origin_in_voxels: Vector3i, lod: i
 				top = _surface[i * 3]
 				sub = _surface[i * 3 + 1]
 				water_top = int(roundf(_w[i]))
+			# Orillas y fondos: arena mojada junto al mar; en ríos y lagos, fondo de grava con
+			# manchas de arcilla, y barro donde el agua toca la hierba.
+			if top == SAND and height >= SEA_LEVEL and height <= SEA_LEVEL + 1:
+				top = WET_SAND
+			elif height > SEA_LEVEL and water_top > height:
+				top = CLAY if _hash01(floori(wx / 4.0) * 3 + 1, floori(wz / 4.0) * 5 + 2) < 0.3 else GRAVEL
+			elif height > SEA_LEVEL and water_top == height and (top == GRASS or top == DIRT):
+				top = MUD
 			var sub_start := height - 1 - DIRT_DEPTH
 			_fill_run(out_buffer, origin_in_voxels, size, x, z, STONE, origin_in_voxels.y, sub_start)
 			_fill_run(out_buffer, origin_in_voxels, size, x, z, sub, sub_start, height - 1)

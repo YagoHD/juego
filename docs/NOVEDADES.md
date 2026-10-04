@@ -156,3 +156,11 @@ Todo lo de Kenney y OpenGameArt es CC0 (créditos en `assets/third_party/*/` y
 - **El recuadro de selección sigue la forma** de lo que apuntas (trozos de árbol y roca, la
   mesa, la alfombra, las plantas...), y las grietas al romper también.
 - **Las plantas y hojas solo se apuntan si apuntas a ellas**, no al hueco de su cubo.
+- **Relieve en los bloques** (de cerca): las juntas, grietas y vetas se hunden, la hierba, la
+  nieve y el musgo sobresalen, los bordes están biselados. El mineral verde y la tierra corrupta
+  brillan y laten. **Flores en 3D** de cubitos y hierba alta en estrella. Espuma pixelada.
+- **Hoja 2**: texturas de los bloques del suelo a más resolución y 4 bloques nuevos:
+  **arena mojada** (orilla del mar), **grava** y **arcilla** (fondo de ríos y lagos) y **barro**
+  (donde el agua toca la hierba). El mundo se vuelve a generar.
+- **Sala de muestras** para revisar el aspecto rápido: `tools/capture.ps1 -Showroom` (o
+  `godot --path . -- --showroom`): un suelo plano con todos los bloques en fila.

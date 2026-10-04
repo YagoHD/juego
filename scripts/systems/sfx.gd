@@ -102,7 +102,7 @@ static func material_of(block_id: int) -> String:
 	if PrefabLibrary.is_prefab(block_id):
 		return {"wood": "madera", "rock": "piedra"}.get(PrefabLibrary.kind(block_id), "hierba")
 	match block_id:
-		IslandGenerator.SAND, IslandGenerator.SNOW:
+		IslandGenerator.SAND, IslandGenerator.SNOW, IslandGenerator.WET_SAND, IslandGenerator.GRAVEL:
 			return "arena"
 		IslandGenerator.STONE, IslandGenerator.MOSSY_STONE, IslandGenerator.ORE:
 			return "piedra"

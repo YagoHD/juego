@@ -12,7 +12,7 @@ const GAP := 2                      # separación entre muestras
 
 ## Bloques que se enseñan (en este orden, de izquierda a derecha).
 static func samples() -> Array[int]:
-	var out: Array[int] = [GRASS, DIRT, SAND, STONE, MOSSY_STONE, SNOW, CORRUPT_SOIL, ORE,
+	var out: Array[int] = [GRASS, DIRT, SAND, WET_SAND, STONE, MOSSY_STONE, SNOW, CORRUPT_SOIL, ORE, GRAVEL, CLAY, MUD,
 		WOOD, PLANKS, DRIFTWOOD, CLOTH, CHEST, WORKBENCH, LOG_X, DEAD_WOOD, WATER,
 		TALL_GRASS, FLOWER_RED, FLOWER_YELLOW, PEBBLES, GROUND_STICKS, SHELL]
 	return out

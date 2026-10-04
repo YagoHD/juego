@@ -51,6 +51,7 @@ const TEXTURES := {
 const PLAIN := ["dirt", "sand", "stone"]
 
 var _img: Image
+var _cubes := CUBES.duplicate()
 
 
 func _init() -> void:
@@ -79,6 +80,7 @@ func _init() -> void:
 		var sprite := _sprite(SPRITES[name])
 		sprite.save_png(ProjectSettings.globalize_path(DECOR_OUT + name + ".png"))
 		print("[planta] ", name)
+	_sheet2()
 	quit()
 
 
@@ -135,7 +137,7 @@ func _sprite(r: Rect2i) -> Image:
 
 ## Cara de un cubo enderezada a SIZE x SIZE (cada píxel, media de 4x4 muestras del dibujo).
 func _face(cube: String, side: String) -> Image:
-	var c: Array = CUBES[cube]
+	var c: Array = _cubes[cube]
 	var t: Vector2 = c[0]
 	var ul: Vector2 = c[1]
 	var ur: Vector2 = c[2]
@@ -197,3 +199,48 @@ func _brighten(img: Image, k: float) -> void:
 		for x in img.get_width():
 			var c := img.get_pixel(x, y)
 			img.set_pixel(x, y, Color(minf(c.r * k, 1.0), minf(c.g * k, 1.0), minf(c.b * k, 1.0), 1.0))
+
+
+# ------------------------------------------------------------------ hoja 2 (bloques del suelo, más grandes)
+
+const SHEET2 := "res://docs/concept/hoja2_bloques.png"
+## Los 12 cubos van en una cuadrícula de 4x3, todos iguales: la esquina de delante de arriba (C)
+## del primero y la separación; las demás esquinas, respecto a C.
+const S2_FIRST := Vector2(192.5, 160.0)
+const S2_STEP := Vector2(380.0, 321.25)
+const S2_NAMES := ["grass", "dirt", "sand", "wet_sand", "stone", "mossy", "snow", "corrupt",
+	"ore", "gravel", "clay", "mud"]
+## Texturas de la hoja 2 (mandan sobre las de la 1: más resolución). Nombre -> [cubo, cara].
+const S2_TEXTURES := {
+	"grass_top": ["grass", "top"], "grass_side": ["grass", "left"],
+	"dirt": ["dirt", "top"], "dirt_side": ["dirt", "left"],
+	"sand": ["sand", "top"], "sand_side": ["sand", "left"],
+	"wet_sand": ["wet_sand", "top"], "wet_sand_side": ["wet_sand", "left"],
+	"stone": ["stone", "top"], "stone_side": ["stone", "left"],
+	"mossy_stone": ["mossy", "top"], "mossy_side": ["mossy", "left"],
+	"snow": ["snow", "top"], "snow_side": ["snow", "left"],
+	"corrupt_top": ["corrupt", "top"], "corrupt_side": ["corrupt", "left"],
+	"ore": ["ore", "top"], "ore_side": ["ore", "left"],
+	"gravel": ["gravel", "top"], "gravel_side": ["gravel", "left"],
+	"clay": ["clay", "top"], "clay_side": ["clay", "left"],
+	"mud": ["mud", "top"], "mud_side": ["mud", "left"],
+}
+
+
+func _sheet2() -> void:
+	_img = Image.load_from_file(ProjectSettings.globalize_path(SHEET2))
+	_img.convert(Image.FORMAT_RGBA8)
+	for i in S2_NAMES.size():
+		var c := S2_FIRST + Vector2(i % 4, i / 4) * S2_STEP
+		_cubes["s2_" + S2_NAMES[i]] = [c + Vector2(4, -116), c + Vector2(-123, -58), c + Vector2(127, -58), c + Vector2(0, 136)]
+	var ratio := {"left": 0.0, "right": 0.0}
+	for cube in ["s2_dirt", "s2_sand", "s2_stone"]:
+		var top := _lum(_face(cube, "top"))
+		ratio["left"] += top / _lum(_face(cube, "left")) / 3.0
+		ratio["right"] += top / _lum(_face(cube, "right")) / 3.0
+	for name: String in S2_TEXTURES:
+		var side: String = S2_TEXTURES[name][1]
+		var tex := _face("s2_" + S2_TEXTURES[name][0], side)
+		_brighten(tex, (float(ratio[side]) * 0.9 if side != "top" else 1.0) * EXPOSURE)
+		tex.save_png(ProjectSettings.globalize_path(OUT + name + ".png"))
+		print("[textura hoja 2] ", name)

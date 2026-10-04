@@ -68,7 +68,7 @@ static func bake_height(img: Image, name: String) -> void:
 						height += 0.25
 			# Bisel: el borde de la cara baja.
 			var edge := mini(mini(x, w - 1 - x), mini(y, h - 1 - y))
-			if edge < 2:
-				height -= (2 - edge) * 0.14
+			if edge < 1:
+				height -= 0.1
 			c.a = clampf(height, 0.0, 1.0)
 			img.set_pixel(x, y, c)
