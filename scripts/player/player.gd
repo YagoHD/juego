@@ -1569,7 +1569,7 @@ func _water_push() -> Vector2:
 static func shape_box(id: int) -> AABB:
 	if id == IslandGenerator.CLOTH:
 		return AABB(Vector3.ZERO, Vector3(1.0, 1.0 / 16.0, 1.0))
-	if id in [IslandGenerator.TALL_GRASS, IslandGenerator.FLOWER_RED, IslandGenerator.FLOWER_YELLOW]:
+	if id == IslandGenerator.TALL_GRASS:
 		return AABB(Vector3(0.12, 0.0, 0.12), Vector3(0.76, 0.9, 0.76))
 	if DecorModels.piece_of(id) >= 0:
 		return PrefabLibrary.box(DecorModels.piece_of(id))

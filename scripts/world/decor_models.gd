@@ -10,8 +10,8 @@ const S := 16
 static func make_model(id: int) -> VoxelBlockyModelMesh:
 	var model := VoxelBlockyModelMesh.new()
 	match id:
-		IslandGenerator.TALL_GRASS, IslandGenerator.FLOWER_RED, IslandGenerator.FLOWER_YELLOW:
-			model.mesh = _cross()
+		IslandGenerator.TALL_GRASS, IslandGenerator.FLOWER_RED, IslandGenerator.FLOWER_YELLOW when piece_of(id) < 0:
+			model.mesh = _cross(3 if id == IslandGenerator.TALL_GRASS else 2)
 			model.set_material_override(0, _cutout_material(_plant_image(id)))
 		_:
 			var piece := piece_of(id)
@@ -30,13 +30,15 @@ static func make_model(id: int) -> VoxelBlockyModelMesh:
 
 # ------------------------------------------------------------------ plantas: planos cruzados
 
-static func _cross() -> ArrayMesh:
+## Planos que se cruzan por el centro: 2 (en X) o 3 (en estrella, con más volumen).
+static func _cross(count := 2) -> ArrayMesh:
 	var st := SurfaceTool.new()
 	st.begin(Mesh.PRIMITIVE_TRIANGLES)
-	var planes := [
-		[Vector3(0.1, 0, 0.1), Vector3(0.9, 0, 0.9)],
-		[Vector3(0.1, 0, 0.9), Vector3(0.9, 0, 0.1)],
-	]
+	var planes := []
+	for k in count:
+		var a := PI * 0.25 + PI * k / count
+		var d := Vector3(cos(a), 0.0, sin(a)) * 0.56
+		planes.append([Vector3(0.5, 0, 0.5) - d, Vector3(0.5, 0, 0.5) + d])
 	for p in planes:
 		var a: Vector3 = p[0]
 		var b: Vector3 = p[1]
@@ -67,6 +69,8 @@ const PIECES := {
 	IslandGenerator.PEBBLES: "decor_pebbles",
 	IslandGenerator.GROUND_STICKS: "decor_sticks",
 	IslandGenerator.SHELL: "decor_shell",
+	IslandGenerator.FLOWER_RED: "decor_flower_red",
+	IslandGenerator.FLOWER_YELLOW: "decor_flower_yellow",
 }
 
 

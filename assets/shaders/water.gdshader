@@ -35,21 +35,24 @@ float ripples(vec2 p) {
 }
 
 void fragment() {
+	// Píxeles del mismo tamaño que los de los bloques (32 por bloque de medio metro): la espuma
+	// se ve pixelada, como en el arte conceptual.
+	vec3 wp = floor(world_pos * 64.0) / 64.0;
 	vec2 p;
 	vec2 flow;
 	float speed;
 	if (world_normal.y > 0.5) {
 		// Arriba: según la corriente del río (en los lagos, apenas se mueve).
-		vec2 muv = (world_pos.xz / voxel_size + map_half) / (2.0 * map_half);
+		vec2 muv = (wp.xz / voxel_size + map_half) / (2.0 * map_half);
 		vec3 f = texture(flow_map, muv).rgb;
 		flow = (f.rg * 2.0 - 1.0) * f.b;
 		speed = 0.25 + f.b;
-		p = world_pos.xz * 1.6;
+		p = wp.xz * 1.6;
 	} else {
 		// Los lados: el agua baja.
 		flow = vec2(0.0, -1.0);
 		speed = 2.0;
-		p = vec2(world_pos.x + world_pos.z, world_pos.y) * 1.6;
+		p = vec2(wp.x + wp.z, wp.y) * 1.6;
 	}
 	// Dos capas desfasadas que se van turnando (así la textura no se estira sin fin).
 	float t = TIME * 0.35;
@@ -59,7 +62,7 @@ void fragment() {
 	float r0 = ripples(p + drift - flow * ph0 * speed * 3.0);
 	float r1 = ripples(p + drift - flow * ph1 * speed * 3.0 + 3.7);
 	float r = mix(r0, r1, abs(1.0 - 2.0 * ph0));
-	float foam = smoothstep(0.6, 0.78, r);
+	float foam = step(0.66, r) * 0.8 + step(0.74, r) * 0.2;  // espuma en escalones, sin degradado
 	ALBEDO = mix(water_color.rgb, foam_color.rgb, foam * 0.55);
 	ALPHA = clamp(water_color.a + foam * 0.12, 0.0, 1.0);
 	ROUGHNESS = 0.3;

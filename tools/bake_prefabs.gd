@@ -245,6 +245,29 @@ func _shell() -> Prefab:
 	return _decor_prefab("decor_shell", sub, "rock")
 
 
+## Flor en 3D a partir de su dibujo (assets/textures/decor/, sacado del arte conceptual): se
+## mira de frente y de lado con el mismo dibujo y se rellena lo que se ve desde las dos vistas.
+func _flower(prefab_name: String, sprite_path: String) -> Prefab:
+	var img := Image.load_from_file(ProjectSettings.globalize_path(sprite_path))
+	img.convert(Image.FORMAT_RGBA8)
+	var r := BENCH_RES
+	img.resize(r, r, Image.INTERPOLATE_NEAREST)
+	var sub := {}
+	var mid := r / 2
+	for y in r:
+		for x in r:
+			var col := img.get_pixel(x, r - 1 - y)
+			var sat := maxf(col.r, maxf(col.g, col.b)) - minf(col.r, minf(col.g, col.b))
+			if col.a < 0.5 or sat < 0.12:
+				continue  # transparente, o resto gris de la sombra del dibujo
+			col.a = 1.0
+			# Dos planos cruzados de 2 cubitos de grueso: la planta tiene volumen desde cualquier lado.
+			for k in [mid - 1, mid]:
+				sub[Vector3i(x, y, k)] = col
+				sub[Vector3i(k, y, x)] = col.darkened(0.08)
+	return _decor_prefab(prefab_name, sub, "crop")
+
+
 ## Cubitos de una pieza: "full" (bloque entero), "round" (sin las aristas: la piel redondeada de
 ## una copa) o "x"/"y"/"z" (tronco fino de 3x3 cubitos a lo largo de ese eje, con vetas).
 func _shape(color: Color, kind: String) -> Dictionary:
@@ -290,6 +313,8 @@ func _init() -> void:
 	prefabs.append(_pebbles())
 	prefabs.append(_sticks())
 	prefabs.append(_shell())
+	prefabs.append(_flower("decor_flower_red", "res://assets/textures/decor/flower_red.png"))
+	prefabs.append(_flower("decor_flower_yellow", "res://assets/textures/decor/flower_yellow.png"))
 	# Paleta: una fila de colores; luego, las UV de cada pieza apuntan a su color.
 	var img := Image.create(maxi(_palette_list.size(), 1), 1, false, Image.FORMAT_RGBA8)
 	for i in _palette_list.size():

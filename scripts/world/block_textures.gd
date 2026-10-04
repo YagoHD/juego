@@ -45,6 +45,7 @@ const FACES := {
 }
 
 static var _atlas: ImageTexture
+static var _relief_atlas: ImageTexture  # el mismo atlas con la altura de cada píxel en el alfa
 static var _tiles := {}  # nombre -> Vector2i (posición en el atlas, en tiles)
 static var _averages := {}  # nombre -> Color medio de la textura
 
@@ -160,13 +161,22 @@ static func _build() -> void:
 	var width := COLUMNS * TILE
 	var height := rows * TILE
 	var images: Array[Image] = []
+	var reliefs: Array[Image] = []
 	for i in names.size():
 		_tiles[names[i]] = Vector2i(i % COLUMNS, i / COLUMNS)
 		var img := _texture(names[i])
-		images.append(img)
 		_averages[names[i]] = _average(img)
+		images.append(img)
+		var relief := img.duplicate() as Image
+		if names[i] != "water":
+			Relief.bake_height(relief, names[i])  # el relieve va en el canal alfa
+		reliefs.append(relief)
+	_atlas = _make_atlas(names, images, width, height)
+	_relief_atlas = _make_atlas(names, reliefs, width, height)
 
-	# Cadena de mipmaps hecha tile a tile (los tiles no se mezclan entre sí).
+
+## Atlas con su cadena de mipmaps hecha tile a tile (los tiles no se mezclan entre sí).
+static func _make_atlas(names: Array[String], images: Array[Image], width: int, height: int) -> ImageTexture:
 	var data := PackedByteArray()
 	var level_size := Vector2i(width, height)
 	var tile := TILE
@@ -191,7 +201,7 @@ static func _build() -> void:
 		level_size = Vector2i(maxi(level_size.x / 2, 1), maxi(level_size.y / 2, 1))
 		tile = tile / 2 if tile > 1 else 0
 	var atlas_image := Image.create_from_data(width, height, true, Image.FORMAT_RGBA8, data)
-	_atlas = ImageTexture.create_from_image(atlas_image)
+	return ImageTexture.create_from_image(atlas_image)
 
 
 static func _texture(name: String) -> Image:
@@ -261,3 +271,23 @@ static func _average(img: Image) -> Color:
 		for x in img.get_width():
 			sum += img.get_pixel(x, y)
 	return sum / float(img.get_width() * img.get_height())
+
+
+## Material de los bloques del mundo con relieve (assets/shaders/blocks.gdshader): de cerca,
+## las texturas tienen profundidad como en el arte conceptual.
+static func make_terrain_material() -> ShaderMaterial:
+	atlas()
+	var mat := ShaderMaterial.new()
+	mat.shader = load("res://assets/shaders/blocks.gdshader")
+	mat.set_shader_parameter("atlas", _relief_atlas)
+	mat.set_shader_parameter("grid", Vector2(atlas_size_in_tiles()))
+	mat.set_shader_parameter("tile_px", float(TILE))
+	var glow: Array[Vector2] = []
+	for n in ["ore", "ore_side", "corrupt_top", "corrupt_side"]:
+		if _tiles.has(n):
+			glow.append(Vector2(_tiles[n]))
+	while glow.size() < 6:
+		glow.append(Vector2(-1, -1))
+	mat.set_shader_parameter("glow_tiles", PackedVector2Array(glow))
+	mat.set_shader_parameter("glow_count", 4)
+	return mat
