@@ -28,6 +28,7 @@ const MAX_LOAD_SECONDS := 60.0  # tope de seguridad: entrar aunque no haya "term
 const WORLD_DIR := "user://world"
 const TEST_WORLD_DIR := "user://world_test"
 
+
 ## Modo prueba (pruebas automáticas y capturas): usa un mundo aparte que se crea limpio cada vez,
 ## para no tocar nunca el mundo guardado del jugador.
 static var test_mode := false
@@ -50,6 +51,7 @@ var _sea_check := 0.0
 var _objectives: Objectives
 var _last_drift_day := 1        # último día en que el mar trajo restos
 var _open_chest: ChestVisual       # el cofre que se está mirando (con la tapa levantada)
+var _capture: CaptureMode          # modo captura (solo con "--capture="; si no, null)
 var _session: CraftSession     # inventario de rodillas y vista de fabricar
 var _crosshair: Label
 var _needs: Needs
@@ -73,6 +75,10 @@ var _world_is_new := false
 
 func _ready() -> void:
 	Settings.load_settings()
+	if _arg("--capture=") != "":
+		_capture = CaptureMode.new()
+		_capture.main = self
+		add_child(_capture)
 	if _showroom():
 		test_mode = true  # mundo de pruebas: no toca la partida
 	if _arg("--textures=") != "":  # capturas: probar un paquete de texturas
@@ -113,48 +119,11 @@ func _save_world() -> void:
 # ------------------------------------------------------------------ mundo
 
 func _build_world() -> void:
-	var library := VoxelBlockyLibrary.new()
-	library.add_model(VoxelBlockyModelEmpty.new())  # 0 AIR
-	# Todos los bloques comparten un material con el atlas de texturas (se dibujan más rápido);
-	# el agua lleva su propia versión translúcida.
-	var solid := BlockTextures.make_terrain_material()  # con relieve, como en el arte conceptual
 	_generator = ShowroomGenerator.new() if _showroom() else IslandGenerator.new()
-	var water := _make_water_material()
-	for id in range(1, Blocks.LAST_ID + 1):
-		if id == IslandGenerator.WATER_FALL:
-			library.add_model(_make_flow(1.0, water))
-		elif id >= IslandGenerator.WATER_FLOW_1 and id <= IslandGenerator.WATER_FLOW_1 + 6:
-			library.add_model(_make_flow(WaterFlow.level_of(id) / 8.0, water))
-		elif id == IslandGenerator.WATER:
-			library.add_model(_make_water(water))
-		elif Blocks.SLABS.has(id):
-			library.add_model(_make_partial(id, Blocks.SLABS[id], solid, true))
-		elif Blocks.THIN.has(id):
-			library.add_model(_make_partial(id, Blocks.THIN[id], solid, false))
-		elif id == IslandGenerator.CHEST or id == IslandGenerator.CHEST_OPEN:  # cofre de cubitos (como el del concepto)
-			library.add_model(PrefabLibrary.make_model(PrefabLibrary.first_id(BlockAim.SHAPED[id])))
-		elif id == IslandGenerator.STUMP:
-			library.add_model(PrefabLibrary.make_model(PrefabLibrary.first_id("stump_block")))
-		elif id == IslandGenerator.WORKBENCH:
-			library.add_model(_make_bench())
-		elif id == IslandGenerator.CLOTH:
-			library.add_model(_make_carpet(id, solid))
-		elif id == IslandGenerator.ORE:
-			library.add_model(_make_cube(id, solid))  # el mineral brilla (lo hace el material de los bloques)
-		elif Blocks.is_decor(id):
-			library.add_model(DecorModels.make_model(id))  # hierba, flores, piedrecitas...
-		else:
-			library.add_model(_make_cube(id, solid))
-	# Huecos hasta los prefabs (ids libres para bloques futuros) y las piezas de los prefabs.
-	for id in range(Blocks.LAST_ID + 1, PrefabLibrary.FIRST_ID):
-		library.add_model(VoxelBlockyModelEmpty.new())
-	for id in range(PrefabLibrary.FIRST_ID, PrefabLibrary.last_id() + 1):
-		library.add_model(PrefabLibrary.make_model(id))  # palmeras, rocas... troceadas
-	library.bake()
+	var library := BlockModels.build_library(_generator)
 
 	var mesher := VoxelMesherBlocky.new()
 	mesher.library = library
-
 
 	var terrain := VoxelTerrain.new()
 	terrain.mesher = mesher
@@ -233,71 +202,6 @@ func _build_sea() -> void:
 	mat.shader = load("res://assets/shaders/sea.gdshader")
 	water.material_override = mat
 	add_child(water)
-
-
-func _make_cube(id: int, material: Material) -> VoxelBlockyModelCube:
-	# Cubo con las texturas del atlas: arriba, lados y abajo según BlockTextures.FACES.
-	var cube := VoxelBlockyModelCube.new()
-	cube.atlas_size_in_tiles = BlockTextures.atlas_size_in_tiles()
-	var sides := {
-		VoxelBlockyModel.SIDE_POSITIVE_Y: Vector3i.UP, VoxelBlockyModel.SIDE_NEGATIVE_Y: Vector3i.DOWN,
-		VoxelBlockyModel.SIDE_POSITIVE_X: Vector3i.RIGHT, VoxelBlockyModel.SIDE_NEGATIVE_X: Vector3i.LEFT,
-		VoxelBlockyModel.SIDE_POSITIVE_Z: Vector3i.BACK, VoxelBlockyModel.SIDE_NEGATIVE_Z: Vector3i.FORWARD,
-	}
-	for side: int in sides:
-		cube.set_tile(side, BlockTextures.side_tile(id, sides[side]))
-	cube.set_material_override(0, material)
-	return cube
-
-
-func _make_carpet(id: int, material: Material) -> VoxelBlockyModelCube:
-	# Capa fina tumbada en el suelo (como la alfombra de Minecraft): 1/16 de bloque de alto.
-	# No tapa las caras de los bloques vecinos (si no, el suelo de debajo se vería hueco).
-	var cube := _make_cube(id, material)
-	cube.height = 1.0 / 16.0
-	cube.culls_neighbors = false
-	return cube
-
-
-## Material del agua (ríos, lagos y la que corre): color liso con ondas que siguen la corriente.
-func _make_water_material() -> ShaderMaterial:
-	var mat := ShaderMaterial.new()
-	mat.shader = load("res://assets/shaders/water.gdshader")
-	mat.set_shader_parameter("flow_map", ImageTexture.create_from_image(_generator.build_flow()))
-	mat.set_shader_parameter("map_half", IslandGenerator.MAP_HALF)
-	mat.set_shader_parameter("voxel_size", VOXEL_SIZE)
-	mat.set_shader_parameter("water_color", Color(0.13, 0.6, 0.72, 0.74))  # turquesa, como en el concepto
-	mat.set_shader_parameter("foam_color", Color(0.78, 0.96, 0.97))
-	return mat
-
-
-## Agua que corre: una caja de la altura de su nivel (1 = bloque entero, la que cae).
-func _make_flow(height: float, material: Material) -> VoxelBlockyModelMesh:
-	var box := BoxMesh.new()
-	box.size = Vector3(1.0, height, 1.0)
-	var arrays := box.get_mesh_arrays()
-	var verts: PackedVector3Array = arrays[Mesh.ARRAY_VERTEX]
-	for i in verts.size():
-		verts[i] += Vector3(0.5, height * 0.5, 0.5)
-	arrays[Mesh.ARRAY_VERTEX] = verts
-	var mesh := ArrayMesh.new()
-	mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
-	var model := VoxelBlockyModelMesh.new()
-	model.mesh = mesh
-	model.set_material_override(0, material)
-	model.transparency_index = 1  # como el agua quieta: no se dibujan las caras entre aguas
-	model.culls_neighbors = true
-	model.set_mesh_collision_enabled(0, false)
-	model.collision_aabbs = []
-	return model
-
-
-func _make_water(material: Material) -> VoxelBlockyModelCube:
-	# Agua de ríos y lagos: translúcida, sin caras internas y atravesable.
-	var cube := _make_cube(IslandGenerator.WATER, material)
-	cube.transparency_index = 1
-	cube.set_mesh_collision_enabled(0, false)
-	return cube
 
 
 func _build_player() -> void:
@@ -395,8 +299,8 @@ func _build_loading_overlay() -> void:
 func _update_loading() -> void:
 	if _waiting_play:
 		if OS.get_cmdline_user_args().has("--title"):  # captura de la pantalla de título
-			_capture_frames += 1
-			if _capture_frames == 60:
+			_capture.frames += 1
+			if _capture.frames == 60:
 				get_viewport().get_texture().get_image().save_png(_arg("--capture="))
 				print("[captura] guardada en ", _arg("--capture="))
 				get_tree().quit()
@@ -583,150 +487,11 @@ func _process(delta: float) -> void:
 		_help.offset_left = -16 - help_size.x
 		_help.offset_top = -help_size.y * 0.5
 		_help.offset_bottom = help_size.y * 0.5
-	_update_capture()
+	if _capture != null:
+		_capture.update()
 
 
 # ------------------------------------------------------------------ capturas (para pruebas)
-
-# Modo captura: arranca, coloca la cámara, guarda una imagen y sale. Sirve para revisar el
-# aspecto del juego sin tener que jugar. Ejemplo:
-#   godot --path . -- --capture=C:/tmp/foto.png --tp --pitch=-0.3 --yaw=40 --up=30
-var _capture_frames := -1
-
-func _update_capture() -> void:
-	var path := _arg("--capture=")
-	if path == "":
-		return
-	if _capture_frames < 0:
-		if not _player.is_on_ground_ready():
-			return
-		var at := _arg("--at=")  # "x,z" en voxels: teletransporte (volando) a ese punto
-		if at != "":
-			var xz := at.split(",")
-			var vx := int(xz[0])
-			var vz := int(xz[1])
-			var ground := _generator.get_ground_height(vx, vz)
-			_player.global_position = Vector3(vx, ground + 2, vz) * VOXEL_SIZE
-		_player.debug_pose(OS.get_cmdline_user_args().has("--tp"), float(_arg("--pitch=", "0")),
-			float(_arg("--yaw=", str(rad_to_deg(_player.rotation.y)))), float(_arg("--up=", "0")) + (0.01 if at != "" else 0.0))
-		var wear := _arg("--wear=")  # ropa para la foto: "shirt,pants,belt,backpack"
-		if wear != "":
-			for id in wear.split(","):
-				_player.equip(ItemDB.wear_slot(id), id)
-		var give := _arg("--give=")  # objetos para la foto: "stone:12,dirt:30"
-		if give != "":
-			_player.inventory.clear()
-			for entry in give.split(","):
-				var pair := entry.split(":")
-				_player.pick_up(pair[0], int(pair[1]))
-		if OS.get_cmdline_user_args().has("--rain"):  # que llueva ya
-			_player.weather.force(true)
-		if OS.get_cmdline_user_args().has("--campfire"):  # hoguera encendida delante
-			var cf := -_player.global_basis.z
-			var cp: Vector3 = _player.global_position + Vector3(cf.x, 0, cf.z).normalized() * 2.2
-			var chit := get_world_3d().direct_space_state.intersect_ray(PhysicsRayQueryParameters3D.create(cp + Vector3.UP * 3.0, cp + Vector3.DOWN * 6.0))
-			if not chit.is_empty():
-				var cpt: Vector3 = chit.position
-				var fire := _ground.place(cpt, "campfire", 0.0, Vector3i((cpt / VOXEL_SIZE - Vector3(0, 0.5, 0)).floor()))
-				fire.campfire.set_state({"lit": true, "fuel": 300.0})
-		if OS.get_cmdline_user_args().has("--torches"):  # dos antorchas clavadas delante
-			var fwd := -_player.global_basis.z
-			for k in [-1.2, 1.2]:
-				var p: Vector3 = _player.global_position + Vector3(fwd.x, 0, fwd.z).normalized() * 3.0 + _player.global_basis.x * float(k)
-				var hit := get_world_3d().direct_space_state.intersect_ray(PhysicsRayQueryParameters3D.create(p + Vector3.UP * 3.0, p + Vector3.DOWN * 6.0))
-				if not hit.is_empty():
-					var pt: Vector3 = hit.position
-					_ground.place(pt, "torch", 0.0, Vector3i((pt / VOXEL_SIZE - Vector3(0, 0.5, 0)).floor()))
-		if OS.get_cmdline_user_args().has("--showcase"):  # modelos voxelizados delante (pruebas de estilo)
-			var fwd := -_player.global_basis.z
-			fwd.y = 0.0
-			var names := ["palmera", "roca", "setas"]
-			for k in names.size():
-				var model_path := "res://assets/models/voxel/%s.res" % names[k]
-				if not ResourceLoader.exists(model_path):
-					continue
-				var show := MeshInstance3D.new()
-				show.mesh = load(model_path)
-				add_child(show)
-				var p: Vector3 = _player.global_position + fwd.normalized() * (4.0 + k * 0.5) + _player.global_basis.x * (float(k) - 1.0) * 2.2
-				var hit := get_world_3d().direct_space_state.intersect_ray(PhysicsRayQueryParameters3D.create(p + Vector3.UP * 4.0, p + Vector3.DOWN * 8.0))
-				show.global_position = hit.position if not hit.is_empty() else p
-		if OS.get_cmdline_user_args().has("--bench"):
-			_debug_bench()
-		var shape := _arg("--shape=")  # receta dibujada en el suelo delante del jugador
-		if shape != "":
-			_debug_lay_shape(shape)
-		if OS.get_cmdline_user_args().has("--working"):
-			_player.debug_work_pose()
-		if _arg("--drop=") != "":  # soltar un objeto delante del jugador para verlo en el suelo
-			var forward := -_player.global_basis.z
-			ItemDrop.spawn(self, _player.global_position + forward * 1.6 + Vector3.UP, _arg("--drop="), 1)
-		if OS.get_cmdline_user_args().has("--journal"):  # recoger el diario y abrirlo en la página --page
-			_player.find_journal()
-			for r in _arg("--learn=").split(",", false):
-				_player.learn(r)
-			open_journal()
-			_journal._spread = int(_arg("--page=", "0"))
-			_journal.open()
-		if _arg("--cracks=") != "":  # grietas en el bloque apuntado, con ese avance (0..1)
-			var t := _player.aim.target()
-			if t.has("voxel"):
-				_player.breaker.debug_cracks = true
-				_player.breaker.cracks.show_on(_terrain.to_global(Vector3(t["voxel"])), VOXEL_SIZE, float(_arg("--cracks=")))
-		if OS.get_cmdline_user_args().has("--pause"):  # menú de pausa a la vista (sin pausar: la foto debe salir)
-			_pause.visible = true
-		if OS.get_cmdline_user_args().has("--help"):
-			_help_on = true
-		if OS.get_cmdline_user_args().has("--inventory"):
-			open_inventory()
-		if OS.get_cmdline_user_args().has("--craft"):  # inventario de rodillas y vista de fabricar
-			_player.inventory.add("fiber", 3)
-			open_inventory()
-			_session._enter_craft()
-			_player.learn("rope")
-			var c := GroundRecipes.CELL
-			var base := (_session._area_center / c).floor() * c + Vector3(0.5, 0, 0.5) * c
-			for i in 3:
-				var p := base + Vector3(c * (i - 1) + randf_range(-0.07, 0.07), 0, randf_range(-0.07, 0.07))
-				p.y = _session._ground_y(p)
-				_session._placed.append(_ground.place(p, "fiber", randf() * TAU, Vector3i((p / VOXEL_SIZE - Vector3(0, 0.5, 0)).floor())))
-		if OS.get_cmdline_user_args().has("--open-chest"):  # abrir el cofre más cercano (con algo dentro)
-			var me := Vector3i((_player.global_position / VOXEL_SIZE).floor())
-			for d in 14:
-				var found := false
-				for x in range(-d, d + 1):
-					for z in range(-d, d + 1):
-						for y in range(-3, 4):
-							var c := me + Vector3i(x, y, z)
-							if not found and _terrain.get_voxel_tool().get_voxel(c) == IslandGenerator.CHEST:
-								var box := _chests.get_or_create(c)
-								if range(box.size()).all(func(i: int) -> bool: return box.get_slot(i).is_empty()):
-									for item in [["rope", 5], ["wood", 30], ["berries", 12], ["stone_axe", 1], ["flint", 3], ["cloth", 8]]:
-										box.add(item[0], item[1])
-								# Solo el cofre (sin la ventana, que lo taparía), con el jugador delante mirándolo.
-								_open_chest = ChestVisual.open_at(self, _terrain, c, box)
-								_player.global_position = (Vector3(c) + Vector3(0.5, 0.0, -2.2)) * VOXEL_SIZE
-								_player.rotation.y = PI
-								found = true
-				if found:
-					break
-		var time := _arg("--time=")  # hora del día para la foto, p. ej. "19.4" (atardecer)
-		if time != "":
-			_day_night.set_hour(float(time))
-		var action := _arg("--action=")  # "nombre:t", p. ej. "voltereta:0.5"
-		if action != "":
-			var parts := action.split(":")
-			_player.debug_avatar_action(parts[0], float(parts[1]))
-		_capture_frames = int(_arg("--wait=", "90"))
-		return
-	_capture_frames -= 1
-	var swing_at := int(_arg("--swing=", "-1"))  # frames antes de la foto en que lanzar un golpe
-	if _capture_frames == swing_at:
-		_player.debug_swing()
-	if _capture_frames == 0:
-		get_viewport().get_texture().get_image().save_png(path)
-		print("[captura] guardada en ", path)
-		get_tree().quit()
 
 
 func _arg(prefix: String, default := "") -> String:
@@ -986,29 +751,6 @@ func _show_notice(text: String) -> void:
 	_notice_time = 4.0
 
 
-## Solo capturas: aprende la receta y deja su forma en el suelo, delante del jugador.
-func _debug_lay_shape(recipe_id: String) -> void:
-	_player.learn(recipe_id)
-	# Ejes del mundo más parecidos a "delante" y "derecha" (la cuadrícula invisible va alineada
-	# con el mundo), y el origen en el centro de una celda.
-	var f := -_player.global_basis.z
-	var forward := Vector3(signf(f.x), 0, 0) if absf(f.x) > absf(f.z) else Vector3(0, 0, signf(f.z))
-	var right := forward.cross(Vector3.UP)
-	var origin := _player.global_position + forward * 1.1 - right * 0.3
-	origin = (origin / GroundRecipes.CELL).floor() * GroundRecipes.CELL + Vector3(0.5, 0, 0.5) * GroundRecipes.CELL
-	var space := get_world_3d().direct_space_state
-	var cells := GroundRecipes.cells_of(recipe_id)
-	for c: Vector2i in cells:
-		var p := origin + right * (c.x * GroundRecipes.CELL) + forward * (c.y * GroundRecipes.CELL) \
-			+ Vector3(randf_range(-0.08, 0.08), 0, randf_range(-0.08, 0.08))  # sueltos, sin anclar
-		var hit := space.intersect_ray(PhysicsRayQueryParameters3D.create(p + Vector3.UP * 2.0, p + Vector3.DOWN * 4.0))
-		if hit.is_empty():
-			continue
-		var point: Vector3 = hit.position
-		var support := Vector3i((point / VOXEL_SIZE - Vector3(0, 0.5, 0)).floor())
-		_ground.place(point, cells[c], randf() * TAU, support)
-
-
 # ------------------------------------------------------------------ diario del capitán
 
 func open_journal() -> void:
@@ -1060,27 +802,6 @@ func _update_ambience(delta: float) -> void:
 	_sfx.sea_amount = (sea / 12.0) * clampf(1.0 - height_above / 30.0, 0.0, 1.0) * 1.6
 
 
-## Solo capturas: dos mesas de trabajo delante del jugador, con el pico a medio montar encima.
-func _debug_bench() -> void:
-	var f := -_player.global_basis.z
-	var forward := Vector3i(int(signf(f.x)), 0, 0) if absf(f.x) > absf(f.z) else Vector3i(0, 0, int(signf(f.z)))
-	var right := Vector3i(Vector3(forward).cross(Vector3.UP))
-	var feet := Vector3i((_player.global_position / VOXEL_SIZE).floor())
-	var tool := _terrain.get_voxel_tool()
-	tool.channel = VoxelBuffer.CHANNEL_TYPE
-	var cells := [feet + forward * 3, feet + forward * 3 + right]
-	for c: Vector3i in cells:
-		tool.set_voxel(c, IslandGenerator.WORKBENCH)
-		tool.set_voxel(c + Vector3i.UP, IslandGenerator.AIR)
-	_player.learn("stone_pick")
-	var top := (Vector3(cells[0]) + Vector3(0.25, 1.0, 0.25)) * VOXEL_SIZE
-	var cell := GroundRecipes.CELL
-	var a := _ground.place(top, "sticks", 0.3, cells[0])
-	_ground.place(top + Vector3(0, 0, cell), "sticks", -0.2, cells[0])
-	_ground.place(top + Vector3(cell, 0, 0), "rope", 0.5, cells[0])
-	_ground.stack_on(a, "stone", 0.1)
-
-
 # ------------------------------------------------------------------ el mar trae cosas
 
 ## Lo que puede venir en una caja a la deriva: [objeto, mínimo, máximo, probabilidad].
@@ -1089,6 +810,7 @@ const DRIFT_LOOT := [
 	["wood", 1, 2, 0.3], ["berries", 2, 5, 0.5], ["shell", 1, 2, 0.3], ["sticks", 1, 3, 0.3],
 	["pants", 1, 1, 0.12], ["belt", 1, 1, 0.08], ["resin", 1, 2, 0.15], ["flint", 1, 1, 0.15],
 ]
+
 
 ## 2 o 3 cajas aparecen en la arena de la orilla, cerca del naufragio, con restos al azar.
 func _drift_ashore() -> void:
@@ -1213,22 +935,3 @@ func _spawn_raft(data: Variant) -> void:
 	boat.add_to_group("rafts")
 	boat.global_position = Vector3(float(pos[0]), boat.sea_y(), float(pos[1]))
 	boat.rotation.y = float(data.get("yaw", 0.0))
-
-
-## Mesa de trabajo: el modelo de cubitos del arte conceptual (tools/bake_prefabs.gd), que choca
-## como un bloque entero (el martillo y el trapo que sobresalen no estorban).
-func _make_bench() -> VoxelBlockyModelMesh:
-	var model := PrefabLibrary.make_model(PrefabLibrary.first_id("workbench"))
-	model.collision_aabbs = [AABB(Vector3.ZERO, Vector3.ONE)]
-	return model
-
-
-## Bloque que solo ocupa una parte de su hueco (media losa, vela, cuerda): una caja con las
-## texturas del bloque, que choca solo donde está.
-func _make_partial(id: int, box: AABB, material: Material, culls: bool) -> VoxelBlockyModelMesh:
-	var model := VoxelBlockyModelMesh.new()
-	model.mesh = BlockTextures.make_box_mesh(id, box)
-	model.set_material_override(0, material)
-	model.collision_aabbs = [box]
-	model.culls_neighbors = culls  # las losas tapan la cara del vecino que cubren entera
-	return model
