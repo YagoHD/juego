@@ -7,7 +7,7 @@ const DIR := "res://assets/models/prefabs/"
 const NAMES := ["palm_tall", "palm_bend", "palm_short", "rock_a", "rock_d", "rock_tall",
 	"bush", "stump", "mushrooms_red", "mushrooms_tan",
 	# Nuevos, siempre al final:
-	"oak_k", "fat_k", "pine_k", "log_fallen", "bush_large", "wheat_a", "wheat_b", "tree_parts", "workbench"]
+	"oak_k", "fat_k", "pine_k", "log_fallen", "bush_large", "wheat_a", "wheat_b", "tree_parts", "workbench", "decor_pebbles", "decor_sticks", "decor_shell"]
 const FIRST_ID := 64
 
 static var _loaded := false
@@ -17,6 +17,7 @@ static var _kind := {}                   # id -> "wood" / "leaves" / "rock" / "m
 static var _owner := {}                  # id -> nombre del prefab al que pertenece
 static var _color := {}                  # id -> Color
 static var _mesh := {}                   # id -> ArrayMesh (espacio 0..1)
+static var _outline := {}                # id -> PackedVector3Array (contorno, pares de puntos)
 static var _last_id := FIRST_ID - 1
 static var _material: StandardMaterial3D
 
@@ -37,6 +38,7 @@ static func load_all() -> void:
 			_owner[next + i] = n
 			_color[next + i] = p.colors[i]
 			_mesh[next + i] = p.meshes[i]
+			_outline[next + i] = p.outlines[i] if i < p.outlines.size() else PackedVector3Array()
 		next += p.cells.size()
 	_last_id = next - 1
 
@@ -148,3 +150,21 @@ static func centered_mesh(id: int, size: float) -> ArrayMesh:
 	out.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
 	out.surface_set_material(0, material())
 	return out
+
+
+## Contorno de la pieza (pares de puntos en el espacio 0..1 del bloque): el recuadro de selección
+## sigue su forma en vez de ser un cubo.
+static func outline(id: int) -> PackedVector3Array:
+	return _outline.get(id, PackedVector3Array())
+
+
+## Caja que ocupa la pieza dentro de su bloque (0..1).
+static func box(id: int) -> AABB:
+	var mesh: ArrayMesh = _mesh.get(id)
+	return mesh.get_aabb() if mesh != null else AABB(Vector3.ZERO, Vector3.ONE)
+
+
+## Malla de la pieza (espacio 0..1 del bloque).
+static func mesh(id: int) -> ArrayMesh:
+	load_all()
+	return _mesh.get(id)

@@ -10,3 +10,4 @@ class_name Prefab
 @export var meshes: Array[ArrayMesh] = []    # malla de cada pieza (espacio 0..1 del bloque)
 @export var kinds: PackedStringArray = []    # tipo de cada pieza
 @export var colors: PackedColorArray = []    # color medio de cada pieza (partículas, mapa)
+@export var outlines: Array[PackedVector3Array] = []  # contorno de cada pieza (pares de puntos, 0..1): el recuadro al apuntarla

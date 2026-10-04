@@ -14,8 +14,13 @@ static func make_model(id: int) -> VoxelBlockyModelMesh:
 			model.mesh = _cross()
 			model.set_material_override(0, _cutout_material(_plant_image(id)))
 		_:
-			model.mesh = _pieces(id)
-			model.set_material_override(0, _color_material(Blocks.color_of(id)))
+			var piece := piece_of(id)
+			if piece >= 0:  # piedrecitas, palitos, concha: modelos de cubitos como en el concepto
+				model.mesh = PrefabLibrary.mesh(piece)
+				model.set_material_override(0, PrefabLibrary.material())
+			else:
+				model.mesh = _pieces(id)
+				model.set_material_override(0, _color_material(Blocks.color_of(id)))
 	model.set_mesh_collision_enabled(0, false)
 	model.collision_aabbs = []
 	model.culls_neighbors = false
@@ -55,6 +60,19 @@ static func _cutout_material(img: Image) -> StandardMaterial3D:
 	material.cull_mode = BaseMaterial3D.CULL_DISABLED
 	material.roughness = 1.0
 	return material
+
+
+## Modelos de cubitos de la decoración (prefabs hechos por tools/bake_prefabs.gd).
+const PIECES := {
+	IslandGenerator.PEBBLES: "decor_pebbles",
+	IslandGenerator.GROUND_STICKS: "decor_sticks",
+	IslandGenerator.SHELL: "decor_shell",
+}
+
+
+## Id de la pieza de prefab con la forma de esta decoración (o -1).
+static func piece_of(id: int) -> int:
+	return PrefabLibrary.first_id(PIECES[id]) if PIECES.has(id) else -1
 
 
 ## Dibujos de las plantas (sacados del arte conceptual con tools/extract_concept.gd).

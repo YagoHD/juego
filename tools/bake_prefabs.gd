@@ -72,6 +72,7 @@ func _tree_parts() -> Prefab:
 		var sub: Dictionary = s[1]
 		p.cells.append(Vector3i.ZERO)  # no forman un modelo: el generador las coloca una a una
 		p.meshes.append(_piece_mesh(sub, {}, Vector3i.ZERO))
+		p.outlines.append(_outline(sub, N))
 		p.kinds.append(s[0])
 		var avg := Color(0, 0, 0)
 		for col: Color in sub.values():
@@ -157,9 +158,91 @@ func _workbench() -> Prefab:
 	p.prefab_name = "workbench"
 	p.cells.append(Vector3i.ZERO)
 	p.meshes.append(_piece_mesh(sub, {}, Vector3i.ZERO, r))
+	p.outlines.append(_outline(sub, r))
 	p.kinds.append("wood")
 	p.colors.append(wood)
 	return p
+
+
+## Decoración del suelo como en el arte conceptual: piedrecitas, palitos y concha (1/16 de bloque).
+func _decor_prefab(prefab_name: String, sub: Dictionary, kind: String) -> Prefab:
+	var p := Prefab.new()
+	p.prefab_name = prefab_name
+	p.cells.append(Vector3i.ZERO)
+	p.meshes.append(_piece_mesh(sub, {}, Vector3i.ZERO, BENCH_RES))
+	p.outlines.append(_outline(sub, BENCH_RES))
+	p.kinds.append(kind)
+	var avg := Color(0, 0, 0)
+	for col: Color in sub.values():
+		avg += col
+	p.colors.append(avg / sub.size())
+	return p
+
+
+## Piedra redondeada: caja sin las esquinas, más clara por arriba.
+func _stone_lump(sub: Dictionary, at: Vector3i, size: Vector3i, base: Color) -> void:
+	for x in size.x:
+		for y in size.y:
+			for z in size.z:
+				var corner := int(x == 0 or x == size.x - 1) + int(y == size.y - 1 and size.y > 1) + int(z == 0 or z == size.z - 1)
+				if corner >= 2 and size.x > 2 and size.z > 2:
+					continue
+				var col := base.lightened(0.12) if y == size.y - 1 else base
+				if (x * 3 + z * 5 + y) % 7 == 0:
+					col = col.darkened(0.1)
+				sub[at + Vector3i(x, y, z)] = col
+
+
+func _pebbles() -> Prefab:
+	var sub := {}
+	_stone_lump(sub, Vector3i(6, 0, 3), Vector3i(5, 3, 4), Color(0.48, 0.46, 0.46))
+	_stone_lump(sub, Vector3i(2, 0, 8), Vector3i(4, 2, 3), Color(0.44, 0.43, 0.44))
+	_stone_lump(sub, Vector3i(8, 0, 9), Vector3i(4, 2, 4), Color(0.4, 0.42, 0.47))
+	for s in [Vector3i(3, 0, 4), Vector3i(12, 0, 6), Vector3i(4, 0, 13), Vector3i(10, 0, 14), Vector3i(13, 0, 11)]:
+		_stone_lump(sub, s, Vector3i(2, 1, 2), Color(0.5, 0.49, 0.5))
+	return _decor_prefab("decor_pebbles", sub, "rock")
+
+
+## Palo en diagonal sobre el suelo, de 'a' a 'b' (en cubitos, y = 0), con algún nudo.
+func _stick(sub: Dictionary, a: Vector2, b: Vector2, color: Color, y := 0) -> void:
+	var steps := int(a.distance_to(b) * 2.0) + 1
+	for i in steps + 1:
+		var p := a.lerp(b, float(i) / steps)
+		var c := Vector3i(int(p.x), y, int(p.y))
+		sub[c] = color.darkened(0.12) if i % 5 == 0 else color
+		if i % 4 == 0:
+			sub[c + Vector3i(1, 0, 0)] = color.lightened(0.08)  # el palo tiene algo de grosor
+
+
+func _sticks() -> Prefab:
+	var sub := {}
+	var brown := Color(0.46, 0.29, 0.15)
+	_stick(sub, Vector2(1, 3), Vector2(13, 12), brown)
+	_stick(sub, Vector2(7, 7), Vector2(11, 3), brown.lightened(0.05))  # ramita
+	_stick(sub, Vector2(4, 5), Vector2(3, 9), brown.lightened(0.05))
+	_stick(sub, Vector2(3, 10), Vector2(10, 15), brown.darkened(0.08))
+	_stick(sub, Vector2(7, 13), Vector2(9, 11), brown.darkened(0.08))
+	return _decor_prefab("decor_sticks", sub, "wood")
+
+
+func _shell() -> Prefab:
+	var sub := {}
+	var hinge := Vector2(8, 12)
+	for x in BENCH_RES:
+		for z in BENCH_RES:
+			var d := Vector2(x + 0.5, z + 0.5) - hinge
+			var r := d.length()
+			if r > 6.5 or d.y > 0.5:
+				continue  # abanico hacia -Z
+			var rib := int(floorf((atan2(d.x, -d.y) + 1.6) / 0.4)) % 2
+			var col := Color(0.96, 0.88, 0.78) if rib == 0 else Color(0.93, 0.7, 0.55)
+			var h := 1 + int(2.2 * (1.0 - r / 6.5))
+			for y in h:
+				sub[Vector3i(x, y, z)] = col
+	for x in range(6, 11):  # charnela
+		for z in range(12, 14):
+			sub[Vector3i(x, 0, z)] = Color(0.88, 0.7, 0.55)
+	return _decor_prefab("decor_shell", sub, "rock")
 
 
 ## Cubitos de una pieza: "full" (bloque entero), "round" (sin las aristas: la piel redondeada de
@@ -204,6 +287,9 @@ func _init() -> void:
 		prefabs.append(_cut(entry[0], cells, entry[3]))
 	prefabs.append(_tree_parts())
 	prefabs.append(_workbench())
+	prefabs.append(_pebbles())
+	prefabs.append(_sticks())
+	prefabs.append(_shell())
 	# Paleta: una fila de colores; luego, las UV de cada pieza apuntan a su color.
 	var img := Image.create(maxi(_palette_list.size(), 1), 1, false, Image.FORMAT_RGBA8)
 	for i in _palette_list.size():
@@ -333,6 +419,7 @@ func _cut(prefab_name: String, cells: Dictionary, default_kind: String) -> Prefa
 			continue  # una mota suelta: fuera
 		p.cells.append(b)
 		p.meshes.append(_piece_mesh(sub, cells, b * N))
+		p.outlines.append(_outline(sub, N))
 		var green := 0
 		var avg := Color(0, 0, 0)
 		for col: Color in sub.values():
@@ -448,3 +535,45 @@ func _fix_uvs(mesh: ArrayMesh, width: float) -> void:
 	arrays[Mesh.ARRAY_TEX_UV] = uvs
 	mesh.clear_surfaces()
 	mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
+
+
+## Contorno de una pieza para el recuadro de selección: las aristas de su forma de cubitos (donde
+## de los 4 cubitos que rodean una arista hay 1 o 3, o 2 en diagonal). Pares de puntos, 0..1.
+func _outline(sub: Dictionary, res: int) -> PackedVector3Array:
+	var lines := PackedVector3Array()
+	var box_lo := Vector3i(1 << 20, 1 << 20, 1 << 20)
+	var box_hi := -box_lo
+	for c: Vector3i in sub:
+		box_lo = box_lo.min(c)
+		box_hi = box_hi.max(c)
+	for axis in 3:
+		var u := (axis + 1) % 3
+		var v := (axis + 2) % 3
+		for i in range(box_lo[u], box_hi[u] + 2):
+			for j in range(box_lo[v], box_hi[v] + 2):
+				var run_start := -1
+				for t in range(box_lo[axis], box_hi[axis] + 2):
+					var draw := false
+					if t <= box_hi[axis]:
+						var occ := []
+						for k in 4:
+							var c := Vector3i.ZERO
+							c[axis] = t
+							c[u] = i - 1 + (k & 1)
+							c[v] = j - 1 + (k >> 1)
+							occ.append(sub.has(c))
+						var n := occ.count(true)
+						draw = n == 1 or n == 3 or (n == 2 and occ[0] == occ[3])
+					if draw and run_start < 0:
+						run_start = t
+					elif not draw and run_start >= 0:
+						var a := Vector3.ZERO
+						a[axis] = run_start
+						a[u] = i
+						a[v] = j
+						var b := a
+						b[axis] = t
+						lines.append(a / res)
+						lines.append(b / res)
+						run_start = -1
+	return lines

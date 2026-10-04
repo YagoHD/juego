@@ -145,3 +145,14 @@ Todo lo de Kenney y OpenGameArt es CC0 (créditos en `assets/third_party/*/` y
 - **Los ríos corren**: la superficie tiene ondas que bajan con la corriente y la corriente te
   arrastra al nadar. El agua que corre también empuja.
 - Nota: el mundo se ha vuelto a generar (los cambios de árboles y agua lo necesitan).
+
+## Estilo del arte conceptual (4 de octubre)
+
+- **Texturas de la hoja de ChatGPT**: hierba, tierra, arena, piedra, piedra musgosa, nieve,
+  tierra corrupta, mineral, tronco, tablones, madera de deriva, tela y cofre, sacadas del dibujo
+  (32 px). La hierba alta y las flores también son los dibujos.
+- **Mesa de trabajo** de cubitos como la del concepto (tablones, patas, martillo, nota, trapo).
+- **Piedrecitas, palitos y concha** con forma de cubitos, no cajitas. Agua de ríos turquesa.
+- **El recuadro de selección sigue la forma** de lo que apuntas (trozos de árbol y roca, la
+  mesa, la alfombra, las plantas...), y las grietas al romper también.
+- **Las plantas y hojas solo se apuntan si apuntas a ellas**, no al hueco de su cubo.

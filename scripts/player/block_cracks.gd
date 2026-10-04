@@ -27,13 +27,15 @@ func _ready() -> void:
 		_materials.append(material)
 
 
-## Muestra las grietas en el bloque cuya esquina es 'corner' (mundo) de lado 'size'.
-func show_on(corner: Vector3, size: float, progress: float) -> void:
+## Muestra las grietas en el bloque cuya esquina es 'corner' (mundo) de lado 'size'. Con "shape", solo
+## sobre la parte que ocupa de verdad (la caja de una alfombra, de un trozo de árbol...).
+func show_on(corner: Vector3, size: float, progress: float, shape := AABB(Vector3.ZERO, Vector3.ONE)) -> void:
 	if progress <= 0.0:
 		visible = false
 		return
 	var grow := 0.006
-	global_transform = Transform3D(Basis.from_scale(Vector3.ONE * (size + grow * 2.0)), corner - Vector3.ONE * grow)
+	global_transform = Transform3D(Basis.from_scale(shape.size * size + Vector3.ONE * grow * 2.0),
+		corner + shape.position * size - Vector3.ONE * grow)
 	material_override = _materials[clampi(int(progress * STAGES), 0, STAGES - 1)]
 	visible = true
 

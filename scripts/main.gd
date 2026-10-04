@@ -253,7 +253,8 @@ func _make_water_material() -> ShaderMaterial:
 	mat.set_shader_parameter("flow_map", ImageTexture.create_from_image(_generator.build_flow()))
 	mat.set_shader_parameter("map_half", IslandGenerator.MAP_HALF)
 	mat.set_shader_parameter("voxel_size", VOXEL_SIZE)
-	mat.set_shader_parameter("water_color", Blocks.color_of(IslandGenerator.WATER))
+	mat.set_shader_parameter("water_color", Color(0.13, 0.6, 0.72, 0.74))  # turquesa, como en el concepto
+	mat.set_shader_parameter("foam_color", Color(0.78, 0.96, 0.97))
 	return mat
 
 

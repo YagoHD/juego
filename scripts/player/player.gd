@@ -120,6 +120,8 @@ var _camera: Camera3D
 var _held: HeldBlock
 var _avatar: PlayerAvatar
 var _highlight: MeshInstance3D
+var _cube_outline: Mesh            # recuadro de un cubo
+var _outlines := {}                # id de bloque -> recuadro con la forma de ese bloque
 var _terrain: VoxelTerrain
 var _generator: IslandGenerator
 var _tool: VoxelTool
@@ -726,6 +728,7 @@ func _make_highlight() -> MeshInstance3D:
 
 	var highlight := MeshInstance3D.new()
 	highlight.mesh = mesh
+	_cube_outline = mesh
 	highlight.material_override = material
 	highlight.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	highlight.top_level = true  # se coloca en coordenadas del mundo, no relativo al jugador
@@ -754,6 +757,9 @@ func _update_highlight() -> void:
 	var cell: Vector3i = target["voxel"]
 	var size := _terrain.scale.x
 	var grow := 0.004  # un pelín más grande que el bloque para que no parpadee con sus caras
+	# Bloques que no son cubos (piezas de árbol y roca, la mesa, la alfombra, la hierba...): el
+	# recuadro sigue su forma.
+	_highlight.mesh = _shape_outline(_tool.get_voxel(cell)) if _tool != null else _cube_outline
 	_highlight.global_transform = Transform3D(
 		Basis.from_scale(Vector3.ONE * (size + grow * 2.0)),
 		_terrain.to_global(Vector3(cell)) - Vector3.ONE * grow)
@@ -1195,7 +1201,7 @@ func _update_breaking(delta: float) -> void:
 		_break_progress = 0.0
 		_break_cell = Vector3i(0, -99999, 0)
 		_break_swing = 0.15  # breve pausa antes de empezar el siguiente
-	_cracks.show_on(corner, size, _break_progress)
+	_cracks.show_on(corner, size, _break_progress, shape_box(_tool.get_voxel(_break_cell)) if _tool != null else AABB(Vector3.ZERO, Vector3.ONE))
 
 
 func _reset_breaking() -> void:
@@ -1293,11 +1299,12 @@ func _decor_hit(from: Vector3, dir: Vector3, max_dist: float, want_water := fals
 		if want_water:
 			if Blocks.is_water(id):
 				return {"cell": cell, "dist": t * vs}
-		elif Blocks.is_decor(id):
+		elif Blocks.is_decor(id) and shape_box(id).intersects_ray(p - Vector3(cell), dir) != null:
+			# Solo si se apunta a la planta o a la hoja de verdad, no al hueco de su cubo.
 			if _terrain.to_global(Vector3(cell) + Vector3.ONE * 0.5).distance_to(_head.global_position) <= REACH + 0.3:
 				return {"cell": cell, "dist": t * vs}
 			return {}
-		if id != IslandGenerator.AIR and not Blocks.is_water(id):
+		if id != IslandGenerator.AIR and not Blocks.is_water(id) and not Blocks.is_decor(id):
 			return {}
 		if t_max.x <= t_max.y and t_max.x <= t_max.z:
 			t = t_max.x
@@ -1553,3 +1560,49 @@ func _water_push() -> Vector2:
 		var other := WaterFlow.level_of(n) if Blocks.is_water(n) else (0 if n == IslandGenerator.AIR or Blocks.DECOR.has(n) else level)
 		dir += Vector2(d.x, d.z) * float(level - other)
 	return dir.normalized() * FLOW_PUSH if dir.length() > 0.01 else Vector2.ZERO
+
+
+# ------------------------------------------------------------------ forma de los bloques
+
+## Caja que ocupa de verdad un bloque dentro de su celda (0..1): la alfombra es fina, la hierba
+## no llena el cubo, cada trozo de árbol o roca tiene su tamaño...
+static func shape_box(id: int) -> AABB:
+	if id == IslandGenerator.CLOTH:
+		return AABB(Vector3.ZERO, Vector3(1.0, 1.0 / 16.0, 1.0))
+	if id in [IslandGenerator.TALL_GRASS, IslandGenerator.FLOWER_RED, IslandGenerator.FLOWER_YELLOW]:
+		return AABB(Vector3(0.12, 0.0, 0.12), Vector3(0.76, 0.9, 0.76))
+	if DecorModels.piece_of(id) >= 0:
+		return PrefabLibrary.box(DecorModels.piece_of(id))
+	if PrefabLibrary.is_prefab(id):
+		return PrefabLibrary.box(id)
+	return AABB(Vector3.ZERO, Vector3.ONE)
+
+
+## Recuadro de selección con la forma del bloque (sus aristas de cubitos, o su caja).
+func _shape_outline(id: int) -> Mesh:
+	if _outlines.has(id):
+		return _outlines[id]
+	var lines := PackedVector3Array()
+	var piece := id
+	if id == IslandGenerator.WORKBENCH:
+		piece = PrefabLibrary.first_id("workbench")
+	elif DecorModels.piece_of(id) >= 0:
+		piece = DecorModels.piece_of(id)
+	if PrefabLibrary.is_prefab(piece):
+		lines = PrefabLibrary.outline(piece)
+	if lines.is_empty():
+		var b := shape_box(id)
+		if b == AABB(Vector3.ZERO, Vector3.ONE):
+			_outlines[id] = _cube_outline
+			return _cube_outline
+		var edges := [[0, 1], [2, 3], [4, 5], [6, 7], [0, 2], [1, 3], [4, 6], [5, 7], [0, 4], [1, 5], [2, 6], [3, 7]]
+		for e in edges:
+			for k: int in e:
+				lines.append(b.position + b.size * Vector3(k & 1, (k >> 1) & 1, (k >> 2) & 1))
+	var arrays := []
+	arrays.resize(Mesh.ARRAY_MAX)
+	arrays[Mesh.ARRAY_VERTEX] = lines
+	var mesh := ArrayMesh.new()
+	mesh.add_surface_from_arrays(Mesh.PRIMITIVE_LINES, arrays)
+	_outlines[id] = mesh
+	return mesh
