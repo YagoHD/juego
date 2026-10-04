@@ -1,24 +1,17 @@
 class_name Structures
 ## Estructuras fabricadas a mano que el generador "estampa" en la isla. De momento, el
 ## naufragio del inicio (ver docs/DESIGN.md, "El naufragio"):
-##   - el barco encallado y escorado en la orilla de la bahía del pueblo: casco de tablones con
-##     quilla de tronco, cubierta hundida, popa destrozada, agujeros y el palo mayor partido;
-##   - en la playa: el mástil caído con la vela tirada en la arena, tablones sueltos y un cofre
-##     medio enterrado;
-##   - dentro del casco, otro cofre con lo que se salvó.
+##   - el barco entero pero encallado en la orilla de la bahía del pueblo (ver Shipwreck): casco
+##     curvo, camarote, mástiles con vela y una cuerda colgando, bodega con escalera, alguna rotura;
+##   - en la playa: la punta del trinquete caída con su vela tirada en la arena, tablones sueltos
+##     y un cofre medio enterrado;
+##   - en la bodega, otro cofre con lo que se salvó.
 ## El jugador aparece en la playa mirando al barco.
 ##
 ## Se construye una sola vez (al crear el generador, en el hilo principal) y luego el
 ## generador solo copia los voxels del chunk que esté generando.
 
 const AIR := 0
-
-# Medidas del barco (en voxels de 0,5 m).
-const SHIP_LENGTH := 44.0
-const SHIP_HALF_WIDTH := 6.5
-const SHIP_DEPTH := 9.0          # del fondo del casco a la cubierta
-const SHIP_ROLL := 0.30          # escora (radianes): el barco está tumbado hacia un lado
-const MAST_AT := 0.55            # posición del palo mayor a lo largo del barco (0 popa, 1 proa)
 
 static var _by_chunk := {}       # Vector3i (origen del chunk de 16) -> Array de [Vector3i local, id]
 static var _chest_loot := {}     # Vector3i (celda del cofre) -> Array de {"id", "count"}
@@ -121,47 +114,21 @@ static func _build_shipwreck(gen: IslandGenerator) -> void:
 			shore = p
 			break
 
-	# El barco: algo metido en el agua, de costado a la orilla y con la quilla medio enterrada.
-	var center := shore + dir * 9.0
+	# El barco entero, encallado en la orilla y alineado con ella (ver Shipwreck).
+	var ship := Shipwreck.new()
+	ship.build()
+	var shore_dir := dir.orthogonal()
+	var along_x := absf(shore_dir.x) >= absf(shore_dir.y)
+	var sgn := signf(shore_dir.x if along_x else shore_dir.y)
+	# Un poco hacia el agua y hacia la popa: así la proa no se mete en la ladera de la bahía.
+	var bow := Vector2(sgn, 0) if along_x else Vector2(0, sgn)
+	var center := shore + dir * 6.0 - bow * 6.0
 	_ship = Vector2i(center)
-	var yaw := dir.angle() + PI * 0.5 + 0.35
-	var base_y := float(IslandGenerator.SEA_LEVEL - 3)
-	var ship_basis := Basis(Vector3.UP, -yaw) * Basis(Vector3.RIGHT, SHIP_ROLL)
-	var to_local := ship_basis.inverse()
-	var origin := Vector3(center.x, base_y, center.y)
-	var mast_x := SHIP_LENGTH * MAST_AT
-	var reach := int(SHIP_LENGTH * 0.6) + 4
-	for x in range(-reach, reach + 1):
-		for z in range(-reach, reach + 1):
-			for y in range(-6, 22):
-				var cell := Vector3i(int(center.x) + x, int(base_y) + y, int(center.y) + z)
-				var local := to_local * (Vector3(cell) + Vector3(0.5, 0.5, 0.5) - origin)
-				local.x += SHIP_LENGTH * 0.5  # local.x: 0 popa .. SHIP_LENGTH proa
-				var id := _ship_voxel(local, cell)
-				if id >= 0:
-					_put(cell, id)
-
-	# Tres cuadernas partidas que sobresalen de la cubierta: rompen la silueta de caja
-	# y hacen que el casco se lea como un barco abierto por el naufragio.
-	var rib_positions: Array[float] = [0.24, 0.49, 0.73]
-	for rib in 3:
-		var rib_x := SHIP_LENGTH * rib_positions[rib]
-		for z in range(-4, 5):
-			if _hash(rib, z, 53) < 0.22:
-				continue
-			var rib_local := Vector3(rib_x, SHIP_DEPTH + 0.7 - absf(float(z)) * 0.10, z)
-			_put(_ship_cell(rib_local, ship_basis, origin), IslandGenerator.WOOD)
-
-	# El palo mayor está partido y cae sobre la proa en una diagonal irregular.
-	for i in 10:
-		var spar_local := Vector3(mast_x + i * 0.72, SHIP_DEPTH + 4.2 - i * 0.43, 0.0)
-		_put(_ship_cell(spar_local, ship_basis, origin), IslandGenerator.WOOD)
-
-	# Cofre dentro del casco, sobre el fondo, a 2/5 de la eslora.
-	var chest_local := Vector3(SHIP_LENGTH * 0.4 - SHIP_LENGTH * 0.5, 1.5, 0.0)
-	var hull_chest := Vector3i((ship_basis * chest_local + origin).floor())
-	_put(hull_chest, IslandGenerator.CHEST)
-	_chest_loot[hull_chest] = [
+	var base_y := IslandGenerator.SEA_LEVEL - 2
+	for p: Vector3i in ship.cells:
+		var cell := _ship_to_world(p, center, base_y, along_x, sgn)
+		_put(cell, _ship_block(ship.cells[p], along_x, sgn))
+	_chest_loot[_ship_to_world(ship.hold_chest, center, base_y, along_x, sgn)] = [
 		# Casi nada: lo que se salvó del agua. El resto lo irá trayendo el mar.
 		{"id": "cloth", "count": 3}, {"id": "note_backpack", "count": 1}, {"id": "shirt", "count": 1},
 		{"id": "berries", "count": 4},
@@ -212,41 +179,36 @@ static func _build_shipwreck(gen: IslandGenerator) -> void:
 	_spawn_yaw = atan2(-look.x, -look.y)  # el jugador mira hacia su -Z
 
 
-## Bloque del barco en un punto de su espacio local (x a lo largo, y arriba, z a lo ancho),
-## o -1 si ahí no hay barco (se deja el terreno).
-static func _ship_voxel(p: Vector3, cell: Vector3i) -> int:
-	if p.x < 0.0 or p.x > SHIP_LENGTH or p.y < -0.5:
-		return -1
-	var t := p.x / SHIP_LENGTH
-	var r := absf(p.z)
-	var mast_x := SHIP_LENGTH * MAST_AT
-
-	# Palo mayor partido: un trozo de tronco que sale de la cubierta.
-	if absf(p.x - mast_x) < 0.7 and r < 0.7 and p.y > SHIP_DEPTH - 1.0 and p.y < SHIP_DEPTH + 5.0:
-		return IslandGenerator.WOOD
-	if p.y > SHIP_DEPTH + 0.5:
-		return -1
-
-	# Casco: más ancho en el centro, en punta en la proa, y redondeado hacia el fondo.
-	var half := SHIP_HALF_WIDTH * pow(sin(PI * clampf(t * 0.92 + 0.04, 0.0, 1.0)), 0.55)
-	var at_y := half * clampf(sqrt(maxf(p.y, 0.0) / SHIP_DEPTH) * 0.8 + 0.2, 0.0, 1.0)
-	if r > at_y + 0.5:
-		return -1
-
-	var broken := _hash(cell.x, cell.y * 7 + cell.z, 11)
-	if t < 0.16 and broken > 0.35:
-		return -1  # popa destrozada
-	if p.y < 1.0:
-		return IslandGenerator.WOOD if r < 1.0 else IslandGenerator.PLANKS  # quilla y fondo
-	if r > at_y - 0.9:
-		return -1 if broken > 0.88 else IslandGenerator.PLANKS  # costados, con agujeros
-	if p.y > SHIP_DEPTH - 0.5:
-		return -1 if broken > 0.55 else IslandGenerator.PLANKS  # cubierta medio hundida
-	return AIR  # interior hueco (aunque esté bajo la arena)
+## Celda del mundo de un punto del barco (x de popa a proa, z de lado a lado), girado para
+## quedar a lo largo de la orilla.
+static func _ship_to_world(p: Vector3i, center: Vector2, base_y: int, along_x: bool, sgn: float) -> Vector3i:
+	var lx := p.x - Shipwreck.LENGTH / 2
+	var s := int(sgn)
+	if along_x:
+		return Vector3i(int(center.x) + lx * s, base_y + p.y, int(center.y) + p.z * s)
+	return Vector3i(int(center.x) - p.z * s, base_y + p.y, int(center.y) + lx * s)
 
 
-static func _ship_cell(local: Vector3, ship_basis: Basis, origin: Vector3) -> Vector3i:
-	return Vector3i((ship_basis * local + origin).floor())
+## El bloque del barco ya girado: las medias losas, troncos tumbados y velas cambian de lado.
+static func _ship_block(value: Variant, along_x: bool, sgn: float) -> int:
+	var s := int(sgn)
+	if value is String:
+		var side: String = String(value).trim_prefix("slab:")
+		if side == "-y":
+			return IslandGenerator.SLAB_DOWN
+		var local_z := -1 if side == "-z" else 1
+		var world := Vector3i(0, 0, local_z * s) if along_x else Vector3i(-local_z * s, 0, 0)
+		match world:
+			Vector3i(0, 0, -1): return IslandGenerator.SLAB_N
+			Vector3i(0, 0, 1): return IslandGenerator.SLAB_S
+			Vector3i(-1, 0, 0): return IslandGenerator.SLAB_W
+		return IslandGenerator.SLAB_E
+	var id: int = value
+	if not along_x:
+		match id:
+			IslandGenerator.LOG_Z: return IslandGenerator.LOG_X
+			IslandGenerator.SAIL_X: return IslandGenerator.SAIL_Z
+	return id
 
 
 static func _put(cell: Vector3i, id: int) -> void:

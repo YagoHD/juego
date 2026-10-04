@@ -199,3 +199,18 @@ Todo lo de Kenney y OpenGameArt es CC0 (créditos en `assets/third_party/*/` y
 - **Vela**: la tela en un lateral se coloca de pie, como una vela; en el suelo, tendida.
 - **Cofre de cubitos** como el del concepto (tablones, bandas de hierro, cerradura). **Al abrirlo
   la tapa se levanta** y dentro se ve un montoncito con lo que guarda; al cerrar, baja.
+- **El barco del naufragio, entero** (encallado en la orilla de la bahía): casco curvo de
+  tablones suavizado con medias losas, quilla de tronco, borda, cubierta, camarote en la popa
+  (puerta y ventanas) con cubierta alta encima, castillo de proa, palo mayor con verga y vela de
+  pie, mesana con vela pequeña, trinquete partido (su punta es el mástil caído de la playa, con
+  la vela tendida en la arena). **Cuerda colgando** de la verga del palo mayor (se recoge).
+  **Bodega** con escalera de medias losas desde una escotilla y el cofre dentro. Roturas: vía de
+  agua en el costado, algún hueco en la borda y tablas sueltas en la cubierta.
+- El mundo se rehace también si cambia la forma de un árbol o del barco.
+
+## Código reorganizado
+
+- `player.gd` (1687 → 1038 líneas) en componentes: BlockAim (apuntar), BlockBreaker (romper),
+  PlayerBuilder (colocar), PlayerSurvival (comer, beber, pescar...) y RaftRider (balsa).
+- `main.gd` (1234 → ~940) con BlockModels (modelos de bloques) y CaptureMode (capturas).
+- `tools/run_tests.sh` pasa todas las pruebas de una vez.

@@ -186,6 +186,11 @@ func _world_fingerprint() -> String:
 	var text := _generator.get_maps_fingerprint()
 	text += FileAccess.get_md5("res://scripts/world/island_generator.gd")
 	text += FileAccess.get_md5("res://scripts/world/structures.gd")
+	text += FileAccess.get_md5("res://scripts/world/shipwreck.gd")
+	# Las piezas horneadas (árboles, rocas...): si cambia la forma de una, el mundo se rehace.
+	for n: String in PrefabLibrary.NAMES:
+		if FileAccess.file_exists(PrefabLibrary.DIR + n + ".res"):
+			text += FileAccess.get_md5(PrefabLibrary.DIR + n + ".res")
 	text += FileAccess.get_md5("res://scripts/world/prefab_library.gd") + str(PrefabLibrary.last_id())
 	return text.md5_text().substr(0, 12)
 
