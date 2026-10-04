@@ -48,6 +48,7 @@ const WET_SAND := 38     # arena mojada: la franja junto al mar
 const GRAVEL := 39       # grava: fondo de ríos y lagos
 const CLAY := 40         # arcilla: manchas en el fondo de ríos y lagos
 const MUD := 41          # barro: orillas de ríos y lagos
+const STUMP := 42        # tocón de un árbol talado (rebrota con el tiempo, ver TreeRegrowth)
 
 const MAP_DIR := "res://assets/island/"
 const MAP_HALF := 512.0       # los mapas cubren [-MAP_HALF, MAP_HALF] voxels en X y Z (la isla a la mitad
@@ -257,26 +258,7 @@ func _generate_block(out_buffer: VoxelBuffer, origin_in_voxels: Vector3i, lod: i
 		for lz in range(-_margin, size.z + _margin):
 			var wx: int = origin_in_voxels.x + lx
 			var wz: int = origin_in_voxels.z + lz
-			var kind := _tree_kind(wx, wz)
-			if kind == 0:
-				var prefab := _prefab_at(wx, wz)
-				if prefab >= 0:
-					var pbase := _height_at(wx, wz)
-					if pbase + MAX_TREE_HEIGHT >= origin_in_voxels.y and pbase <= origin_in_voxels.y + size.y:
-						for piece in PrefabLibrary.pieces(prefab):
-							var pc: Vector3i = piece[0]
-							_set_if_air(out_buffer, origin_in_voxels, size, wx + pc.x, pbase + pc.y, wz + pc.z, piece[1])
-				continue
-			var base := _height_at(wx, wz)
-			if base + MAX_TREE_HEIGHT < origin_in_voxels.y or base > origin_in_voxels.y + size.y:
-				continue  # el árbol no toca este bloque
-			var kenney := _kenney_tree(wx, wz, kind)
-			if kenney >= 0:  # uno de cada cuatro: un árbol de Kenney troceado en bloques
-				for piece in PrefabLibrary.pieces(kenney):
-					var kc: Vector3i = piece[0]
-					_set_if_air(out_buffer, origin_in_voxels, size, wx + kc.x, base + kc.y, wz + kc.z, piece[1])
-				continue
-			_stamp_tree(out_buffer, origin_in_voxels, size, wx, wz, base, kind)
+			_stamp_column(out_buffer, origin_in_voxels, size, wx, wz)
 
 	# --- 3b. Decoración del suelo (después de los árboles, para no ocupar el pie de un tronco).
 	for d in decor:
@@ -672,3 +654,52 @@ func water_current(wx: int, wz: int) -> Vector2:
 ## Lado del mapa en píxeles y voxels por píxel (para dibujar la corriente).
 func map_pixels() -> int:
 	return _n
+
+
+# ------------------------------------------------------------------ árbol (o prefab) de una columna
+
+## Planta lo que nace en la columna (wx, wz): un árbol nuestro, uno de Kenney o un prefab (palmera,
+## roca...). 'base' es la altura del pie (por defecto, el suelo del mapa).
+func _stamp_column(buffer: VoxelBuffer, origin: Vector3i, size: Vector3i, wx: int, wz: int, base := -1) -> void:
+	var kind := _tree_kind(wx, wz)
+	if kind == 0:
+		var prefab := _prefab_at(wx, wz)
+		if prefab >= 0:
+			var pbase := _height_at(wx, wz) if base < 0 else base
+			if pbase + MAX_TREE_HEIGHT >= origin.y and pbase <= origin.y + size.y:
+				for piece in PrefabLibrary.pieces(prefab):
+					var pc: Vector3i = piece[0]
+					_set_if_air(buffer, origin, size, wx + pc.x, pbase + pc.y, wz + pc.z, piece[1])
+		return
+	if base < 0:
+		base = _height_at(wx, wz)
+	if base + MAX_TREE_HEIGHT < origin.y or base > origin.y + size.y:
+		return  # el árbol no toca este bloque
+	var kenney := _kenney_tree(wx, wz, kind)
+	if kenney >= 0:  # uno de cada cuatro: un árbol de Kenney troceado en bloques
+		for piece in PrefabLibrary.pieces(kenney):
+			var kc: Vector3i = piece[0]
+			_set_if_air(buffer, origin, size, wx + kc.x, base + kc.y, wz + kc.z, piece[1])
+		return
+	_stamp_tree(buffer, origin, size, wx, wz, base, kind)
+
+
+## ¿Nace un árbol (o una palmera) en esta columna? (para saber si un tocón puede rebrotar)
+func has_tree(wx: int, wz: int) -> bool:
+	if _tree_kind(wx, wz) != 0:
+		return true
+	var prefab := _prefab_at(wx, wz)
+	return prefab >= 0 and String(PrefabLibrary.NAMES[prefab]).begins_with("palm")
+
+
+## Vuelve a crecer el árbol de la columna del tocón 'cell' (el tocón pasa a ser su pie). Solo
+## ocupa huecos: lo que haya construido el jugador alrededor se respeta.
+func regrow(tool: VoxelTool, cell: Vector3i) -> void:
+	var r := _margin + 1
+	var origin := cell - Vector3i(r, 0, r)
+	var buffer := VoxelBuffer.new()
+	buffer.create(2 * r + 1, MAX_TREE_HEIGHT + 4, 2 * r + 1)
+	tool.copy(origin, buffer, 1 << VoxelBuffer.CHANNEL_TYPE)
+	buffer.set_voxel(AIR, r, 0, r, VoxelBuffer.CHANNEL_TYPE)  # quitar el tocón
+	_stamp_column(buffer, origin, buffer.get_size(), cell.x, cell.z, cell.y)
+	tool.paste(origin, buffer, 1 << VoxelBuffer.CHANNEL_TYPE)

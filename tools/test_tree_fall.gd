@@ -53,15 +53,18 @@ func _process(_delta: float) -> bool:
 		1:
 			if Time.get_ticks_msec() - _t0 < 9000:
 				return false
-			# Caído hacia +X (lejos de quien tala): tronco tumbado a lo largo de X, a ras de suelo.
-			var lying := 0
-			for dx in range(-14, 15):
-				for dy in range(-6, 4):
-					for dz in range(-14, 15):
-						var id := tool.get_voxel(_cut + Vector3i(dx, dy, dz))
-						if id == IslandGenerator.LOG_X or id == IslandGenerator.LOG_Z or id == TreeParts.id(TreeParts.TRUNK_X) or id == TreeParts.id(TreeParts.TRUNK_Z):
-							lying += 1
-			_check("El tronco queda tumbado entero (%d de %d bloques)" % [lying, _height - 1], lying >= _height - 1)
+			# El tronco ha reventado en objetos de madera; donde estaba, un tocón.
+			var wood := 0
+			for d: ItemDrop in get_nodes_in_group("item_drops"):
+				if d.item_id == "wood":
+					wood += d.count
+			_check("El tronco revienta en madera para recoger (%d de %d bloques)" % [wood, _height - 1], wood >= _height - 1)
+			_check("Queda un tocón donde estaba", tool.get_voxel(_cut) == IslandGenerator.STUMP)
+			# Con el tiempo, el árbol rebrota del tocón.
+			var regrowth: TreeRegrowth = _main.get_node("TreeRegrowth")
+			regrowth.player = null
+			regrowth.step(TreeRegrowth.GROW_SECONDS + 1.0)
+			_check("Pasado el tiempo, el árbol vuelve a crecer", tool.get_voxel(_cut) == TreeParts.id(TreeParts.TRUNK) and tool.get_voxel(_cut + Vector3i.UP) == TreeParts.id(TreeParts.TRUNK))
 			var leaves := 0
 			for d: ItemDrop in get_nodes_in_group("item_drops"):
 				if d.item_id == "leaves" or d.item_id == "pine_leaves":

@@ -106,7 +106,7 @@ static func material_of(block_id: int) -> String:
 			return "arena"
 		IslandGenerator.STONE, IslandGenerator.MOSSY_STONE, IslandGenerator.ORE:
 			return "piedra"
-		IslandGenerator.WOOD, IslandGenerator.PLANKS, IslandGenerator.CHEST, IslandGenerator.DEAD_WOOD, IslandGenerator.DRIFTWOOD, IslandGenerator.WORKBENCH, IslandGenerator.LOG_X, IslandGenerator.LOG_Z, IslandGenerator.DEAD_LOG_X, IslandGenerator.DEAD_LOG_Z:
+		IslandGenerator.WOOD, IslandGenerator.PLANKS, IslandGenerator.CHEST, IslandGenerator.DEAD_WOOD, IslandGenerator.DRIFTWOOD, IslandGenerator.WORKBENCH, IslandGenerator.LOG_X, IslandGenerator.LOG_Z, IslandGenerator.DEAD_LOG_X, IslandGenerator.DEAD_LOG_Z, IslandGenerator.STUMP:
 			return "madera"
 		IslandGenerator.CLOTH:
 			return "tela"

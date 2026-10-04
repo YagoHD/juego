@@ -44,13 +44,3 @@ static func item_of(block_id: int) -> String:
 		DEAD, DEAD_X, DEAD_Z: return "dead_wood"
 	return "wood"
 
-
-## Tronco tumbado a lo largo de 'along' (al caer un árbol talado).
-static func lying(block_id: int, along: Vector3i) -> int:
-	var p := part_of(block_id)
-	if along.y != 0 or p == THICK:
-		return block_id
-	match p:
-		TRUNK, TRUNK_X, TRUNK_Z: return id(TRUNK_X if along.x != 0 else TRUNK_Z)
-		DEAD, DEAD_X, DEAD_Z: return id(DEAD_X if along.x != 0 else DEAD_Z)
-	return block_id

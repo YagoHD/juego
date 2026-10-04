@@ -8,10 +8,10 @@ class_name TreeFelling
 ##      bloque, las hojas más ligeras que la madera). Recibe un empujón alejándose de quien tala,
 ##      con algo de azar en la dirección, la fuerza y el giro: cada árbol cae a su manera, rebota,
 ##      rueda un poco o se queda apoyado en una cuesta.
-##   3. Al primer golpe fuerte contra el suelo, las hojas se rompen: trocitos y algunas hojas como
-##      objetos esparcidos. El tronco sigue rodando hasta pararse.
-##   4. Quieto, el tronco vuelve a ser bloques del mundo: tumbado de lado (corteza alrededor y
-##      anillos en las puntas, bloques LOG_X / LOG_Z), entero, en la cuadrícula.
+##   3. Al primer golpe contra el suelo, las hojas se rompen: trocitos y algunas hojas como
+##      objetos esparcidos.
+##   4. Cuando el tronco, ya tumbado, golpea el suelo, revienta: saltan astillas y la madera queda
+##      en el suelo como objetos para recoger. Donde estaba, queda un tocón que rebrota (TreeRegrowth).
 ## Para que un muro de troncos construido no "caiga como un árbol", el tronco normal necesita
 ## hojas en su copa (los árboles muertos no tienen).
 
@@ -21,7 +21,7 @@ const MAX_BLOCKS := 700
 const CROWN_REACH := 6           # hojas a más columnas del corte no son de este árbol
 const LEAF_DROP_CHANCE := 0.35   # cuántas hojas quedan como objeto al romperse
 const PHYSICS_LAYER := 1 << 3    # capa propia: choca con el terreno, no con el jugador
-const MAX_TIME := 10.0           # pase lo que pase, a los 10 s se convierte en bloques
+const MAX_TIME := 10.0           # pase lo que pase, a los 10 s revienta
 
 var _terrain: VoxelTerrain
 var _tool: VoxelTool
@@ -33,6 +33,7 @@ var _origin := Vector3.ZERO      # en bloques: base del primer bloque de tronco 
 var _leaf_nodes: Array[Node] = []
 var _leaves_broken := false
 var _hit := false                # el cuerpo tocó algo (lo avisa la física)
+var _touching := false           # está tocando algo ahora mismo
 var _age := 0.0
 var _still := 0.0
 var _done := false
@@ -67,10 +68,26 @@ static func try_fell(parent: Node, terrain: VoxelTerrain, cut: Vector3i, cut_id:
 	if not tree._collect(cut):
 		tree.free()
 		return false
+	tree._leave_stump(cut)
 	parent.add_child(tree)
 	tree._start(from)
 	return true
 
+
+
+## Talado por la base (debajo del corte ya no hay tronco): ahí queda un tocón, del que el árbol
+## volverá a crecer si nadie lo quita (TreeRegrowth). Solo donde el generador planta un árbol.
+func _leave_stump(cut: Vector3i) -> void:
+	var gen := _terrain.generator as IslandGenerator
+	if gen == null or _is_wood(_tool.get_voxel(cut + Vector3i.DOWN)):
+		return  # cortado a media altura: el resto del tronco sigue en pie
+	# El pie del árbol: la columna del corte o, en los gigantes de 2x2, la de su esquina.
+	for d in [Vector3i.ZERO, Vector3i(-1, 0, 0), Vector3i(0, 0, -1), Vector3i(-1, 0, -1)]:
+		var c: Vector3i = cut + d
+		if gen.has_tree(c.x, c.z) and _tool.get_voxel(c) == IslandGenerator.AIR:
+			_tool.set_voxel(c, IslandGenerator.STUMP)
+			_terrain.get_tree().call_group("tree_regrowth", "plant", c)
+			return
 
 # ------------------------------------------------------------------ qué cae
 
@@ -230,6 +247,7 @@ func _build_blocks(cells: Dictionary) -> Node3D:
 # ------------------------------------------------------------------ mientras cae
 
 func _integrate_forces(state: PhysicsDirectBodyState3D) -> void:
+	_touching = state.get_contact_count() > 0
 	if state.get_contact_count() > 0:
 		_hit = true
 
@@ -254,11 +272,15 @@ func _physics_process(delta: float) -> void:
 	# Golpe contra el suelo con la copa: las hojas se rompen.
 	if not _leaves_broken and _hit and _age > 0.25 and (_tilt() > 0.6 or _age > 2.5):
 		_break_leaves()
-	# Quieto un rato (o demasiado tiempo cayendo): se queda como bloques.
+	# El tronco ya tumbado golpea el suelo: revienta en objetos.
+	if _leaves_broken and _touching and _tilt() > 0.8 and _age > WAIT + 0.3:
+		_shatter()
+		return
+	# Quieto un rato (enganchado en una cuesta, o demasiado tiempo cayendo): también revienta.
 	var moving := linear_velocity.length() > 0.15 or angular_velocity.length() > 0.2
 	_still = 0.0 if moving else _still + delta
 	if (_still > 0.6 and _age > WAIT + 1.0 and (_tilt() >= 0.35 or _age > WAIT + 4.0)) or _age > MAX_TIME or global_position.y < -60.0:
-		_settle()
+		_shatter()
 
 
 ## Cuánto se ha inclinado (0 de pie, 1 tumbado).
@@ -295,75 +317,77 @@ func _break_leaves() -> void:
 	Sfx.play("romper_madera", center, 2.0, 0.05)
 
 
-# ------------------------------------------------------------------ quieto: a bloques
+# ------------------------------------------------------------------ contra el suelo: revienta
 
-func _settle() -> void:
+const MAX_DROPS := 12            # objetos sueltos como mucho (los troncos se agrupan en montones)
+
+
+## El tronco golpea el suelo y revienta: astillas, y la madera queda en el suelo como objetos
+## para recoger (un tronco por bloque, en montones repartidos a lo largo de donde cayó).
+func _shatter() -> void:
 	_done = true
 	freeze = true
 	if not _leaves_broken:
 		_break_leaves()
-	# Eje del tronco: hacia dónde apunta ahora lo que antes era "arriba".
-	var up := global_basis.y.normalized()
-	var flat := Vector3(up.x, 0.0, up.z)
-	var standing := absf(up.y) > 0.75 or flat.length() < 0.05
-	var along := Vector3i.UP
-	if not standing:
-		along = Vector3i(int(signf(flat.x)), 0, 0) if absf(flat.x) > absf(flat.z) else Vector3i(0, 0, int(signf(flat.z)))
-	# Giro exacto (de 90 grados) que lleva el árbol de pie a tumbado en esa dirección.
-	var turn := Basis()
-	if not standing:
-		turn = Basis(Vector3.UP.cross(Vector3(along)).normalized(), PI * 0.5)
-	# Donde ha quedado la base del tronco, en la cuadrícula.
-	var anchor := Vector3i((global_transform * (Vector3(0, 0.5, 0) * _vs) / _vs).floor())
-	var targets := {}  # celda del mundo -> id
+	var counts := {}   # objeto -> cuántos
+	var spots: Array[Vector3] = []
+	var center := Vector3.ZERO
 	for c: Vector3i in _woods:
-		var rel := Vector3(c - _cut) - Vector3(0, 1, 0)  # el primer bloque de tronco, en (0, 0, 0)
-		var r := turn * rel
-		var cell := anchor + Vector3i(roundi(r.x), roundi(r.y), roundi(r.z))
-		targets[cell] = _lying_id(_woods[c], along)
-	# Si algo está metido en el suelo, se sube; si queda en el aire, baja hasta apoyarse.
-	for i in 3:
-		if _fits(targets, Vector3i.ZERO):
-			break
-		targets = _shift(targets, Vector3i.UP)
-	var fall := 0
-	while fall < 12 and _fits(targets, Vector3i(0, -(fall + 1), 0)):
-		fall += 1
-	if fall >= 12:
-		fall = 0
-	for cell: Vector3i in targets:
-		var p := cell - Vector3i(0, fall, 0)
-		if _free(_tool.get_voxel(p)):
-			_tool.set_voxel(p, targets[cell])
-		else:  # el sitio está ocupado: ese trozo queda como objeto
-			ItemDrop.spawn(get_parent(), (Vector3(p) + Vector3.ONE * 0.5) * _vs + Vector3.UP * 0.4, _leaf_item(targets[cell]), 1)
-	Sfx.play("colocar", global_position, 2.0, 0.1)
+		var item := _leaf_item(_woods[c])
+		counts[item] = int(counts.get(item, 0)) + 1
+		var p := global_transform * (_local(c) * _vs)
+		spots.append(p)
+		center += p
+	center /= maxf(_woods.size(), 1)
+	# Montones repartidos por el tronco caído.
+	var piles := mini(MAX_DROPS, _woods.size())
+	var k := 0
+	for item: String in counts:
+		var left: int = counts[item]
+		while left > 0:
+			var amount := maxi(1, ceili(float(counts[item]) / piles))
+			amount = mini(amount, left)
+			var at: Vector3 = spots[(k * 7) % spots.size()]
+			ItemDrop.spawn(get_parent(), at + Vector3.UP * 0.4, item, amount)
+			left -= amount
+			k += 1
+	_burst_chips(center, spots)
+	Sfx.play("romper_madera", center, 4.0, 0.1)
+	Sfx.play("golpe", center, 2.0, 0.2)
 	queue_free()
 
 
-func _lying_id(id: int, along: Vector3i) -> int:
-	if along.y != 0:
-		return id
-	if TreeParts.part_of(id) >= 0:
-		return TreeParts.lying(id, along)
-	var dead := id == IslandGenerator.DEAD_WOOD
-	if along.x != 0:
-		return IslandGenerator.DEAD_LOG_X if dead else IslandGenerator.LOG_X
-	return IslandGenerator.DEAD_LOG_Z if dead else IslandGenerator.LOG_Z
-
-
-func _fits(cells: Dictionary, offset: Vector3i) -> bool:
-	for cell: Vector3i in cells:
-		if not _free(_tool.get_voxel(cell + offset)):
-			return false
-	return true
-
-
-func _shift(cells: Dictionary, offset: Vector3i) -> Dictionary:
-	var out := {}
-	for cell: Vector3i in cells:
-		out[cell + offset] = cells[cell]
-	return out
+## Astillas de madera que saltan a lo largo del tronco.
+func _burst_chips(center: Vector3, spots: Array[Vector3]) -> void:
+	var length := 0.5
+	for p in spots:
+		length = maxf(length, p.distance_to(center))
+	var particles := CPUParticles3D.new()
+	var chunk := BoxMesh.new()
+	chunk.size = Vector3.ONE * 0.07
+	var material := StandardMaterial3D.new()
+	var first: int = _woods.values()[0]
+	material.albedo_color = Blocks.color_of(first)
+	material.roughness = 1.0
+	chunk.material = material
+	particles.mesh = chunk
+	particles.amount = mini(120, 20 + _woods.size() * 6)
+	particles.lifetime = 1.0
+	particles.one_shot = true
+	particles.explosiveness = 0.95
+	particles.emission_shape = CPUParticles3D.EMISSION_SHAPE_SPHERE
+	particles.emission_sphere_radius = length
+	particles.direction = Vector3.UP
+	particles.spread = 70.0
+	particles.gravity = Vector3(0, -12.0, 0)
+	particles.initial_velocity_min = 2.0
+	particles.initial_velocity_max = 5.0
+	particles.angular_velocity_min = -400.0
+	particles.angular_velocity_max = 400.0
+	get_parent().add_child(particles)
+	particles.global_position = center
+	particles.emitting = true
+	get_tree().create_timer(1.6).timeout.connect(particles.queue_free)
 
 
 func _burst_leaves(at: Vector3) -> void:
@@ -393,7 +417,3 @@ static func _leaf_item(id: int) -> String:
 		return TreeParts.item_of(id)
 	return "leaves" if PrefabLibrary.is_prefab(id) else ItemDB.drop_of(id)
 
-
-## Hueco donde puede quedar el tronco: aire, o hierba, flores y hojas (que aplasta).
-func _free(id: int) -> bool:
-	return id == IslandGenerator.AIR or Blocks.is_decor(id)

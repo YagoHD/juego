@@ -164,3 +164,11 @@ Todo lo de Kenney y OpenGameArt es CC0 (créditos en `assets/third_party/*/` y
   (donde el agua toca la hierba). El mundo se vuelve a generar.
 - **Sala de muestras** para revisar el aspecto rápido: `tools/capture.ps1 -Showroom` (o
   `godot --path . -- --showroom`): un suelo plano con todos los bloques en fila.
+
+## Tala nueva (4 de octubre, tarde)
+
+- **El árbol revienta al caer**: se tala por la base, cae con física y, al golpear el suelo ya
+  tumbado, salta en astillas y la madera queda en el suelo como objetos para recoger (también
+  las hojas y, en los pinos, resina). Ya no quedan troncos tumbados en el mundo.
+- **Tocón**: donde estaba el árbol queda un tocón (de cubitos). Si no lo quitas, a los 10 minutos
+  de juego el árbol **vuelve a crecer** igual que era. Si lo rompes, da madera y ahí ya no crece.

@@ -268,6 +268,37 @@ func _flower(prefab_name: String, sprite_path: String) -> Prefab:
 	return _decor_prefab(prefab_name, sub, "crop")
 
 
+## Tocón que queda al talar un árbol (y del que rebrota): tronco corto con corteza de surcos,
+## anillos arriba y raíces que salen por los lados.
+func _stump() -> Prefab:
+	var sub := {}
+	var bark := Color(0.47, 0.3, 0.16)
+	var ring := Color(0.8, 0.6, 0.36)
+	var r := BENCH_RES
+	var mid := Vector2(7.5, 7.5)
+	for x in r:
+		for z in r:
+			var d := Vector2(x, z).distance_to(mid)
+			if d > 5.6:
+				continue
+			for y in 6:
+				var col := bark.darkened(0.15 if (x * 3 + z) % 4 == 0 else 0.0)  # surcos de la corteza
+				if y == 5 and d < 4.6:
+					col = ring.darkened(0.12) if int(d) % 2 == 0 else ring  # anillos
+				sub[Vector3i(x, y, z)] = col
+	# Raíces: cuatro, saliendo en cruz y bajando hasta el suelo.
+	for dir: Vector2i in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
+		for k in range(5, 8):
+			var p := Vector2i(7, 7) + dir * k
+			for w in 2:
+				var q := p + Vector2i(dir.y, dir.x) * w
+				if q.x >= 0 and q.y >= 0 and q.x < r and q.y < r:
+					sub[Vector3i(q.x, 0, q.y)] = bark.darkened(0.1)
+					if k == 5:
+						sub[Vector3i(q.x, 1, q.y)] = bark
+	return _decor_prefab("stump_block", sub, "wood")
+
+
 ## Cubitos de una pieza: "full" (bloque entero), "round" (sin las aristas: la piel redondeada de
 ## una copa) o "x"/"y"/"z" (tronco fino de 3x3 cubitos a lo largo de ese eje, con vetas).
 func _shape(color: Color, kind: String) -> Dictionary:
@@ -313,6 +344,7 @@ func _init() -> void:
 	prefabs.append(_pebbles())
 	prefabs.append(_sticks())
 	prefabs.append(_shell())
+	prefabs.append(_stump())
 	prefabs.append(_flower("decor_flower_red", "res://assets/textures/decor/flower_red.png"))
 	prefabs.append(_flower("decor_flower_yellow", "res://assets/textures/decor/flower_yellow.png"))
 	# Paleta: una fila de colores; luego, las UV de cada pieza apuntan a su color.

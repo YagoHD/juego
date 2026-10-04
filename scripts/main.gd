@@ -126,6 +126,8 @@ func _build_world() -> void:
 			library.add_model(_make_flow(WaterFlow.level_of(id) / 8.0, water))
 		elif id == IslandGenerator.WATER:
 			library.add_model(_make_water(water))
+		elif id == IslandGenerator.STUMP:
+			library.add_model(PrefabLibrary.make_model(PrefabLibrary.first_id("stump_block")))
 		elif id == IslandGenerator.WORKBENCH:
 			library.add_model(_make_bench())
 		elif id == IslandGenerator.CLOTH:
@@ -334,6 +336,12 @@ func _build_player() -> void:
 	add_child(farming)
 	farming.terrain = _terrain
 	_player.farm = farming
+	var regrowth := TreeRegrowth.new()  # los árboles talados rebrotan de su tocón
+	regrowth.name = "TreeRegrowth"
+	regrowth.terrain = _terrain
+	regrowth.generator = _generator
+	regrowth.player = _player
+	add_child(regrowth)
 	_needs = Needs.new()
 	add_child(_needs)
 	_needs.player = _player
@@ -724,6 +732,7 @@ func _save_player() -> void:
 		"needs": _needs.to_data(),
 		"explored": (get_node("Exploration") as Exploration).to_data(),
 		"farm": _player.farm.to_data() if _player.farm != null else {},
+		"stumps": (get_node("TreeRegrowth") as TreeRegrowth).to_data(),
 		"rafts": get_tree().get_nodes_in_group("rafts").map(func(r: Node) -> Dictionary: return (r as Raft).to_data()),
 		"spawn": [_player.get_spawn_point().x, _player.get_spawn_point().y, _player.get_spawn_point().z],
 		"hour": _day_night.hour,
@@ -753,6 +762,8 @@ func _load_player() -> void:
 		_needs.from_data(d["needs"])
 	if d.get("farm") is Dictionary and _player.farm != null:
 		_player.farm.from_data(d["farm"])
+	if d.get("stumps") is Dictionary:
+		(get_node("TreeRegrowth") as TreeRegrowth).from_data(d["stumps"])
 	for r in d.get("rafts", []):
 		_spawn_raft(r)
 	var spawn: Array = d.get("spawn", [])

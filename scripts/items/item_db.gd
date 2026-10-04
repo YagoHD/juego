@@ -42,6 +42,7 @@ const DROPS := {
 	IslandGenerator.GRAVEL: "gravel",
 	IslandGenerator.CLAY: "clay",
 	IslandGenerator.MUD: "mud",
+	IslandGenerator.STUMP: "wood",  # el tocón da madera
 	IslandGenerator.SNOW: "snow",
 	IslandGenerator.WOOD: "wood",
 	IslandGenerator.LEAVES: "leaves",
@@ -161,7 +162,7 @@ static func teaches(id: String) -> String:
 ## Cuántas veces más rápido rompe este bloque con este objeto en la mano (1 = como a mano).
 static func tool_speed(item_id: String, block_id: int) -> float:
 	var woody := [IslandGenerator.WOOD, IslandGenerator.DEAD_WOOD, IslandGenerator.DRIFTWOOD, IslandGenerator.PLANKS, IslandGenerator.CHEST, IslandGenerator.WORKBENCH,
-		IslandGenerator.LOG_X, IslandGenerator.LOG_Z, IslandGenerator.DEAD_LOG_X, IslandGenerator.DEAD_LOG_Z]
+		IslandGenerator.LOG_X, IslandGenerator.LOG_Z, IslandGenerator.DEAD_LOG_X, IslandGenerator.DEAD_LOG_Z, IslandGenerator.STUMP]
 	var rocky := [IslandGenerator.STONE, IslandGenerator.MOSSY_STONE, IslandGenerator.ORE]
 	var soft := [IslandGenerator.LEAVES, IslandGenerator.PINE_LEAVES, IslandGenerator.CLOTH, IslandGenerator.WHEAT]
 	if PrefabLibrary.is_prefab(block_id):  # troncos, hojas y rocas de los árboles y prefabs

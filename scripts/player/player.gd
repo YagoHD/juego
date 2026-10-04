@@ -1564,9 +1564,14 @@ func _water_push() -> Vector2:
 
 # ------------------------------------------------------------------ forma de los bloques
 
+## Bloques con modelo de cubitos propio (un prefab de una pieza).
+const SHAPED := {IslandGenerator.WORKBENCH: "workbench", IslandGenerator.STUMP: "stump_block"}
+
 ## Caja que ocupa de verdad un bloque dentro de su celda (0..1): la alfombra es fina, la hierba
 ## no llena el cubo, cada trozo de árbol o roca tiene su tamaño...
 static func shape_box(id: int) -> AABB:
+	if SHAPED.has(id):
+		return PrefabLibrary.box(PrefabLibrary.first_id(SHAPED[id]))
 	if id == IslandGenerator.CLOTH:
 		return AABB(Vector3.ZERO, Vector3(1.0, 1.0 / 16.0, 1.0))
 	if id == IslandGenerator.TALL_GRASS:
@@ -1584,8 +1589,8 @@ func _shape_outline(id: int) -> Mesh:
 		return _outlines[id]
 	var lines := PackedVector3Array()
 	var piece := id
-	if id == IslandGenerator.WORKBENCH:
-		piece = PrefabLibrary.first_id("workbench")
+	if SHAPED.has(id):
+		piece = PrefabLibrary.first_id(SHAPED[id])
 	elif DecorModels.piece_of(id) >= 0:
 		piece = DecorModels.piece_of(id)
 	if PrefabLibrary.is_prefab(piece):
