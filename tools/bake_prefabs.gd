@@ -80,6 +80,88 @@ func _tree_parts() -> Prefab:
 	return p
 
 
+## Mesa de trabajo (como la del arte conceptual, docs/concept/hoja1_bloques.png): tablero grueso
+## de tablones con juntas, cuatro patas, travesaños, un martillo, una nota y un trapo azul que
+## cuelga por un lado. Cubitos de 1/16 de bloque; lo de encima del tablero sobresale un poco.
+const BENCH_RES := 16
+
+
+func _workbench() -> Prefab:
+	var sub := {}
+	var wood := Color(0.76, 0.48, 0.25)
+	var dark := Color(0.42, 0.25, 0.13)
+	var r := BENCH_RES
+	# Tablero grueso (5 capas): tablones a lo largo de Z, de 4 cubitos, con juntas marcadas solo
+	# arriba, vetas y clavos en las puntas.
+	for x in r:
+		var plank := x / 4
+		for z in r:
+			for y in range(11, 16):
+				var col := wood.darkened(0.07 * (plank % 2)).lightened(0.03 * ((plank * 7) % 3))
+				if (z + plank * 5) % 6 == 0:
+					col = col.darkened(0.1)  # vetas
+				if x % 4 == 3 and x < r - 1:
+					if y == 15:
+						continue  # junta entre tablones
+					if y == 14:
+						col = dark
+				if y == 11:
+					col = col.darkened(0.15)  # canto de abajo, en sombra
+				if (z == 0 or z == r - 1) and x % 4 == 1 and y == 14:
+					col = Color(0.58, 0.58, 0.62)  # clavos
+				sub[Vector3i(x, y, z)] = col
+	# Faldón bajo el tablero (un cubito hacia dentro).
+	for x in range(1, r - 1):
+		for z in range(1, r - 1):
+			if x == 1 or x == r - 2 or z == 1 or z == r - 2:
+				for y in range(9, 11):
+					sub[Vector3i(x, y, z)] = wood.darkened(0.22)
+	# Patas de 4x4 en las esquinas, metidas un cubito.
+	for corner in [Vector2i(1, 1), Vector2i(r - 5, 1), Vector2i(1, r - 5), Vector2i(r - 5, r - 5)]:
+		for x in 4:
+			for z in 4:
+				for y in 9:
+					var col := wood.darkened(0.12 + (0.07 if (x * 2 + z) % 5 == 0 else 0.0))  # vetas a lo largo
+					sub[Vector3i(corner.x + x, y, corner.y + z)] = col
+	# Travesaños bajos entre las patas, en los cuatro lados.
+	for k in range(5, r - 5):
+		for y in range(3, 5):
+			for side in [2, r - 3]:
+				sub[Vector3i(k, y, side)] = wood.darkened(0.2)
+				sub[Vector3i(side, y, k)] = wood.darkened(0.2)
+	# Martillo cruzado: mango de madera y cabeza de hierro grande.
+	for k in range(5, 13):
+		sub[Vector3i(k, 16, 2)] = Color(0.8, 0.55, 0.3)
+		sub[Vector3i(k, 16, 3)] = Color(0.72, 0.48, 0.26)
+	for x in range(1, 5):
+		for z in range(1, 4):
+			for y in range(16, 18):
+				sub[Vector3i(x, y, z)] = Color(0.32, 0.32, 0.36) if y == 17 else Color(0.24, 0.24, 0.28)
+	# Nota de papel con manchas, delante a la izquierda.
+	for x in range(2, 7):
+		for z in range(9, 13):
+			sub[Vector3i(x, 16, z)] = Color(0.9, 0.86, 0.74) if (x * 3 + z) % 7 != 0 else Color(0.58, 0.42, 0.32)
+	# Trapo azul: encima, junto al borde +Z, y colgando por ese lado (el que se ve de frente).
+	var blue := Color(0.1, 0.52, 0.82)
+	for x in range(9, 14):
+		for z in range(r - 4, r):
+			sub[Vector3i(x, 16, z)] = blue.darkened(0.06 * (x % 2))
+		for y in range(3, 17):
+			if y < 5 and x % 2 == 1:
+				continue  # borde de abajo deshilachado
+			var col := blue.darkened(0.06 * (x % 2) + 0.08)
+			if y == 7:
+				col = Color(0.88, 0.52, 0.2)  # raya naranja
+			sub[Vector3i(x, y, r)] = col
+	var p := Prefab.new()
+	p.prefab_name = "workbench"
+	p.cells.append(Vector3i.ZERO)
+	p.meshes.append(_piece_mesh(sub, {}, Vector3i.ZERO, r))
+	p.kinds.append("wood")
+	p.colors.append(wood)
+	return p
+
+
 ## Cubitos de una pieza: "full" (bloque entero), "round" (sin las aristas: la piel redondeada de
 ## una copa) o "x"/"y"/"z" (tronco fino de 3x3 cubitos a lo largo de ese eje, con vetas).
 func _shape(color: Color, kind: String) -> Dictionary:
@@ -121,6 +203,7 @@ func _init() -> void:
 			_tree_colors[entry[0]] = _common_colors(cells)
 		prefabs.append(_cut(entry[0], cells, entry[3]))
 	prefabs.append(_tree_parts())
+	prefabs.append(_workbench())
 	# Paleta: una fila de colores; luego, las UV de cada pieza apuntan a su color.
 	var img := Image.create(maxi(_palette_list.size(), 1), 1, false, Image.FORMAT_RGBA8)
 	for i in _palette_list.size():
@@ -273,7 +356,7 @@ func _cut(prefab_name: String, cells: Dictionary, default_kind: String) -> Prefa
 
 ## Malla de un trozo: cubitos de 1/N, con su piel completa (las caras entre trozos vecinos no se
 ## ven por estar de espaldas, y al romper el vecino el trozo sigue macizo).
-func _piece_mesh(sub: Dictionary, all_cells: Dictionary, offset: Vector3i) -> ArrayMesh:
+func _piece_mesh(sub: Dictionary, all_cells: Dictionary, offset: Vector3i, res := N) -> ArrayMesh:
 	var faces := [
 		[Vector3i.UP, 1.0, [Vector3(0, 1, 1), Vector3(1, 1, 1), Vector3(1, 1, 0), Vector3(0, 1, 0)]],
 		[Vector3i.DOWN, 0.6, [Vector3(0, 0, 0), Vector3(1, 0, 0), Vector3(1, 0, 1), Vector3(0, 0, 1)]],
@@ -282,7 +365,13 @@ func _piece_mesh(sub: Dictionary, all_cells: Dictionary, offset: Vector3i) -> Ar
 		[Vector3i.RIGHT, 0.75, [Vector3(1, 0, 1), Vector3(1, 0, 0), Vector3(1, 1, 0), Vector3(1, 1, 1)]],
 		[Vector3i.LEFT, 0.7, [Vector3(0, 0, 0), Vector3(0, 0, 1), Vector3(0, 1, 1), Vector3(0, 1, 0)]],
 	]
-	var size := 1.0 / N
+	var size := 1.0 / res
+	# Lo que ocupan los cubitos (pueden salirse un poco del bloque: el martillo de la mesa...).
+	var box_lo := Vector3i(1 << 20, 1 << 20, 1 << 20)
+	var box_hi := -box_lo
+	for c: Vector3i in sub:
+		box_lo = box_lo.min(c)
+		box_hi = box_hi.max(c)
 	var st := SurfaceTool.new()
 	st.begin(Mesh.PRIMITIVE_TRIANGLES)
 	# Por cada dirección y cada capa: máscara de las caras que dan al aire (dentro de la pieza),
@@ -292,10 +381,10 @@ func _piece_mesh(sub: Dictionary, all_cells: Dictionary, offset: Vector3i) -> Ar
 		var axis := 0 if normal.x != 0 else (1 if normal.y != 0 else 2)
 		var u := (axis + 1) % 3
 		var v := (axis + 2) % 3
-		for layer in N:
+		for layer in range(box_lo[axis], box_hi[axis] + 1):
 			var mask := {}  # Vector2i(u, v) -> índice de color
-			for a in N:
-				for b in N:
+			for a in range(box_lo[u], box_hi[u] + 1):
+				for b in range(box_lo[v], box_hi[v] + 1):
 					var c := Vector3i.ZERO
 					c[axis] = layer
 					c[u] = a

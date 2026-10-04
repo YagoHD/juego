@@ -123,6 +123,8 @@ func _build_world() -> void:
 			library.add_model(_make_flow(WaterFlow.level_of(id) / 8.0, water))
 		elif id == IslandGenerator.WATER:
 			library.add_model(_make_water(water))
+		elif id == IslandGenerator.WORKBENCH:
+			library.add_model(_make_bench())
 		elif id == IslandGenerator.CLOTH:
 			library.add_model(_make_carpet(id, solid))
 		elif id == IslandGenerator.ORE:
@@ -1169,3 +1171,11 @@ func _spawn_raft(data: Variant) -> void:
 	boat.add_to_group("rafts")
 	boat.global_position = Vector3(float(pos[0]), boat.sea_y(), float(pos[1]))
 	boat.rotation.y = float(data.get("yaw", 0.0))
+
+
+## Mesa de trabajo: el modelo de cubitos del arte conceptual (tools/bake_prefabs.gd), que choca
+## como un bloque entero (el martillo y el trapo que sobresalen no estorban).
+func _make_bench() -> VoxelBlockyModelMesh:
+	var model := PrefabLibrary.make_model(PrefabLibrary.first_id("workbench"))
+	model.collision_aabbs = [AABB(Vector3.ZERO, Vector3.ONE)]
+	return model

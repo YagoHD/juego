@@ -11,6 +11,8 @@ static var _voxel_cache := {}
 
 static func make(id: String, size: float) -> Mesh:
 	var block := ItemDB.block_of(id)
+	if block == IslandGenerator.WORKBENCH:  # la mesa: su modelo de cubitos
+		return PrefabLibrary.centered_mesh(PrefabLibrary.first_id("workbench"), size)
 	if block >= 0:
 		return BlockTextures.make_block_mesh(block, size)
 	if VOXEL_MODELS.has(id):
@@ -46,6 +48,8 @@ static func _voxel(model_name: String, size: float) -> Mesh:
 static func make_material(id: String) -> StandardMaterial3D:
 	var block := ItemDB.block_of(id)
 	if block >= 0:
+		if block == IslandGenerator.WORKBENCH:
+			return PrefabLibrary.material()
 		return BlockTextures.make_material(block == IslandGenerator.WATER)
 	var material := StandardMaterial3D.new()
 	material.vertex_color_use_as_albedo = true
