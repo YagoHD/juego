@@ -31,7 +31,9 @@ func _mouse_motion(dy: float) -> void:
 	Input.parse_input_event(e)
 
 
-func _physics_process(_delta: float) -> bool:
+# Cuenta fotogramas normales (no de física): las teclas se procesan en ellos; con la isla cargada
+# caben varios pasos de física en un fotograma y se comprobaba antes de que llegara la tecla.
+func _process(_delta: float) -> bool:
 	var player: Player = _main.get("_player")
 	if player == null or _main.get("_loading") or not player.is_on_ground_ready():
 		return false

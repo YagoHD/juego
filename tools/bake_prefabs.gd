@@ -36,49 +36,6 @@ const LIST := [
 
 var _palette := {}   # Color -> índice
 var _palette_list: Array[Color] = []
-var _tree_colors := {}  # "oak_k"/"pine_k" -> {"leaf": Color, "wood": Color}
-
-
-## El verde y el marrón que más se repiten en un árbol de Kenney (ya pasado a nuestra paleta).
-func _common_colors(cells: Dictionary) -> Dictionary:
-	var count := {}
-	for col: Color in cells.values():
-		count[col] = int(count.get(col, 0)) + 1
-	var best := {"leaf": [Color.GREEN, 0], "wood": [Color.BROWN, 0]}
-	for col: Color in count:
-		var key := "leaf" if col.g > col.r * 1.08 else "wood"
-		if int(count[col]) > int(best[key][1]):
-			best[key] = [col, count[col]]
-	return {"leaf": best["leaf"][0], "wood": best["wood"][0]}
-
-
-## Piezas de nuestros árboles (ver scripts/world/tree_parts.gd; mismo orden que su enum), con los
-## colores de los árboles de Kenney para que todos parezcan del mismo juego.
-func _tree_parts() -> Prefab:
-	var leaf: Color = _tree_colors["oak_k"]["leaf"]
-	var pine: Color = _tree_colors["pine_k"]["leaf"]
-	var wood: Color = _tree_colors["oak_k"]["wood"]
-	var dead := Color.from_hsv(wood.h, wood.s * 0.3, wood.v * 0.8)
-	var shapes := [
-		["leaves", _shape(leaf, "full")], ["leaves", _shape(leaf, "round")],
-		["leaves", _shape(pine, "full")], ["leaves", _shape(pine, "round")],
-		["wood", _shape(wood, "y")], ["wood", _shape(wood, "x")], ["wood", _shape(wood, "z")],
-		["wood", _shape(dead, "y")], ["wood", _shape(dead, "x")], ["wood", _shape(dead, "z")],
-		["wood", _shape(wood, "full")],
-	]
-	var p := Prefab.new()
-	p.prefab_name = "tree_parts"
-	for s in shapes:
-		var sub: Dictionary = s[1]
-		p.cells.append(Vector3i.ZERO)  # no forman un modelo: el generador las coloca una a una
-		p.meshes.append(_piece_mesh(sub, {}, Vector3i.ZERO))
-		p.outlines.append(_outline(sub, N))
-		p.kinds.append(s[0])
-		var avg := Color(0, 0, 0)
-		for col: Color in sub.values():
-			avg += col
-		p.colors.append(avg / sub.size())
-	return p
 
 
 ## Mesa de trabajo (como la del arte conceptual, docs/concept/hoja1_bloques.png): tablero grueso
@@ -299,31 +256,67 @@ func _stump() -> Prefab:
 	return _decor_prefab("stump_block", sub, "wood")
 
 
-## Cubitos de una pieza: "full" (bloque entero), "round" (sin las aristas: la piel redondeada de
-## una copa) o "x"/"y"/"z" (tronco fino de 3x3 cubitos a lo largo de ese eje, con vetas).
-func _shape(color: Color, kind: String) -> Dictionary:
-	var sub := {}
-	for x in N:
-		for y in N:
-			for z in N:
-				var c := Vector3i(x, y, z)
-				var col := color
-				match kind:
-					"round":
-						var edges := int(x == 0 or x == N - 1) + int(y == 0 or y == N - 1) + int(z == 0 or z == N - 1)
-						if edges >= 2:
-							continue
-					"x", "y", "z":
-						var axis := {"x": 0, "y": 1, "z": 2}[kind] as int
-						var across := [x, y, z]
-						across.remove_at(axis)
-						if across[0] < 1 or across[0] > N - 2 or across[1] < 1 or across[1] > N - 2:
-							continue
-						if (c[axis] + across[0] * 2 + across[1]) % 4 == 0:
-							col = color.darkened(0.12)  # vetas de la corteza
-				sub[c] = col
-	return sub
 
+## Árboles de la hoja del concepto (TreeBuilder), varias versiones de cada uno. El orden es el de
+## PrefabLibrary.NAMES (siempre añadir al final).
+var TREES := [
+	["t_oak_1", TreeBuilder.oak.bind(11)], ["t_oak_2", TreeBuilder.oak.bind(22)], ["t_oak_3", TreeBuilder.oak.bind(33)],
+	["t_lean_1", TreeBuilder.leaning_oak.bind(41)], ["t_lean_2", TreeBuilder.leaning_oak.bind(52)],
+	["t_giant_1", TreeBuilder.giant.bind(61)],
+	["t_pine_1", TreeBuilder.pine.bind(71, false, false)], ["t_pine_2", TreeBuilder.pine.bind(72, false, false)],
+	["t_pine_small_1", TreeBuilder.pine.bind(81, true, false)], ["t_pine_small_2", TreeBuilder.pine.bind(82, true, false)],
+	["t_pine_tier_1", TreeBuilder.pine.bind(91, false, true)], ["t_pine_tier_2", TreeBuilder.pine.bind(92, false, true)],
+	["t_dead_1", TreeBuilder.dead.bind(101)], ["t_dead_2", TreeBuilder.dead.bind(102)],
+	["t_bush_1", TreeBuilder.bush.bind(111, false)], ["t_bush_2", TreeBuilder.bush.bind(112, false)],
+	["t_berry_1", TreeBuilder.bush.bind(121, true)], ["t_berry_2", TreeBuilder.bush.bind(122, true)],
+]
+
+
+## Trocea un árbol de TreeBuilder en bloques. Cada trozo es "leaves", "wood" o "root" según lo
+## que más tenga. Los cubitos que no se ven (rodeados por los 6 lados) van de un solo color: así
+## sus caras se juntan y los trozos de dentro de la copa son cubos enteros (tapan a sus vecinos).
+func _cut_tree(prefab_name: String, build: Callable) -> Prefab:
+	var tree: TreeBuilder = build.call()
+	var res := TreeBuilder.RES
+	var dirs := [Vector3i.UP, Vector3i.DOWN, Vector3i.LEFT, Vector3i.RIGHT, Vector3i.FORWARD, Vector3i.BACK]
+	var blocks := {}  # bloque -> {cubito local -> Color}
+	var counts := {}  # bloque -> {tipo -> cuántos}
+	for c: Vector3i in tree.cells:
+		var type: String = tree.types[c]
+		var col: Color = tree.cells[c]
+		var hidden := true
+		for d: Vector3i in dirs:
+			if not tree.cells.has(c + d):
+				hidden = false
+				break
+		if hidden:
+			col = TreeBuilder.LEAF[1] if type == "leaf" else TreeBuilder.BARK[1]
+		var b := Vector3i(floori(float(c.x) / res), floori(float(c.y) / res), floori(float(c.z) / res))
+		if not blocks.has(b):
+			blocks[b] = {}
+			counts[b] = {}
+		blocks[b][c - b * res] = col
+		counts[b][type] = int(counts[b].get(type, 0)) + 1
+	var p := Prefab.new()
+	p.prefab_name = prefab_name
+	for b: Vector3i in blocks:
+		var sub: Dictionary = blocks[b]
+		if sub.size() < 3:
+			continue  # una mota suelta
+		var best := ""
+		for type: String in counts[b]:
+			if best == "" or int(counts[b][type]) > int(counts[b][best]):
+				best = type
+		p.cells.append(b)
+		p.meshes.append(_piece_mesh(sub, {}, Vector3i.ZERO, res))
+		p.outlines.append(_outline(sub, res))
+		p.kinds.append({"leaf": "leaves", "wood": "wood", "root": "root"}[best])
+		var avg := Color(0, 0, 0)
+		for col: Color in sub.values():
+			avg += col
+		p.colors.append(avg / sub.size())
+	print("  %s: %d trozos, %d cubitos" % [prefab_name, p.cells.size(), tree.cells.size()])
+	return p
 
 func _init() -> void:
 	var src_dir := ProjectSettings.globalize_path(SRC)
@@ -336,10 +329,10 @@ func _init() -> void:
 			continue
 		for c in cells:
 			cells[c] = _recolor(cells[c], entry[3])
-		if entry[0] in ["oak_k", "pine_k"]:
-			_tree_colors[entry[0]] = _common_colors(cells)
 		prefabs.append(_cut(entry[0], cells, entry[3]))
-	prefabs.append(_tree_parts())
+	for t in TREES:
+		prefabs.append(_cut_tree(t[0], t[1] as Callable))
+		print("[árbol] ", t[0])
 	prefabs.append(_workbench())
 	prefabs.append(_pebbles())
 	prefabs.append(_sticks())

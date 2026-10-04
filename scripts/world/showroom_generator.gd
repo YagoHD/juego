@@ -57,6 +57,14 @@ func _generate_block(out_buffer: VoxelBuffer, origin: Vector3i, _lod: int) -> vo
 	for i in wall.size():
 		for h in 3:
 			_put_at(out_buffer, origin, size, c.x - 2 + i, FLOOR + h, c.y + ROW_Z + 6, wall[i])
+	# Fila de árboles de cada tipo, detrás (como la hoja de árboles del concepto).
+	var tz := c.y + ROW_Z + 22
+	var row := ["t_oak_1", "t_lean_1", "t_giant_1", "t_pine_1", "t_pine_small_1", "t_pine_tier_1", "t_dead_1", "t_bush_1", "t_berry_1"]
+	for i in row.size():
+		var tx := c.x + 40 - i * 10
+		for piece in PrefabLibrary.pieces(PrefabLibrary.index_of(row[i])):
+			var p: Vector3i = piece[0]
+			_put_at(out_buffer, origin, size, tx + p.x, FLOOR + p.y, tz + p.z, piece[1])
 	# Charco de agua de 3x3.
 	for x in 3:
 		for z in 3:

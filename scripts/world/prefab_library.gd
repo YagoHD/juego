@@ -6,8 +6,11 @@ class_name PrefabLibrary
 const DIR := "res://assets/models/prefabs/"
 const NAMES := ["palm_tall", "palm_bend", "palm_short", "rock_a", "rock_d", "rock_tall",
 	"bush", "stump", "mushrooms_red", "mushrooms_tan",
-	# Nuevos, siempre al final:
-	"oak_k", "fat_k", "pine_k", "log_fallen", "bush_large", "wheat_a", "wheat_b", "tree_parts", "workbench", "decor_pebbles", "decor_sticks", "decor_shell", "decor_flower_red", "decor_flower_yellow", "stump_block"]
+	# Nuevos, siempre al final ("tree_parts" ya no se usa: se deja el hueco para no mover los ids):
+	"oak_k", "fat_k", "pine_k", "log_fallen", "bush_large", "wheat_a", "wheat_b", "tree_parts", "workbench", "decor_pebbles", "decor_sticks", "decor_shell", "decor_flower_red", "decor_flower_yellow", "stump_block",
+	"t_oak_1", "t_oak_2", "t_oak_3", "t_lean_1", "t_lean_2", "t_giant_1", "t_pine_1", "t_pine_2",
+	"t_pine_small_1", "t_pine_small_2", "t_pine_tier_1", "t_pine_tier_2", "t_dead_1", "t_dead_2",
+	"t_bush_1", "t_bush_2", "t_berry_1", "t_berry_2"]
 const FIRST_ID := 64
 
 static var _loaded := false
@@ -28,7 +31,7 @@ static func load_all() -> void:
 	_loaded = true
 	var next := FIRST_ID
 	for n in NAMES:
-		var p := load(DIR + n + ".res") as Prefab
+		var p := load(DIR + n + ".res") as Prefab if ResourceLoader.exists(DIR + n + ".res") else null
 		if p == null:
 			p = Prefab.new()  # falta el archivo: sin piezas (los ids siguientes no se mueven)
 		_prefabs.append(p)
@@ -168,3 +171,20 @@ static func box(id: int) -> AABB:
 static func mesh(id: int) -> ArrayMesh:
 	load_all()
 	return _mesh.get(id)
+
+
+## ¿Es un trozo de pino (sus hojas son agujas; al talarlo suelta resina)?
+static func is_pine(id: int) -> bool:
+	return prefab_of(id).begins_with("t_pine") or prefab_of(id) == "pine_k"
+
+
+## ¿Es un trozo de árbol seco?
+static func is_dead(id: int) -> bool:
+	return prefab_of(id).begins_with("t_dead")
+
+
+## El objeto que da un trozo de árbol: hojas, agujas de pino, madera o madera seca.
+static func tree_item(id: int) -> String:
+	if kind(id) == "leaves":
+		return "pine_leaves" if is_pine(id) else "leaves"
+	return "dead_wood" if is_dead(id) else "wood"

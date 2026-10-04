@@ -167,7 +167,7 @@ static func tool_speed(item_id: String, block_id: int) -> float:
 	var soft := [IslandGenerator.LEAVES, IslandGenerator.PINE_LEAVES, IslandGenerator.CLOTH, IslandGenerator.WHEAT]
 	if PrefabLibrary.is_prefab(block_id):  # troncos, hojas y rocas de los árboles y prefabs
 		match PrefabLibrary.kind(block_id):
-			"wood": woody.append(block_id)
+			"wood", "root": woody.append(block_id)
 			"leaves": soft.append(block_id)
 			"rock": rocky.append(block_id)
 	match item_id:
@@ -205,12 +205,16 @@ static func drops_for(block_id: int, rng: RandomNumberGenerator) -> Array:
 			return [["seeds", 1]]
 		if PrefabLibrary.prefab_of(block_id) == "wheat_b":  # trigo maduro
 			return [["wheat", 2 + int(roll < 0.5)], ["seeds", 1 + int(rng.randf() < 0.5)]]
-		if PrefabLibrary.prefab_of(block_id) in ["bush", "bush_large"]:  # los arbustos dan bayas (o fibra)
+		var owner := PrefabLibrary.prefab_of(block_id)
+		if owner.begins_with("t_berry") and PrefabLibrary.kind(block_id) == "leaves":  # arbusto de bayas
+			if roll < 0.7: return [["berries", 1 + int(rng.randf() < 0.5)]]
+			return [["fiber", 1]]
+		if owner in ["bush", "bush_large", "t_bush_1", "t_bush_2"] and PrefabLibrary.kind(block_id) == "leaves":  # los arbustos dan bayas (o fibra)
 			if roll < 0.55: return [["berries", 1 + int(rng.randf() < 0.4)]]
 			return [["fiber", 1]] if roll < 0.8 else []
-		if TreeParts.part_of(block_id) >= 0:  # nuestros árboles: madera, madera muerta, hojas...
-			var item := TreeParts.item_of(block_id)
-			if PrefabLibrary.kind(block_id) == "wood":
+		if owner.begins_with("t_"):  # nuestros árboles: madera, madera seca, hojas, agujas...
+			var item := PrefabLibrary.tree_item(block_id)
+			if PrefabLibrary.kind(block_id) != "leaves":  # tronco o raíz
 				return [[item, 1]]
 			return [[item, 1]] if roll < 0.3 else ([["fiber", 1]] if roll < 0.5 else [])
 		match PrefabLibrary.kind(block_id):

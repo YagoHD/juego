@@ -172,3 +172,10 @@ Todo lo de Kenney y OpenGameArt es CC0 (créditos en `assets/third_party/*/` y
   las hojas y, en los pinos, resina). Ya no quedan troncos tumbados en el mundo.
 - **Tocón**: donde estaba el árbol queda un tocón (de cubitos). Si no lo quitas, a los 10 minutos
   de juego el árbol **vuelve a crecer** igual que era. Si lo rompes, da madera y ahí ya no crece.
+- **Árboles nuevos de la hoja 3 del concepto** (adiós a los de Kenney y a los de bloques):
+  robles, robles inclinados, árbol gigante, pinos (grandes, pequeños y por pisos), árboles secos,
+  arbustos y arbustos de bayas, varias versiones de cada uno. Tronco que se ensancha con raíces,
+  corteza con surcos, copa de cubos de hojas con luz pintada.
+- **Talar a lo ancho**: el tronco es grueso (3x3 bloques; el gigante, más). El árbol cae cuando
+  cortas todo el ancho del tronco a una altura. El tocón queda en el centro y rebrota igual.
+- Los arbustos de bayas dan bayas; los pinos, agujas y resina; los árboles secos, madera seca.

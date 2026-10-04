@@ -73,21 +73,23 @@ static func try_fell(parent: Node, terrain: VoxelTerrain, cut: Vector3i, cut_id:
 	tree._start(from)
 	return true
 
-
-
 ## Talado por la base (debajo del corte ya no hay tronco): ahí queda un tocón, del que el árbol
 ## volverá a crecer si nadie lo quita (TreeRegrowth). Solo donde el generador planta un árbol.
 func _leave_stump(cut: Vector3i) -> void:
 	var gen := _terrain.generator as IslandGenerator
 	if gen == null or _is_wood(_tool.get_voxel(cut + Vector3i.DOWN)):
 		return  # cortado a media altura: el resto del tronco sigue en pie
-	# El pie del árbol: la columna del corte o, en los gigantes de 2x2, la de su esquina.
-	for d in [Vector3i.ZERO, Vector3i(-1, 0, 0), Vector3i(0, 0, -1), Vector3i(-1, 0, -1)]:
-		var c: Vector3i = cut + d
-		if gen.has_tree(c.x, c.z) and _tool.get_voxel(c) == IslandGenerator.AIR:
-			_tool.set_voxel(c, IslandGenerator.STUMP)
-			_terrain.get_tree().call_group("tree_regrowth", "plant", c)
-			return
+	# El pie del árbol: el centro del tronco, que puede estar a un par de bloques del último corte
+	# (los troncos gruesos ocupan 3x3 o 5x5 bloques y se talan cortando todo su ancho).
+	for dx in range(-2, 3):
+		for dz in range(-2, 3):
+			var d := Vector3i(dx, 0, dz)
+			var c: Vector3i = cut + d
+			if gen.has_tree(c.x, c.z) and _tool.get_voxel(c) == IslandGenerator.AIR:
+				_tool.set_voxel(c, IslandGenerator.STUMP)
+				_terrain.get_tree().call_group("tree_regrowth", "plant", c)
+				return
+
 
 # ------------------------------------------------------------------ qué cae
 
@@ -112,7 +114,7 @@ func _collect(cut: Vector3i) -> bool:
 		if c.y <= cut.y:
 			return false  # sigue unido a algo por debajo del corte: se sostiene
 		_woods[c] = id
-		if id != IslandGenerator.DEAD_WOOD and not TreeParts.is_dead(id):
+		if id != IslandGenerator.DEAD_WOOD and not PrefabLibrary.is_dead(id):
 			dead_only = false
 		if _woods.size() > MAX_BLOCKS:
 			return false
@@ -157,7 +159,7 @@ func _start(from: Vector3) -> void:
 	can_sleep = true
 	var rng := RandomNumberGenerator.new()
 	rng.randomize()
-	var dead := _woods.values().all(func(w: int) -> bool: return w == IslandGenerator.DEAD_WOOD or TreeParts.is_dead(w))
+	var dead := _woods.values().all(func(w: int) -> bool: return w == IslandGenerator.DEAD_WOOD or PrefabLibrary.is_dead(w))
 	# Peso: la madera pesa y las hojas poco; los muertos, secos, pesan menos.
 	mass = _woods.size() * (12.0 if dead else 20.0) + _leaves.size() * 1.5
 	var friction := PhysicsMaterial.new()
@@ -304,7 +306,7 @@ func _break_leaves() -> void:
 			ItemDrop.spawn(get_parent(), p + Vector3.UP * 0.3, _leaf_item(_leaves[c]), 1)
 	center /= _leaves.size()
 	# Los pinos sueltan resina al caer.
-	if _leaves.values().any(func(l: int) -> bool: return l == IslandGenerator.PINE_LEAVES or TreeParts.is_pine(l)):
+	if _leaves.values().any(func(l: int) -> bool: return l == IslandGenerator.PINE_LEAVES or PrefabLibrary.is_pine(l)):
 		for k in rng.randi_range(1, 3):
 			ItemDrop.spawn(get_parent(), global_transform * (Vector3(0, 1.5, 0) * _vs) + Vector3.UP * 0.4, "resin", 1)
 	for node in _leaf_nodes:
@@ -413,7 +415,5 @@ func _burst_leaves(at: Vector3) -> void:
 
 
 static func _leaf_item(id: int) -> String:
-	if TreeParts.part_of(id) >= 0:
-		return TreeParts.item_of(id)
-	return "leaves" if PrefabLibrary.is_prefab(id) else ItemDB.drop_of(id)
+	return PrefabLibrary.tree_item(id) if PrefabLibrary.is_prefab(id) else ItemDB.drop_of(id)
 

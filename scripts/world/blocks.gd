@@ -118,7 +118,7 @@ const HARDNESS := {
 
 static func hardness(id: int) -> float:
 	if PrefabLibrary.is_prefab(id):
-		return {"wood": 2.0, "rock": 2.6, "leaves": 0.25, "mushroom": 0.05, "crop": 0.05}.get(PrefabLibrary.kind(id), 0.5)
+		return {"wood": 2.0, "root": 1.6, "rock": 2.6, "leaves": 0.25, "mushroom": 0.05, "crop": 0.05}.get(PrefabLibrary.kind(id), 0.5)
 	return HARDNESS.get(id, 0.0)
 
 
