@@ -36,6 +36,11 @@ const FACES := {
 	# Cofre: la cerradura solo en la cara de delante (-Z); los demás lados, lisos.
 	IslandGenerator.CHEST: ["chest_top", "chest_top", "chest_back", "chest_back", "chest_back", "chest_side"],
 	IslandGenerator.PLANKS: ["planks", "planks_side", "planks"],
+	IslandGenerator.SLAB_DOWN: ["planks", "planks_side", "planks"], IslandGenerator.SLAB_UP: ["planks", "planks_side", "planks"],
+	IslandGenerator.SLAB_N: ["planks", "planks_side", "planks"], IslandGenerator.SLAB_S: ["planks", "planks_side", "planks"],
+	IslandGenerator.SLAB_W: ["planks", "planks_side", "planks"], IslandGenerator.SLAB_E: ["planks", "planks_side", "planks"],
+	IslandGenerator.ROPE_HANGING: ["rope", "rope", "rope"],
+	IslandGenerator.SAIL_X: ["cloth", "cloth", "cloth"], IslandGenerator.SAIL_Z: ["cloth", "cloth", "cloth"],
 	IslandGenerator.CLOTH: ["cloth", "cloth_side", "cloth"],
 	IslandGenerator.MOSSY_STONE: ["mossy_stone", "mossy_side", "stone"],
 	IslandGenerator.DRIFTWOOD: ["driftwood", "driftwood_side", "driftwood"],
@@ -295,3 +300,37 @@ static func make_terrain_material() -> ShaderMaterial:
 	mat.set_shader_parameter("glow_tiles", PackedVector2Array(glow))
 	mat.set_shader_parameter("glow_count", 4)
 	return mat
+
+
+## Caja dentro de un bloque (espacio 0..1) con las texturas de 'block_id': cada cara enseña la
+## parte de la textura que le toca (una media losa, media textura), alineada con los bloques.
+static func make_box_mesh(block_id: int, box: AABB) -> ArrayMesh:
+	var grid := Vector2(atlas_size_in_tiles())
+	var faces := [  # [normal, esquinas (orden de la cara del cubo 0..1)]
+		[Vector3i.UP, [Vector3(0, 1, 1), Vector3(1, 1, 1), Vector3(1, 1, 0), Vector3(0, 1, 0)]],
+		[Vector3i.DOWN, [Vector3(0, 0, 0), Vector3(1, 0, 0), Vector3(1, 0, 1), Vector3(0, 0, 1)]],
+		[Vector3i.BACK, [Vector3(0, 0, 1), Vector3(1, 0, 1), Vector3(1, 1, 1), Vector3(0, 1, 1)]],
+		[Vector3i.FORWARD, [Vector3(1, 0, 0), Vector3(0, 0, 0), Vector3(0, 1, 0), Vector3(1, 1, 0)]],
+		[Vector3i.RIGHT, [Vector3(1, 0, 1), Vector3(1, 0, 0), Vector3(1, 1, 0), Vector3(1, 1, 1)]],
+		[Vector3i.LEFT, [Vector3(0, 0, 0), Vector3(0, 0, 1), Vector3(0, 1, 1), Vector3(0, 1, 0)]],
+	]
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	for f in faces:
+		var n: Vector3i = f[0]
+		var tile := Vector2(side_tile(block_id, n))
+		var corners: Array = f[1]
+		for i in [0, 2, 1, 0, 3, 2]:
+			var p: Vector3 = box.position + (corners[i] as Vector3) * box.size
+			var local: Vector2
+			match n:
+				Vector3i.UP, Vector3i.DOWN: local = Vector2(p.x, p.z)
+				Vector3i.BACK: local = Vector2(p.x, 1.0 - p.y)
+				Vector3i.FORWARD: local = Vector2(1.0 - p.x, 1.0 - p.y)
+				Vector3i.RIGHT: local = Vector2(1.0 - p.z, 1.0 - p.y)
+				_: local = Vector2(p.z, 1.0 - p.y)
+			st.set_normal(Vector3(n))
+			st.set_uv((tile + local.clamp(Vector2.ZERO, Vector2.ONE)) / grid)
+			st.add_vertex(p)
+	st.index()
+	return st.commit()

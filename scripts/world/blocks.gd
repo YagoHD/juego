@@ -12,6 +12,11 @@ const COLORS := {
 	IslandGenerator.CLAY: Color(0.78, 0.40, 0.20),
 	IslandGenerator.MUD: Color(0.40, 0.27, 0.16),
 	IslandGenerator.STUMP: Color(0.47, 0.30, 0.16),
+	IslandGenerator.SLAB_DOWN: Color(0.66, 0.50, 0.31), IslandGenerator.SLAB_UP: Color(0.66, 0.50, 0.31),
+	IslandGenerator.SLAB_N: Color(0.66, 0.50, 0.31), IslandGenerator.SLAB_S: Color(0.66, 0.50, 0.31),
+	IslandGenerator.SLAB_W: Color(0.66, 0.50, 0.31), IslandGenerator.SLAB_E: Color(0.66, 0.50, 0.31),
+	IslandGenerator.ROPE_HANGING: Color(0.72, 0.60, 0.38),
+	IslandGenerator.SAIL_X: Color(0.86, 0.82, 0.72), IslandGenerator.SAIL_Z: Color(0.86, 0.82, 0.72),
 	IslandGenerator.SNOW: Color(0.95, 0.96, 0.98),
 	IslandGenerator.WOOD: Color(0.45, 0.30, 0.17),
 	IslandGenerator.LEAVES: Color(0.24, 0.52, 0.22),
@@ -49,6 +54,11 @@ const NAMES := {
 	IslandGenerator.CLAY: "Arcilla",
 	IslandGenerator.MUD: "Barro",
 	IslandGenerator.STUMP: "Tocón",
+	IslandGenerator.SLAB_DOWN: "Media losa de tablones", IslandGenerator.SLAB_UP: "Media losa de tablones",
+	IslandGenerator.SLAB_N: "Media losa de tablones", IslandGenerator.SLAB_S: "Media losa de tablones",
+	IslandGenerator.SLAB_W: "Media losa de tablones", IslandGenerator.SLAB_E: "Media losa de tablones",
+	IslandGenerator.ROPE_HANGING: "Cuerda colgante",
+	IslandGenerator.SAIL_X: "Vela", IslandGenerator.SAIL_Z: "Vela",
 	IslandGenerator.SNOW: "Nieve",
 	IslandGenerator.WOOD: "Madera",
 	IslandGenerator.LEAVES: "Hoja",
@@ -83,8 +93,25 @@ const HOTBAR: Array[int] = [
 	IslandGenerator.LEAVES, IslandGenerator.WATER, IslandGenerator.WHEAT,
 ]
 
-const LAST_ID := IslandGenerator.STUMP
+const LAST_ID := IslandGenerator.SAIL_Z
 
+
+
+## Medias losas de tablones y la caja que ocupa cada una (espacio 0..1 del bloque).
+const SLABS := {
+	IslandGenerator.SLAB_DOWN: AABB(Vector3.ZERO, Vector3(1, 0.5, 1)),
+	IslandGenerator.SLAB_UP: AABB(Vector3(0, 0.5, 0), Vector3(1, 0.5, 1)),
+	IslandGenerator.SLAB_N: AABB(Vector3.ZERO, Vector3(1, 1, 0.5)),
+	IslandGenerator.SLAB_S: AABB(Vector3(0, 0, 0.5), Vector3(1, 1, 0.5)),
+	IslandGenerator.SLAB_W: AABB(Vector3.ZERO, Vector3(0.5, 1, 1)),
+	IslandGenerator.SLAB_E: AABB(Vector3(0.5, 0, 0), Vector3(0.5, 1, 1)),
+}
+## Láminas y cuerdas (finas): la caja que ocupan.
+const THIN := {
+	IslandGenerator.ROPE_HANGING: AABB(Vector3(0.44, 0, 0.44), Vector3(0.12, 1, 0.12)),
+	IslandGenerator.SAIL_X: AABB(Vector3(0.47, 0, 0), Vector3(0.06, 1, 1)),
+	IslandGenerator.SAIL_Z: AABB(Vector3(0, 0, 0.47), Vector3(1, 1, 0.06)),
+}
 
 ## Agua de cualquier tipo (fuente, cayendo o corriendo).
 static func is_water(id: int) -> bool:
@@ -105,6 +132,9 @@ const HARDNESS := {
 	IslandGenerator.LEAVES: 0.3, IslandGenerator.PINE_LEAVES: 0.3, IslandGenerator.WHEAT: 0.1,
 	IslandGenerator.CLOTH: 0.35, IslandGenerator.SNOW: 0.4, IslandGenerator.SAND: 0.55,
 	IslandGenerator.WET_SAND: 0.6, IslandGenerator.GRAVEL: 0.7, IslandGenerator.CLAY: 0.75, IslandGenerator.MUD: 0.5, IslandGenerator.STUMP: 2.4,
+	IslandGenerator.SLAB_DOWN: 1.0, IslandGenerator.SLAB_UP: 1.0, IslandGenerator.SLAB_N: 1.0, IslandGenerator.SLAB_S: 1.0,
+	IslandGenerator.SLAB_W: 1.0, IslandGenerator.SLAB_E: 1.0, IslandGenerator.ROPE_HANGING: 0.3,
+	IslandGenerator.SAIL_X: 0.35, IslandGenerator.SAIL_Z: 0.35,
 	IslandGenerator.DIRT: 0.6, IslandGenerator.GRASS: 0.7, IslandGenerator.CORRUPT_SOIL: 0.9,
 	IslandGenerator.DRIFTWOOD: 1.6, IslandGenerator.DEAD_WOOD: 1.8, IslandGenerator.PLANKS: 1.8,
 	IslandGenerator.CHEST: 1.8, IslandGenerator.WORKBENCH: 1.8, IslandGenerator.WOOD: 2.4,

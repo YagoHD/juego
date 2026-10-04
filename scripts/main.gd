@@ -122,10 +122,14 @@ func _build_world() -> void:
 	for id in range(1, Blocks.LAST_ID + 1):
 		if id == IslandGenerator.WATER_FALL:
 			library.add_model(_make_flow(1.0, water))
-		elif id >= IslandGenerator.WATER_FLOW_1 and id <= Blocks.LAST_ID:
+		elif id >= IslandGenerator.WATER_FLOW_1 and id <= IslandGenerator.WATER_FLOW_1 + 6:
 			library.add_model(_make_flow(WaterFlow.level_of(id) / 8.0, water))
 		elif id == IslandGenerator.WATER:
 			library.add_model(_make_water(water))
+		elif Blocks.SLABS.has(id):
+			library.add_model(_make_partial(id, Blocks.SLABS[id], solid, true))
+		elif Blocks.THIN.has(id):
+			library.add_model(_make_partial(id, Blocks.THIN[id], solid, false))
 		elif id == IslandGenerator.STUMP:
 			library.add_model(PrefabLibrary.make_model(PrefabLibrary.first_id("stump_block")))
 		elif id == IslandGenerator.WORKBENCH:
@@ -1191,4 +1195,15 @@ func _spawn_raft(data: Variant) -> void:
 func _make_bench() -> VoxelBlockyModelMesh:
 	var model := PrefabLibrary.make_model(PrefabLibrary.first_id("workbench"))
 	model.collision_aabbs = [AABB(Vector3.ZERO, Vector3.ONE)]
+	return model
+
+
+## Bloque que solo ocupa una parte de su hueco (media losa, vela, cuerda): una caja con las
+## texturas del bloque, que choca solo donde está.
+func _make_partial(id: int, box: AABB, material: Material, culls: bool) -> VoxelBlockyModelMesh:
+	var model := VoxelBlockyModelMesh.new()
+	model.mesh = BlockTextures.make_box_mesh(id, box)
+	model.set_material_override(0, material)
+	model.collision_aabbs = [box]
+	model.culls_neighbors = culls  # las losas tapan la cara del vecino que cubren entera
 	return model

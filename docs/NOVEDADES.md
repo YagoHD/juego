@@ -186,3 +186,14 @@ Todo lo de Kenney y OpenGameArt es CC0 (créditos en `assets/third_party/*/` y
   adelante). **Corteza**: los trozos de fuera del tronco dan corteza; los de dentro, madera.
 - **Sonido de la caída** nuevo: crujido, susurro de hojas y golpe sordo.
 - **Los objetos flotan** en el agua (ríos, lagos y mar) y la corriente de los ríos los arrastra.
+
+## Construcción con detalle (5 de octubre)
+
+- **Arreglo importante**: la arena mojada, la grava, la arcilla, el barro y el tocón eran
+  invisibles (se dibujaban como agua de altura cero). Ya se ven.
+- **Medias losas de tablones** ("plank_slab"): un tablón cortado con el hacha da 2 (receta en el
+  diario). Al colocarla: encima de algo, abajo; debajo de algo, arriba; en un lateral, de pie
+  pegada a esa cara.
+- **Cuerda colgante**: con cuerda en la mano, clic derecho en la cara de abajo de un bloque (o
+  en una cuerda que ya cuelga, para alargarla). Al romperla devuelve la cuerda.
+- **Vela**: la tela en un lateral se coloca de pie, como una vela; en el suelo, tendida.

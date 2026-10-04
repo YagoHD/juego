@@ -73,6 +73,10 @@ const RECIPES := {
 		"result": "board", "count": 2, "action": "Cortar", "time": 3.0,
 		"layers": [["WA"]], "key": {"W": "wood", "A": "stone_axe"}, "tools": ["A"],
 	},
+	"plank_slab": {
+		"result": "plank_slab", "count": 2, "action": "Cortar", "time": 2.5,
+		"layers": [["PA"]], "key": {"P": "planks", "A": "stone_axe"}, "tools": ["A"],
+	},
 	"campfire": {
 		"result": "campfire", "count": 1, "action": "Montar", "time": 2.5,
 		"layers": [["RRR", "RSR", "RRR"], ["...", ".F.", "..."]], "key": {"R": "rock", "S": "sticks", "F": "fiber"},
@@ -94,7 +98,7 @@ const RECIPES := {
 ## Lo que el personaje sabe hacer desde el principio (nada: lo básico viene en el diario).
 const KNOWN_AT_START := []
 ## Lo que se puede leer en el diario del capitán (está empapado: solo se salva lo básico).
-const JOURNAL_RECIPES := ["rope", "sharp_rock", "stone_knife", "stone_axe", "board", "workbench", "torch", "campfire", "bedroll", "spear", "raft"]
+const JOURNAL_RECIPES := ["rope", "sharp_rock", "stone_knife", "stone_axe", "board", "workbench", "torch", "campfire", "bedroll", "spear", "raft", "plank_slab"]
 
 
 ## Celdas de la forma: {Vector3i(columna, capa, fila): id del objeto}.

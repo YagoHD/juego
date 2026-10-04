@@ -37,6 +37,7 @@ static func paint(name: String) -> Image:
 		"chest_side": _chest(img, salt, true)
 		"chest_back": _chest(img, salt, false, true)
 		"cloth": _cloth(img, salt)
+		"rope": _rope(img, salt)
 		"workbench_top": _workbench_top(img, salt)
 		"ore": _ore(img, salt)
 		"workbench_side": _workbench_side(img, salt)
@@ -444,3 +445,12 @@ static func _ore(img: Image, salt: int) -> void:
 		img.set_pixel(x, y, glow)
 		img.set_pixel(x + 1, y, glow.darkened(0.25))
 		img.set_pixel(x, y + 1, glow.darkened(0.35))
+
+
+static func _rope(img: Image, salt: int) -> void:
+	# Cuerda trenzada: hebras en diagonal, claras y oscuras.
+	var base := Blocks.color_of(IslandGenerator.ROPE_HANGING)
+	for y in S:
+		for x in S:
+			var strand := 0.12 if (x + y) % 4 < 2 else -0.12
+			img.set_pixel(x, y, _shade(base, strand + (_rand(x, y, salt) - 0.5) * 0.06))

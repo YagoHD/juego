@@ -49,6 +49,17 @@ const GRAVEL := 39       # grava: fondo de ríos y lagos
 const CLAY := 40         # arcilla: manchas en el fondo de ríos y lagos
 const MUD := 41          # barro: orillas de ríos y lagos
 const STUMP := 42        # tocón de un árbol talado (rebrota con el tiempo, ver TreeRegrowth)
+# Medios bloques de tablones (losas): abajo, arriba, y de pie pegados a un lado (N = -Z, S = +Z,
+# O = -X, E = +X). Un solo objeto, "plank_slab": la forma depende de dónde se coloque.
+const SLAB_DOWN := 43
+const SLAB_UP := 44
+const SLAB_N := 45
+const SLAB_S := 46
+const SLAB_W := 47
+const SLAB_E := 48
+const ROPE_HANGING := 49 # cuerda que cuelga (de un mástil, de un techo...)
+const SAIL_X := 50       # vela o tela de pie: una lámina fina (X: de cara al eje X)
+const SAIL_Z := 51
 
 const MAP_DIR := "res://assets/island/"
 const MAP_HALF := 512.0       # los mapas cubren [-MAP_HALF, MAP_HALF] voxels en X y Z (la isla a la mitad

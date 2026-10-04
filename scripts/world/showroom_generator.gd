@@ -6,15 +6,17 @@ class_name ShowroomGenerator
 ## segundos y la cámara siempre ve lo mismo: las capturas salen comparables.
 
 const FLOOR := SEA_LEVEL + 12       # altura del suelo (lejos del mar: sin cangrejos ni gaviotas)
-const ROW_Z := 6                    # distancia de la fila de bloques al punto de aparición
+const ROW_Z := 4                    # distancia de la fila de bloques al punto de aparición
 const GAP := 2                      # separación entre muestras
+const PER_ROW := 12                 # muestras por fila
 
 
 ## Bloques que se enseñan (en este orden, de izquierda a derecha).
 static func samples() -> Array[int]:
 	var out: Array[int] = [GRASS, DIRT, SAND, WET_SAND, STONE, MOSSY_STONE, SNOW, CORRUPT_SOIL, ORE, GRAVEL, CLAY, MUD,
 		WOOD, PLANKS, DRIFTWOOD, CLOTH, CHEST, WORKBENCH, LOG_X, DEAD_WOOD, WATER,
-		TALL_GRASS, FLOWER_RED, FLOWER_YELLOW, PEBBLES, GROUND_STICKS, SHELL]
+		TALL_GRASS, FLOWER_RED, FLOWER_YELLOW, PEBBLES, GROUND_STICKS, SHELL,
+		SLAB_DOWN, SLAB_UP, SLAB_N, SLAB_E, ROPE_HANGING, SAIL_X, SAIL_Z]
 	return out
 
 
@@ -37,10 +39,10 @@ func _generate_block(out_buffer: VoxelBuffer, origin: Vector3i, _lod: int) -> vo
 	var list := samples()
 	# Mirando hacia +Z, la X crece hacia la izquierda: se empieza por la derecha para que la
 	# fila se lea de izquierda a derecha en el mismo orden que la hoja del concepto.
-	var right := c.x + (list.size() - 1) * GAP / 2
+	var right := c.x + (PER_ROW - 1) * GAP / 2
 	for i in list.size():
-		var x := right - i * GAP
-		var z := c.y + ROW_Z
+		var x := right - (i % PER_ROW) * GAP
+		var z := c.y + ROW_Z + (i / PER_ROW) * 3  # filas de PER_ROW, una detrás de otra
 		var id: int = list[i]
 		if Blocks.is_decor(id) or id == CLOTH:
 			_put_at(out_buffer, origin, size, x, FLOOR, z, GRASS)  # sobre un bloque de hierba
@@ -51,12 +53,12 @@ func _generate_block(out_buffer: VoxelBuffer, origin: Vector3i, _lod: int) -> vo
 	for k in 4:
 		for h in k + 1:
 			for w in 3:
-				_put_at(out_buffer, origin, size, c.x - 8 + k, FLOOR + h, c.y + ROW_Z + 5 + w, DIRT if h < k else GRASS)
+				_put_at(out_buffer, origin, size, c.x - 8 + k, FLOOR + h, c.y + ROW_Z + 11 + w, DIRT if h < k else GRASS)
 	# Pared de piedra, musgo, mineral, tablones y troncos (para ver el relieve en grande).
 	var wall := [STONE, MOSSY_STONE, ORE, PLANKS, WOOD, DRIFTWOOD, CORRUPT_SOIL, SNOW]
 	for i in wall.size():
 		for h in 3:
-			_put_at(out_buffer, origin, size, c.x - 2 + i, FLOOR + h, c.y + ROW_Z + 6, wall[i])
+			_put_at(out_buffer, origin, size, c.x - 2 + i, FLOOR + h, c.y + ROW_Z + 12, wall[i])
 	# Fila de árboles de cada tipo, detrás (como la hoja de árboles del concepto).
 	var tz := c.y + ROW_Z + 22
 	var row := ["t_oak_1", "t_lean_1", "t_giant_1", "t_pine_1", "t_pine_small_1", "t_pine_tier_1", "t_dead_1", "t_bush_1", "t_berry_1"]
@@ -68,7 +70,7 @@ func _generate_block(out_buffer: VoxelBuffer, origin: Vector3i, _lod: int) -> vo
 	# Charco de agua de 3x3.
 	for x in 3:
 		for z in 3:
-			_put_at(out_buffer, origin, size, c.x + 9 + x, FLOOR - 1, c.y + ROW_Z + 5 + z, WATER)
+			_put_at(out_buffer, origin, size, c.x + 9 + x, FLOOR - 1, c.y + ROW_Z + 11 + z, WATER)
 
 
 func _put_at(buffer: VoxelBuffer, origin: Vector3i, size: Vector3i, wx: int, wy: int, wz: int, id: int) -> void:

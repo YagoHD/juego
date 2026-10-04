@@ -624,7 +624,9 @@ func _edit_block(place: bool) -> void:
 			block_used.emit(used, used_id)  # abrir el cofre en vez de colocar encima
 			return
 		var cell: Vector3i = target["place"]
-		var id := get_current_block()
+		var id := _shaped_block(get_current_block(), target)
+		if _hang_rope(target):
+			return
 		if id < 0:
 			_place_torch(target)  # las antorchas se clavan en el suelo; el resto no se coloca
 			return
@@ -1594,6 +1596,10 @@ const SHAPED := {IslandGenerator.WORKBENCH: "workbench", IslandGenerator.STUMP: 
 ## Caja que ocupa de verdad un bloque dentro de su celda (0..1): la alfombra es fina, la hierba
 ## no llena el cubo, cada trozo de árbol o roca tiene su tamaño...
 static func shape_box(id: int) -> AABB:
+	if Blocks.SLABS.has(id):
+		return Blocks.SLABS[id]
+	if Blocks.THIN.has(id):
+		return Blocks.THIN[id]
 	if SHAPED.has(id):
 		return PrefabLibrary.box(PrefabLibrary.first_id(SHAPED[id]))
 	if id == IslandGenerator.CLOTH:
@@ -1635,3 +1641,46 @@ func _shape_outline(id: int) -> Mesh:
 	mesh.add_surface_from_arrays(Mesh.PRIMITIVE_LINES, arrays)
 	_outlines[id] = mesh
 	return mesh
+
+
+# ------------------------------------------------------------------ losas, velas y cuerdas
+
+## La forma del bloque según dónde se coloca: la media losa, abajo si se pone encima de algo,
+## arriba si se pone debajo, y de pie pegada a la cara de al lado si se pone en un lateral; la
+## tela, tendida en el suelo o de pie como una vela si se pone en un lateral.
+func _shaped_block(id: int, target: Dictionary) -> int:
+	var normal: Vector3 = target.get("normal", Vector3.UP)
+	if Blocks.SLABS.has(id):
+		if normal.y > 0.7:
+			return IslandGenerator.SLAB_DOWN
+		if normal.y < -0.7:
+			return IslandGenerator.SLAB_UP
+		if absf(normal.x) > absf(normal.z):
+			return IslandGenerator.SLAB_W if normal.x > 0.0 else IslandGenerator.SLAB_E
+		return IslandGenerator.SLAB_N if normal.z > 0.0 else IslandGenerator.SLAB_S
+	if id == IslandGenerator.CLOTH and absf(normal.y) < 0.7:
+		return IslandGenerator.SAIL_X if absf(normal.x) > absf(normal.z) else IslandGenerator.SAIL_Z
+	return id
+
+
+## Con una cuerda en la mano, clic derecho debajo de un bloque (o sobre una cuerda que cuelga):
+## la cuerda queda colgando (alarga la que ya hay). Devuelve true si se colgó.
+func _hang_rope(target: Dictionary) -> bool:
+	var stack := active_inventory().get_slot(_hotbar_index)
+	if stack.is_empty() or stack["id"] != "rope" or not target.has("voxel"):
+		return false
+	var cell: Vector3i = target["voxel"]
+	var normal: Vector3 = target["normal"]
+	if _tool.get_voxel(cell) == IslandGenerator.ROPE_HANGING:
+		while _tool.get_voxel(cell + Vector3i.DOWN) == IslandGenerator.ROPE_HANGING:
+			cell += Vector3i.DOWN
+	elif normal.y > -0.7:
+		return false  # se cuelga de la cara de abajo de algo
+	var spot := cell + Vector3i.DOWN
+	if _tool.get_voxel(spot) != IslandGenerator.AIR:
+		return false
+	_tool.set_voxel(spot, IslandGenerator.ROPE_HANGING)
+	Sfx.play("colocar", _terrain.to_global(Vector3(spot)) + Vector3.ONE * _terrain.scale.x * 0.5, -6.0)
+	if not creative:
+		inventory.take(_hotbar_index, 1)
+	return true

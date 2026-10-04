@@ -29,6 +29,7 @@ const BLOCK_ITEMS := {
 	"mossy_stone": IslandGenerator.MOSSY_STONE,
 	"driftwood": IslandGenerator.DRIFTWOOD,
 	"workbench": IslandGenerator.WORKBENCH,
+	"plank_slab": IslandGenerator.SLAB_DOWN,  # la forma depende de dónde se coloque
 }
 
 ## Qué objeto suelta cada bloque al romperlo ("" = nada). La hierba suelta tierra, como en
@@ -43,6 +44,9 @@ const DROPS := {
 	IslandGenerator.CLAY: "clay",
 	IslandGenerator.MUD: "mud",
 	IslandGenerator.STUMP: "wood",  # el tocón da madera
+	IslandGenerator.SLAB_DOWN: "plank_slab", IslandGenerator.SLAB_UP: "plank_slab", IslandGenerator.SLAB_N: "plank_slab",
+	IslandGenerator.SLAB_S: "plank_slab", IslandGenerator.SLAB_W: "plank_slab", IslandGenerator.SLAB_E: "plank_slab",
+	IslandGenerator.ROPE_HANGING: "rope", IslandGenerator.SAIL_X: "cloth", IslandGenerator.SAIL_Z: "cloth",
 	IslandGenerator.SNOW: "snow",
 	IslandGenerator.WOOD: "wood",
 	IslandGenerator.LEAVES: "leaves",
