@@ -101,13 +101,7 @@ var _work_swing := 0.0
 var _crouch := 0.0           # 0..1: cuánto baja la vista al agacharse
 var _step_distance := 0.0     # metros andados desde el último paso (para el sonido)
 var _was_in_air := false
-var _breaking := false        # manteniendo el clic izquierdo sobre un bloque
-var _break_cell := Vector3i(0, -99999, 0)
-var _break_progress := 0.0   # 0..1
-var _break_swing := 0.0
-var _cracks: BlockCracks
 var _loot_rng := RandomNumberGenerator.new()
-var debug_cracks := false
 var _place_ghost: MeshInstance3D   # dónde caería el objeto de la mano al dejarlo (G)
 var _place_ghost_id := ""
 var _hand_light: OmniLight3D  # luz de la antorcha que se lleva en la mano
@@ -123,6 +117,8 @@ var _held: HeldBlock
 var _avatar: PlayerAvatar
 var aim: BlockAim                 # qué se apunta y su recuadro (componente)
 var rafts: RaftRider              # la balsa: echarla, subir, remar, bajar (componente)
+var survival: PlayerSurvival      # comer, beber, pescar, plantar, desgaste (componente)
+var breaker: BlockBreaker         # romper manteniendo el clic, grietas (componente)
 var _terrain: VoxelTerrain
 var _generator: IslandGenerator
 var _tool: VoxelTool
@@ -188,8 +184,14 @@ func _ready() -> void:
 	rafts.name = "Rafts"
 	rafts.player = self
 	add_child(rafts)
-	_cracks = BlockCracks.new()
-	add_child(_cracks)
+	survival = PlayerSurvival.new()
+	survival.name = "Survival"
+	survival.player = self
+	add_child(survival)
+	breaker = BlockBreaker.new()
+	breaker.name = "Breaker"
+	breaker.player = self
+	add_child(breaker)
 	_hand_light = TorchLight.make_light()
 	_hand_light.position = Vector3(0.25, EYE_HEIGHT - 0.25, -0.3)
 	_hand_light.visible = false
@@ -253,12 +255,12 @@ func _unhandled_input(event: InputEvent) -> void:
 		var zooming := Input.is_key_pressed(KEY_V)
 		match button.button_index:
 			MOUSE_BUTTON_LEFT:
-				if _spear_fish() or _grab_crab():
+				if survival.spear_fish() or survival.grab_crab():
 					pass
 				elif creative:
 					_edit_block(false)  # en creativo se rompe al momento
 				else:
-					_start_breaking()
+					breaker.start()
 			MOUSE_BUTTON_RIGHT:
 				_edit_block(true)
 			MOUSE_BUTTON_WHEEL_UP:
@@ -485,7 +487,7 @@ func _process(delta: float) -> void:
 
 	_avatar.set_look_pitch(_pitch)
 	aim.update_highlight()
-	_update_breaking(delta)
+	breaker.update(delta)
 	_update_place_ghost()
 	if _hand_light.visible:
 		_hand_light_time += delta
@@ -564,11 +566,11 @@ func _edit_block(place: bool) -> void:
 	if place and rafts.launch():
 		return
 	var at_campfire: bool = target.has("item") and (target["item"] as PlacedItem).campfire != null
-	if place and _try_plant(target):
+	if place and survival.try_plant(target):
 		return
-	if place and not at_campfire and _try_eat():
+	if place and not at_campfire and survival.try_eat():
 		return
-	if place and _try_drink():
+	if place and survival.try_drink():
 		return
 	if target.is_empty():
 		return
@@ -615,7 +617,7 @@ func _edit_block(place: bool) -> void:
 		get_tree().call_group("water_flow", "touch", cell)  # ¿entra el agua por el hueco?
 		var size := _terrain.scale.x
 		var center := _terrain.to_global(Vector3(cell)) + Vector3.ONE * size * 0.5
-		_spawn_break_particles(center, broken)
+		breaker.spawn_particles(center, broken)
 		Sfx.play("romper_" + Sfx.material_of(broken), center)
 		# En supervivencia, el bloque roto cae al suelo como objeto (la hierba, con suerte).
 		if not creative:
@@ -633,35 +635,8 @@ func _edit_block(place: bool) -> void:
 		# La herramienta que sirve para este bloque se gasta un poco.
 		var held_tool := active_inventory().get_slot(_hotbar_index)
 		if not held_tool.is_empty() and ItemDB.tool_speed(held_tool["id"], broken) > 1.0:
-			wear_tool()
+			survival.wear_tool()
 		block_broken.emit(cell, broken)
-
-
-func _spawn_break_particles(center: Vector3, block_id: int) -> void:
-	# Trocitos del color del bloque que saltan y caen al romperlo.
-	var particles := CPUParticles3D.new()
-	var chunk := BoxMesh.new()
-	chunk.size = Vector3.ONE * 0.07
-	chunk.material = Blocks.make_material(block_id)
-	particles.mesh = chunk
-	particles.amount = 14
-	particles.lifetime = 0.7
-	particles.one_shot = true
-	particles.explosiveness = 1.0
-	particles.emission_shape = CPUParticles3D.EMISSION_SHAPE_BOX
-	particles.emission_box_extents = Vector3.ONE * 0.18
-	particles.direction = Vector3.UP
-	particles.spread = 75.0
-	particles.initial_velocity_min = 1.2
-	particles.initial_velocity_max = 2.8
-	particles.angular_velocity_min = -360.0
-	particles.angular_velocity_max = 360.0
-	particles.scale_amount_min = 0.6
-	particles.scale_amount_max = 1.3
-	get_parent().add_child(particles)
-	particles.global_position = center
-	particles.emitting = true
-	get_tree().create_timer(particles.lifetime + 0.3).timeout.connect(particles.queue_free)
 
 
 func _overlaps_body(cell: Vector3i) -> bool:
@@ -1058,66 +1033,6 @@ func _play_step(feet_wet: bool, volume_db: float) -> void:
 
 # ------------------------------------------------------------------ romper manteniendo el clic
 
-## Clic izquierdo en supervivencia: un objeto del suelo se coge al momento; un bloque empieza a
-## romperse y hay que mantener el clic (cuánto, según el bloque y la herramienta de la mano).
-func _start_breaking() -> void:
-	var target := aim.target()
-	if target.has("item") or target.has("raft"):
-		_edit_block(false)
-		return
-	_breaking = true
-	_break_swing = 0.0
-
-
-## Segundos para romper este bloque con lo que se lleva en la mano.
-func break_time(block_id: int) -> float:
-	var t := Blocks.hardness(block_id)
-	var held := active_inventory().get_slot(_hotbar_index)
-	if not held.is_empty():
-		t /= ItemDB.tool_speed(held["id"], block_id)
-	return t
-
-
-func _update_breaking(delta: float) -> void:
-	if debug_cracks:
-		return  # solo capturas: grietas fijas
-	if _breaking and (ui_open or not _captured or not Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT)):
-		_breaking = false
-	var target := aim.target() if _breaking else {}
-	if not target.has("voxel") or _tool == null:
-		_reset_breaking()
-		return
-	var cell: Vector3i = target["voxel"]
-	var block := _tool.get_voxel(cell)
-	if block == IslandGenerator.AIR:
-		_reset_breaking()
-		return
-	if cell != _break_cell:
-		_break_cell = cell
-		_break_progress = 0.0
-	var size := _terrain.scale.x
-	var corner := _terrain.to_global(Vector3(cell))
-	_break_progress += delta / maxf(break_time(block), 0.01)
-	_break_swing -= delta
-	if _break_swing <= 0.0 and _break_progress < 1.0:
-		_break_swing = 0.27
-		_held.swing()
-		_avatar.swing()
-		Sfx.play("paso_" + Sfx.material_of(block), corner + Vector3.ONE * size * 0.5, -2.0, 0.15)  # golpecito
-	if _break_progress >= 1.0:
-		_edit_block(false)
-		_break_progress = 0.0
-		_break_cell = Vector3i(0, -99999, 0)
-		_break_swing = 0.15  # breve pausa antes de empezar el siguiente
-	_cracks.show_on(corner, size, _break_progress, BlockAim.shape_box(_tool.get_voxel(_break_cell)) if _tool != null else AABB(Vector3.ZERO, Vector3.ONE))
-
-
-func _reset_breaking() -> void:
-	_break_progress = 0.0
-	_break_cell = Vector3i(0, -99999, 0)
-	if _cracks != null:
-		_cracks.visible = false
-
 
 ## Con una antorcha en la mano, apuntando al suelo (o encima de otro objeto):
 ## se ve en transparente dónde quedaría al clavarla con clic derecho.
@@ -1189,115 +1104,6 @@ func set_spawn_point(p: Vector3) -> void:
 
 func get_spawn_point() -> Vector3:
 	return _spawn_point
-
-
-# ------------------------------------------------------------------ comer y beber
-
-## Clic derecho con comida en la mano: se come una.
-func _try_eat() -> bool:
-	var stack := active_inventory().get_slot(_hotbar_index)
-	if needs == null or stack.is_empty() or not Needs.is_food(stack["id"]):
-		return false
-	if needs.eat(stack["id"]):
-		var food_id: String = stack["id"]
-		if food_id.begins_with("roasted") or food_id in ["cooked_fish", "flatbread", "cooked_crab"]:
-			get_tree().call_group("objectives", "mark", "comido_asado")
-		if not creative:
-			inventory.take(_hotbar_index, 1)
-		Sfx.play("recoger", null, -2.0, 0.25)
-		notice.emit("Comes %s." % ItemDB.display_name(stack["id"]).to_lower())
-	return true
-
-
-## Clic derecho con la mano vacía mirando agua dulce (ríos y lagos) cerca: se bebe.
-func _try_drink() -> bool:
-	if needs == null or not active_inventory().get_slot(_hotbar_index).is_empty():
-		return false
-	if weather != null and weather.is_raining() and _pitch > 0.6:  # mirando al cielo bajo la lluvia
-		if needs.drink():
-			Sfx.play("paso_agua", null, -2.0, 0.2)
-			notice.emit("Bebes agua de lluvia.")
-		return true
-	var from := _camera.global_position
-	var water := aim.decor_hit(from, -_camera.global_transform.basis.z, REACH, true)
-	if water.is_empty():
-		return false
-	if needs.drink():
-		Sfx.play("paso_agua", null, 0.0, 0.2)
-		notice.emit("Bebes agua del río. Fresca.")
-	return true
-
-
-## Con la lanza en la mano, clic izquierdo: lanzazo; si hay un pez cerca y delante, se pesca.
-func _spear_fish() -> bool:
-	var stack := active_inventory().get_slot(_hotbar_index)
-	if fish == null or stack.is_empty() or stack["id"] != "spear":
-		return false
-	_held.swing()
-	_avatar.swing()
-	wear_tool()
-	Sfx.play("tirar", null, -4.0)
-	if fish.try_spear(_camera.global_position, -_camera.global_transform.basis.z):
-		Sfx.play("paso_agua", null, 0.0, 0.2)
-		if pick_up("raw_fish", 1) > 0:
-			ItemDrop.spawn(get_parent(), global_position + Vector3.UP, "raw_fish", 1)
-		notice.emit("¡Has pescado un pez!")
-		return true
-	return false
-
-
-## Con semillas en la mano, clic derecho sobre la cara de arriba de hierba o tierra: se plantan.
-func _try_plant(target: Dictionary) -> bool:
-	var stack := active_inventory().get_slot(_hotbar_index)
-	if farm == null or stack.is_empty() or stack["id"] != "seeds" or not target.has("voxel") or target.has("decor"):
-		return false
-	var normal: Vector3 = target.get("normal", Vector3.ZERO)
-	if normal.y < 0.7 or not Farming.can_plant_on(_tool.get_voxel(target["voxel"])):
-		return false
-	if farm.plant(target["place"]):
-		if not creative:
-			inventory.take(_hotbar_index, 1)
-		Sfx.play("colocar", null, -6.0)
-		notice.emit("Has plantado trigo. Tardará unos minutos en madurar.")
-	return true
-
-
-# ------------------------------------------------------------------ herramientas que se gastan
-
-## Gasta un uso de la herramienta de la mano (si es de las que se gastan). Al acabarse, se rompe.
-func wear_tool() -> void:
-	if creative:
-		return
-	var stack := inventory.get_slot(_hotbar_index)
-	if stack.is_empty():
-		return
-	var top := ItemDB.max_durability(stack["id"])
-	if top <= 0:
-		return
-	var left := int(stack.get("dur", top)) - 1
-	if left <= 0:
-		inventory.take(_hotbar_index, 1)
-		Sfx.play("romper_madera", null, 0.0, 0.1)
-		notice.emit("Se ha roto tu %s." % ItemDB.display_name(stack["id"]).to_lower())
-		return
-	var worn := stack.duplicate()
-	worn["dur"] = left
-	inventory.set_slot(_hotbar_index, worn)
-
-
-## Clic izquierdo con la mano vacía: si hay un cangrejo cerca y delante, se coge.
-func _grab_crab() -> bool:
-	if wildlife == null or not active_inventory().get_slot(_hotbar_index).is_empty():
-		return false
-	if not wildlife.try_grab(_camera.global_position, -_camera.global_transform.basis.z):
-		return false
-	_held.swing()
-	_avatar.swing()
-	Sfx.play("recoger", null, 0.0, 0.2)
-	if pick_up("raw_crab", 1) > 0:
-		ItemDrop.spawn(get_parent(), global_position + Vector3.UP, "raw_crab", 1)
-	notice.emit("¡Has cogido un cangrejo!")
-	return true
 
 
 # ------------------------------------------------------------------ corriente

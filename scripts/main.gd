@@ -671,8 +671,8 @@ func _update_capture() -> void:
 		if _arg("--cracks=") != "":  # grietas en el bloque apuntado, con ese avance (0..1)
 			var t := _player.aim.target()
 			if t.has("voxel"):
-				_player.debug_cracks = true
-				_player._cracks.show_on(_terrain.to_global(Vector3(t["voxel"])), VOXEL_SIZE, float(_arg("--cracks=")))
+				_player.breaker.debug_cracks = true
+				_player.breaker.cracks.show_on(_terrain.to_global(Vector3(t["voxel"])), VOXEL_SIZE, float(_arg("--cracks=")))
 		if OS.get_cmdline_user_args().has("--pause"):  # menú de pausa a la vista (sin pausar: la foto debe salir)
 			_pause.visible = true
 		if OS.get_cmdline_user_args().has("--help"):

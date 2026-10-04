@@ -129,7 +129,7 @@ func _process(_delta: float) -> bool:
 				Input.parse_input_event(press)
 				return false
 			if _wait == 40:
-				var cracks: BlockCracks = player.get("_cracks")
+				var cracks: BlockCracks = player.breaker.cracks
 				var still := tool.get_voxel(_hold_target["voxel"]) == _hold_block
 				print("Al poco de mantener el clic, el bloque sigue y tiene grietas: %s" % ("OK" if still and cracks.visible else "FALLO (sigue=%s, grietas=%s)" % [still, cracks.visible]))
 			if Time.get_ticks_msec() - _hold_start < int((Blocks.hardness(_hold_block) + 0.5) * 1000.0):
