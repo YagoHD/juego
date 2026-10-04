@@ -49,6 +49,7 @@ var _sfx: Sfx
 var _sea_check := 0.0
 var _objectives: Objectives
 var _last_drift_day := 1        # último día en que el mar trajo restos
+var _open_chest: ChestVisual       # el cofre que se está mirando (con la tapa levantada)
 var _session: CraftSession     # inventario de rodillas y vista de fabricar
 var _crosshair: Label
 var _needs: Needs
@@ -130,6 +131,8 @@ func _build_world() -> void:
 			library.add_model(_make_partial(id, Blocks.SLABS[id], solid, true))
 		elif Blocks.THIN.has(id):
 			library.add_model(_make_partial(id, Blocks.THIN[id], solid, false))
+		elif id == IslandGenerator.CHEST or id == IslandGenerator.CHEST_OPEN:  # cofre de cubitos (como el del concepto)
+			library.add_model(PrefabLibrary.make_model(PrefabLibrary.first_id(Player.SHAPED[id])))
 		elif id == IslandGenerator.STUMP:
 			library.add_model(PrefabLibrary.make_model(PrefabLibrary.first_id("stump_block")))
 		elif id == IslandGenerator.WORKBENCH:
@@ -687,9 +690,26 @@ func _update_capture() -> void:
 				var p := base + Vector3(c * (i - 1) + randf_range(-0.07, 0.07), 0, randf_range(-0.07, 0.07))
 				p.y = _session._ground_y(p)
 				_session._placed.append(_ground.place(p, "fiber", randf() * TAU, Vector3i((p / VOXEL_SIZE - Vector3(0, 0.5, 0)).floor())))
-		if OS.get_cmdline_user_args().has("--open-chest"):  # abrir el cofre de la playa del naufragio
-			var cells: Array = Structures._chest_loot.keys()
-			_on_block_used(cells[cells.size() - 1], IslandGenerator.CHEST)
+		if OS.get_cmdline_user_args().has("--open-chest"):  # abrir el cofre más cercano (con algo dentro)
+			var me := Vector3i((_player.global_position / VOXEL_SIZE).floor())
+			for d in 14:
+				var found := false
+				for x in range(-d, d + 1):
+					for z in range(-d, d + 1):
+						for y in range(-3, 4):
+							var c := me + Vector3i(x, y, z)
+							if not found and _terrain.get_voxel_tool().get_voxel(c) == IslandGenerator.CHEST:
+								var box := _chests.get_or_create(c)
+								if range(box.size()).all(func(i: int) -> bool: return box.get_slot(i).is_empty()):
+									for item in [["rope", 5], ["wood", 30], ["berries", 12], ["stone_axe", 1], ["flint", 3], ["cloth", 8]]:
+										box.add(item[0], item[1])
+								# Solo el cofre (sin la ventana, que lo taparía), con el jugador delante mirándolo.
+								_open_chest = ChestVisual.open_at(self, _terrain, c, box)
+								_player.global_position = (Vector3(c) + Vector3(0.5, 0.0, -2.2)) * VOXEL_SIZE
+								_player.rotation.y = PI
+								found = true
+				if found:
+					break
 		var time := _arg("--time=")  # hora del día para la foto, p. ej. "19.4" (atardecer)
 		if time != "":
 			_day_night.set_hour(float(time))
@@ -866,6 +886,9 @@ func _drop_in_front(id: String, count: int) -> void:
 
 
 func _on_screen_closed() -> void:
+	if _open_chest != null and is_instance_valid(_open_chest):
+		_open_chest.close()  # la tapa baja
+	_open_chest = null
 	_screen_sections = Callable()
 	if _session != null and _session.active():
 		_session.end()  # el jugador recupera el control cuando la cámara vuelve (ended)
@@ -881,11 +904,13 @@ func _chests_save_path() -> String:
 
 
 func _on_block_used(cell: Vector3i, block_id: int) -> void:
-	if block_id != IslandGenerator.CHEST:
+	if block_id != IslandGenerator.CHEST and block_id != IslandGenerator.CHEST_OPEN:
 		return
 	Sfx.play("cofre", (Vector3(cell) + Vector3(0.5, 0.5, 0.5)) * VOXEL_SIZE)
 	_objectives.mark("cofre_abierto")
 	var chest := _chests.get_or_create(cell)
+	if _open_chest == null or not is_instance_valid(_open_chest):
+		_open_chest = ChestVisual.open_at(self, _terrain, cell, chest)  # la tapa se levanta: se ve lo de dentro
 	_screen_sections = _chest_sections.bind(chest)
 	_show_screen(_screen_sections.call())
 
@@ -900,7 +925,7 @@ func _chest_sections(chest: Inventory) -> Array[Dictionary]:
 
 func _on_block_broken(cell: Vector3i, block_id: int) -> void:
 	_ground.on_block_removed(cell)  # lo dejado encima cae
-	if block_id != IslandGenerator.CHEST:
+	if block_id != IslandGenerator.CHEST and block_id != IslandGenerator.CHEST_OPEN:
 		return
 	# Al romper un cofre, su contenido cae al suelo.
 	var contents := _chests.remove(cell)

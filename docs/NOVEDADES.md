@@ -197,3 +197,5 @@ Todo lo de Kenney y OpenGameArt es CC0 (créditos en `assets/third_party/*/` y
 - **Cuerda colgante**: con cuerda en la mano, clic derecho en la cara de abajo de un bloque (o
   en una cuerda que ya cuelga, para alargarla). Al romperla devuelve la cuerda.
 - **Vela**: la tela en un lateral se coloca de pie, como una vela; en el suelo, tendida.
+- **Cofre de cubitos** como el del concepto (tablones, bandas de hierro, cerradura). **Al abrirlo
+  la tapa se levanta** y dentro se ve un montoncito con lo que guarda; al cerrar, baja.

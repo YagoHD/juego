@@ -10,7 +10,7 @@ const NAMES := ["palm_tall", "palm_bend", "palm_short", "rock_a", "rock_d", "roc
 	"oak_k", "fat_k", "pine_k", "log_fallen", "bush_large", "wheat_a", "wheat_b", "tree_parts", "workbench", "decor_pebbles", "decor_sticks", "decor_shell", "decor_flower_red", "decor_flower_yellow", "stump_block",
 	"t_oak_1", "t_oak_2", "t_oak_3", "t_lean_1", "t_lean_2", "t_giant_1", "t_pine_1", "t_pine_2",
 	"t_pine_small_1", "t_pine_small_2", "t_pine_tier_1", "t_pine_tier_2", "t_dead_1", "t_dead_2",
-	"t_bush_1", "t_bush_2", "t_berry_1", "t_berry_2", "t_log_1", "t_log_2"]
+	"t_bush_1", "t_bush_2", "t_berry_1", "t_berry_2", "t_log_1", "t_log_2", "chest_closed", "chest_open", "chest_lid"]
 const FIRST_ID := 64
 
 static var _loaded := false

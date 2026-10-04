@@ -620,7 +620,7 @@ func _edit_block(place: bool) -> void:
 	if place:
 		var used: Vector3i = target["voxel"]
 		var used_id := tool.get_voxel(used)
-		if used_id == IslandGenerator.CHEST:
+		if used_id == IslandGenerator.CHEST or used_id == IslandGenerator.CHEST_OPEN:
 			block_used.emit(used, used_id)  # abrir el cofre en vez de colocar encima
 			return
 		var cell: Vector3i = target["place"]
@@ -1591,7 +1591,8 @@ func _water_push() -> Vector2:
 # ------------------------------------------------------------------ forma de los bloques
 
 ## Bloques con modelo de cubitos propio (un prefab de una pieza).
-const SHAPED := {IslandGenerator.WORKBENCH: "workbench", IslandGenerator.STUMP: "stump_block"}
+const SHAPED := {IslandGenerator.WORKBENCH: "workbench", IslandGenerator.STUMP: "stump_block",
+	IslandGenerator.CHEST: "chest_closed", IslandGenerator.CHEST_OPEN: "chest_open"}
 
 ## Caja que ocupa de verdad un bloque dentro de su celda (0..1): la alfombra es fina, la hierba
 ## no llena el cubo, cada trozo de árbol o roca tiene su tamaño...

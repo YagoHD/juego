@@ -46,7 +46,7 @@ const DROPS := {
 	IslandGenerator.STUMP: "wood",  # el tocón da madera
 	IslandGenerator.SLAB_DOWN: "plank_slab", IslandGenerator.SLAB_UP: "plank_slab", IslandGenerator.SLAB_N: "plank_slab",
 	IslandGenerator.SLAB_S: "plank_slab", IslandGenerator.SLAB_W: "plank_slab", IslandGenerator.SLAB_E: "plank_slab",
-	IslandGenerator.ROPE_HANGING: "rope", IslandGenerator.SAIL_X: "cloth", IslandGenerator.SAIL_Z: "cloth",
+	IslandGenerator.ROPE_HANGING: "rope", IslandGenerator.SAIL_X: "cloth", IslandGenerator.SAIL_Z: "cloth", IslandGenerator.CHEST_OPEN: "chest",
 	IslandGenerator.SNOW: "snow",
 	IslandGenerator.WOOD: "wood",
 	IslandGenerator.LEAVES: "leaves",

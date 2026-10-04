@@ -60,6 +60,7 @@ const SLAB_E := 48
 const ROPE_HANGING := 49 # cuerda que cuelga (de un mástil, de un techo...)
 const SAIL_X := 50       # vela o tela de pie: una lámina fina (X: de cara al eje X)
 const SAIL_Z := 51
+const CHEST_OPEN := 52   # cofre abierto mientras se mira dentro (la tapa la anima ChestVisual)
 
 const MAP_DIR := "res://assets/island/"
 const MAP_HALF := 512.0       # los mapas cubren [-MAP_HALF, MAP_HALF] voxels en X y Z (la isla a la mitad

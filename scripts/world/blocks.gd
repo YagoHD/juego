@@ -16,6 +16,7 @@ const COLORS := {
 	IslandGenerator.SLAB_N: Color(0.66, 0.50, 0.31), IslandGenerator.SLAB_S: Color(0.66, 0.50, 0.31),
 	IslandGenerator.SLAB_W: Color(0.66, 0.50, 0.31), IslandGenerator.SLAB_E: Color(0.66, 0.50, 0.31),
 	IslandGenerator.ROPE_HANGING: Color(0.72, 0.60, 0.38),
+	IslandGenerator.CHEST_OPEN: Color(0.55, 0.37, 0.19),
 	IslandGenerator.SAIL_X: Color(0.86, 0.82, 0.72), IslandGenerator.SAIL_Z: Color(0.86, 0.82, 0.72),
 	IslandGenerator.SNOW: Color(0.95, 0.96, 0.98),
 	IslandGenerator.WOOD: Color(0.45, 0.30, 0.17),
@@ -58,6 +59,7 @@ const NAMES := {
 	IslandGenerator.SLAB_N: "Media losa de tablones", IslandGenerator.SLAB_S: "Media losa de tablones",
 	IslandGenerator.SLAB_W: "Media losa de tablones", IslandGenerator.SLAB_E: "Media losa de tablones",
 	IslandGenerator.ROPE_HANGING: "Cuerda colgante",
+	IslandGenerator.CHEST_OPEN: "Cofre",
 	IslandGenerator.SAIL_X: "Vela", IslandGenerator.SAIL_Z: "Vela",
 	IslandGenerator.SNOW: "Nieve",
 	IslandGenerator.WOOD: "Madera",
@@ -93,7 +95,7 @@ const HOTBAR: Array[int] = [
 	IslandGenerator.LEAVES, IslandGenerator.WATER, IslandGenerator.WHEAT,
 ]
 
-const LAST_ID := IslandGenerator.SAIL_Z
+const LAST_ID := IslandGenerator.CHEST_OPEN
 
 
 
@@ -134,7 +136,7 @@ const HARDNESS := {
 	IslandGenerator.WET_SAND: 0.6, IslandGenerator.GRAVEL: 0.7, IslandGenerator.CLAY: 0.75, IslandGenerator.MUD: 0.5, IslandGenerator.STUMP: 2.4,
 	IslandGenerator.SLAB_DOWN: 1.0, IslandGenerator.SLAB_UP: 1.0, IslandGenerator.SLAB_N: 1.0, IslandGenerator.SLAB_S: 1.0,
 	IslandGenerator.SLAB_W: 1.0, IslandGenerator.SLAB_E: 1.0, IslandGenerator.ROPE_HANGING: 0.3,
-	IslandGenerator.SAIL_X: 0.35, IslandGenerator.SAIL_Z: 0.35,
+	IslandGenerator.SAIL_X: 0.35, IslandGenerator.SAIL_Z: 0.35, IslandGenerator.CHEST_OPEN: 1.8,
 	IslandGenerator.DIRT: 0.6, IslandGenerator.GRASS: 0.7, IslandGenerator.CORRUPT_SOIL: 0.9,
 	IslandGenerator.DRIFTWOOD: 1.6, IslandGenerator.DEAD_WOOD: 1.8, IslandGenerator.PLANKS: 1.8,
 	IslandGenerator.CHEST: 1.8, IslandGenerator.WORKBENCH: 1.8, IslandGenerator.WOOD: 2.4,

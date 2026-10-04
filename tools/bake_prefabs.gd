@@ -225,6 +225,54 @@ func _flower(prefab_name: String, sprite_path: String) -> Prefab:
 	return _decor_prefab(prefab_name, sub, "crop")
 
 
+## Cofre como el del arte conceptual: tablones con juntas, bandas de hierro con remaches en las
+## esquinas y una cerradura delante (-Z). "body": la caja (hueca si 'open'); "lid": la tapa, que
+## gira sobre su bisagra de atrás (+Z) al abrirlo (la mueve ChestVisual).
+const CHEST_LID_Y := 10   # la tapa empieza a esta altura (cubitos de 16)
+
+
+func _chest_part(part: String, open := false) -> Dictionary:
+	var sub := {}
+	var r := BENCH_RES
+	var wood := Color(0.68, 0.42, 0.19)
+	var iron := Color(0.27, 0.28, 0.31)
+	var y0 := 0 if part == "body" else CHEST_LID_Y
+	var y1 := CHEST_LID_Y if part == "body" else r - 1
+	for x in range(1, r - 1):
+		for z in range(1, r - 1):
+			for y in range(y0, y1):
+				var edge_x := x == 1 or x == r - 2
+				var edge_z := z == 1 or z == r - 2
+				var shell := edge_x or edge_z or y == y0 or (part == "lid" and y == y1 - 1)
+				if open and part == "body" and not shell:
+					continue  # hueco por dentro
+				var col := wood.darkened(0.08 * ((y / 3) % 2))  # tablones
+				if y % 3 == 0:
+					col = wood.darkened(0.3)  # junta entre tablones
+				if not shell:
+					col = wood.darkened(0.45)  # el fondo de dentro, en sombra
+				if part == "lid" and y == y0:
+					col = col.darkened(0.35)  # la raya entre la tapa y la caja
+				# Bandas de hierro: en las esquinas y abrazando la tapa.
+				if (edge_x and edge_z) or (part == "lid" and (x == 3 or x == r - 4)) or (part == "body" and (x == 3 or x == r - 4) and edge_z):
+					col = iron
+					if (y + x + z) % 4 == 0:
+						col = Color(0.55, 0.56, 0.6)  # remache
+				sub[Vector3i(x, y, z)] = col
+	if part == "body":  # cerradura delante (-Z)
+		for x in range(6, 10):
+			for y in range(CHEST_LID_Y - 4, CHEST_LID_Y + 1):
+				sub[Vector3i(x, y, 0)] = Color(0.6, 0.61, 0.64) if not (x in [7, 8] and y == CHEST_LID_Y - 2) else Color(0.12, 0.12, 0.14)
+	return sub
+
+
+func _chest(prefab_name: String, parts: Array[String], open := false) -> Prefab:
+	var sub := {}
+	for part in parts:
+		sub.merge(_chest_part(part, open))
+	return _decor_prefab(prefab_name, sub, "wood")
+
+
 ## Tocón que queda al talar un árbol (y del que rebrota): tronco corto con corteza de surcos,
 ## anillos arriba y raíces que salen por los lados.
 func _stump() -> Prefab:
@@ -340,6 +388,9 @@ func _init() -> void:
 	prefabs.append(_sticks())
 	prefabs.append(_shell())
 	prefabs.append(_stump())
+	prefabs.append(_chest("chest_closed", ["body", "lid"]))
+	prefabs.append(_chest("chest_open", ["body"], true))
+	prefabs.append(_chest("chest_lid", ["lid"]))
 	prefabs.append(_flower("decor_flower_red", "res://assets/textures/decor/flower_red.png"))
 	prefabs.append(_flower("decor_flower_yellow", "res://assets/textures/decor/flower_yellow.png"))
 	# Paleta: una fila de colores; luego, las UV de cada pieza apuntan a su color.
