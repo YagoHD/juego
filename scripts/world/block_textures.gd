@@ -8,7 +8,7 @@ class_name BlockTextures
 ## Los mipmaps se generan tile a tile, para que a lo lejos no se mezclen los colores de texturas
 ## vecinas del atlas.
 
-const TILE := 16
+const TILE := 32  # las del arte conceptual son de 32; las pintadas por código (16) se amplían
 const COLUMNS := 8
 const OVERRIDE_DIR := "res://assets/textures/blocks/"
 ## Paquetes de texturas que se eligen en Opciones (los PNG con el nombre de cada cara; lo que
@@ -18,10 +18,10 @@ const PACKS := {"16x16": "res://assets/third_party/textures_16x16/"}
 ## Texturas de cada bloque: [arriba, lados, abajo].
 const FACES := {
 	IslandGenerator.GRASS: ["grass_top", "grass_side", "dirt"],
-	IslandGenerator.DIRT: ["dirt", "dirt", "dirt"],
-	IslandGenerator.STONE: ["stone", "stone", "stone"],
-	IslandGenerator.SAND: ["sand", "sand", "sand"],
-	IslandGenerator.SNOW: ["snow", "snow", "snow"],
+	IslandGenerator.DIRT: ["dirt", "dirt_side", "dirt"],
+	IslandGenerator.STONE: ["stone", "stone_side", "stone"],
+	IslandGenerator.SAND: ["sand", "sand_side", "sand"],
+	IslandGenerator.SNOW: ["snow", "snow_side", "stone"],
 	IslandGenerator.WOOD: ["log_top", "log_side", "log_top"],
 	IslandGenerator.LEAVES: ["leaves", "leaves", "leaves"],
 	IslandGenerator.WATER: ["water", "water", "water"],
@@ -31,12 +31,12 @@ const FACES := {
 	IslandGenerator.WHEAT: ["wheat_top", "wheat_side", "dirt"],
 	# Cofre: la cerradura solo en la cara de delante (-Z); los demás lados, lisos.
 	IslandGenerator.CHEST: ["chest_top", "chest_top", "chest_back", "chest_back", "chest_back", "chest_side"],
-	IslandGenerator.PLANKS: ["planks", "planks", "planks"],
-	IslandGenerator.CLOTH: ["cloth", "cloth", "cloth"],
-	IslandGenerator.MOSSY_STONE: ["mossy_stone", "mossy_stone", "mossy_stone"],
-	IslandGenerator.DRIFTWOOD: ["driftwood", "driftwood", "driftwood"],
+	IslandGenerator.PLANKS: ["planks", "planks_side", "planks"],
+	IslandGenerator.CLOTH: ["cloth", "cloth_side", "cloth"],
+	IslandGenerator.MOSSY_STONE: ["mossy_stone", "mossy_side", "stone"],
+	IslandGenerator.DRIFTWOOD: ["driftwood", "driftwood_side", "driftwood"],
 	IslandGenerator.WORKBENCH: ["workbench_top", "workbench_side", "planks"],
-	IslandGenerator.ORE: ["ore", "ore", "ore"],
+	IslandGenerator.ORE: ["ore", "ore_side", "stone"],
 	# Troncos tumbados: 6 caras [+Y, -Y, +X, -X, +Z, -Z]; anillos en las puntas, corteza tumbada ("_h").
 	IslandGenerator.LOG_X: ["log_side_h", "log_side_h", "log_top", "log_top", "log_side_h", "log_side_h"],
 	IslandGenerator.LOG_Z: ["log_side", "log_side", "log_side_h", "log_side_h", "log_top", "log_top"],
@@ -215,7 +215,10 @@ static func _texture(name: String) -> Image:
 			# bloques son opacos.
 			_fill_holes(img)
 			return img
-	return BlockPainter.paint(name)
+	var painted := BlockPainter.paint(name)
+	if painted.get_width() != TILE:
+		painted.resize(TILE, TILE, Image.INTERPOLATE_NEAREST)
+	return painted
 
 
 static func _fill_holes(img: Image) -> void:

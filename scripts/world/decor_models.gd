@@ -57,7 +57,21 @@ static func _cutout_material(img: Image) -> StandardMaterial3D:
 	return material
 
 
+## Dibujos de las plantas (sacados del arte conceptual con tools/extract_concept.gd).
+const DRAWN := {
+	IslandGenerator.TALL_GRASS: "res://assets/textures/decor/tall_grass.png",
+	IslandGenerator.FLOWER_RED: "res://assets/textures/decor/flower_red.png",
+	IslandGenerator.FLOWER_YELLOW: "res://assets/textures/decor/flower_yellow.png",
+}
+
+
 static func _plant_image(id: int) -> Image:
+	if DRAWN.has(id) and ResourceLoader.exists(DRAWN[id]):
+		var drawn := (load(DRAWN[id]) as Texture2D).get_image()
+		if drawn.is_compressed():
+			drawn.decompress()
+		drawn.convert(Image.FORMAT_RGBA8)
+		return drawn
 	var img := Image.create(S, S, false, Image.FORMAT_RGBA8)
 	img.fill(Color(0, 0, 0, 0))
 	var rng := RandomNumberGenerator.new()
