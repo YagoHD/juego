@@ -284,6 +284,9 @@ static func _average(img: Image) -> Color:
 
 ## Material de los bloques del mundo con relieve (assets/shaders/blocks.gdshader): de cerca,
 ## las texturas tienen profundidad como en el arte conceptual.
+static var _terrain_material: ShaderMaterial
+
+
 static func make_terrain_material() -> ShaderMaterial:
 	atlas()
 	var mat := ShaderMaterial.new()
@@ -299,6 +302,8 @@ static func make_terrain_material() -> ShaderMaterial:
 		glow.append(Vector2(-1, -1))
 	mat.set_shader_parameter("glow_tiles", PackedVector2Array(glow))
 	mat.set_shader_parameter("glow_count", 4)
+	_terrain_material = mat
+	set_relief(Settings.relief)
 	return mat
 
 
@@ -334,3 +339,10 @@ static func make_box_mesh(block_id: int, box: AABB) -> ArrayMesh:
 			st.add_vertex(p)
 	st.index()
 	return st.commit()
+
+
+## Relieve de las texturas de cerca, sí o no (Opciones > Gráficos): sin él, los bloques se ven
+## planos y la gráfica trabaja menos.
+static func set_relief(on: bool) -> void:
+	if _terrain_material != null:
+		_terrain_material.set_shader_parameter("relief_distance", 14.0 if on else 0.0)

@@ -58,6 +58,7 @@ func _ready() -> void:
 
 	_pages["main"] = _build_main()
 	_pages["options"] = _build_options()
+	_pages["graphics"] = _build_graphics()
 	_pages["controls"] = _build_controls()
 	for page: Control in _pages.values():
 		stack.add_child(page)
@@ -103,7 +104,7 @@ func _build_main() -> Control:
 	var gap := Control.new()
 	gap.custom_minimum_size = Vector2(0, 8)
 	box.add_child(gap)
-	for entry in [["Continuar", close], ["Opciones", _show_page.bind("options")],
+	for entry in [["Continuar", close], ["Opciones", _show_page.bind("options")], ["Gráficos", _show_page.bind("graphics")],
 			["Controles", _show_page.bind("controls")], ["Guardar y salir", func() -> void: quit_requested.emit()]]:
 		var button := menu_button(entry[0])
 		button.pressed.connect(entry[1])
@@ -152,6 +153,63 @@ func _build_options() -> Control:
 	holder.add_child(back)
 	box.add_child(holder)
 	return box
+
+
+## Gráficos: lo que más pesa para la tarjeta gráfica, para ajustarlo a cada ordenador.
+func _build_graphics() -> Control:
+	var box := _column()
+	box.add_child(title_label("Gráficos", 24))
+	var distances: Array[String] = []
+	for d: float in Settings.VIEW_DISTANCES:
+		distances.append("%d m" % d)
+	box.add_child(_choice("Distancia de detalle (al volver a entrar)", distances,
+		Settings.VIEW_DISTANCES.find(Settings.view_distance),
+		func(i: int) -> void: Settings.view_distance = Settings.VIEW_DISTANCES[i]))
+	box.add_child(_choice("Sombras", Settings.SHADOW_NAMES, Settings.shadows,
+		func(i: int) -> void: Settings.shadows = i))
+	box.add_child(_choice("Suavizado de bordes", Settings.AA_NAMES, Settings.antialias,
+		func(i: int) -> void: Settings.antialias = i))
+	box.add_child(_check("Relieve de las texturas de cerca", Settings.relief,
+		func(on: bool) -> void: Settings.relief = on))
+	box.add_child(_check("Árboles sencillos a lo lejos", Settings.far_trees,
+		func(on: bool) -> void: Settings.far_trees = on))
+	box.add_child(_check("Mostrar FPS y rendimiento (también con F3)", Settings.show_fps,
+		func(on: bool) -> void: Settings.show_fps = on))
+	var back := menu_button("Volver")
+	back.pressed.connect(func() -> void:
+		Settings.save_settings()
+		_show_page("main"))
+	var holder := CenterContainer.new()
+	holder.add_child(back)
+	box.add_child(holder)
+	return box
+
+
+## Una opción con varios valores: "Sombras: Medias"; cada clic pasa al siguiente y se aplica.
+func _choice(text: String, names: Array, index: int, on_change: Callable) -> Control:
+	var button := menu_button("")
+	var state := {"i": maxi(index, 0)}
+	var refresh := func() -> void: button.text = "%s: %s" % [text, names[state["i"]]]
+	refresh.call()
+	button.pressed.connect(func() -> void:
+		state["i"] = (int(state["i"]) + 1) % names.size()
+		on_change.call(state["i"])
+		Settings.apply_graphics(get_tree())
+		refresh.call())
+	var holder := CenterContainer.new()
+	holder.add_child(button)
+	return holder
+
+
+func _check(text: String, value: bool, on_change: Callable) -> CheckBox:
+	var check := CheckBox.new()
+	check.text = text
+	check.button_pressed = value
+	check.focus_mode = Control.FOCUS_NONE
+	check.toggled.connect(func(on: bool) -> void:
+		on_change.call(on)
+		Settings.apply_graphics(get_tree()))
+	return check
 
 
 func _slider(text: String, low: float, high: float, value: float, on_change: Callable, fmt: String, shown_scale := 1.0) -> Control:

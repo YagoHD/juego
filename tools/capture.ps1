@@ -26,6 +26,8 @@ param(
     [switch]$Bench,     # dos mesas de trabajo delante, con el pico a medio montar
     [switch]$Showroom,  # sala de muestras: suelo plano con todos los bloques en fila (carga rápida)
     [switch]$OpenChest, # abrir el cofre más cercano (con algo dentro)
+    [string]$MenuPage = "", # con -Pause: página del menú ("graphics", "options", "controls")
+    [switch]$Fps,       # enseñar el rendimiento (F3)
     [switch]$Torches,   # dos antorchas clavadas delante
     [switch]$Craft,     # inventario de rodillas y vista de fabricar
     [switch]$Showcase,  # modelos voxelizados delante
@@ -60,6 +62,8 @@ if ($Cracks -ne "") { $gameArgs += "--cracks=$Cracks" }
 if ($Title) { $gameArgs += "--title" }
 if ($Bench) { $gameArgs += "--bench" }
 if ($OpenChest) { $gameArgs += "--open-chest" }
+if ($MenuPage -ne "") { $gameArgs += "--page=$MenuPage" }
+if ($Fps) { $gameArgs += "--fps" }
 if ($Showroom) { $gameArgs += "--showroom" }
 if ($Torches) { $gameArgs += "--torches" }
 if ($Craft) { $gameArgs += "--craft" }

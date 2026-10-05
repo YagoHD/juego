@@ -11,11 +11,11 @@ class_name Main
 # Tamaño de cada voxel en metros. 1.0 = estilo Minecraft; 0.5 = cada cubo se parte en 8
 # (estilo Cube World, personaje de ~4 cubos de alto). Baja este valor para más detalle.
 const VOXEL_SIZE := 0.5
-
-# Radio de voxels detallados alrededor del jugador (en voxels; 320 = 160 m).
-const NEAR_VIEW_VOXELS := 320
+# Radio de voxels detallados alrededor del jugador: el de los ajustes (Gráficos > Distancia de
+# detalle, en metros; se aplica al entrar en la partida). Más lejos, la isla simplificada.
+var _near_voxels := 256
 # La malla lejana se recorta un poco antes de donde acaban los voxels, para que se solapen.
-const FAR_HIDE_RADIUS := NEAR_VIEW_VOXELS * VOXEL_SIZE - 15.0
+var _far_hide_radius := 113.0
 
 # Niebla: limpia hasta FOG_BEGIN metros, y se va difuminando hasta FOG_END.
 const FOG_BEGIN := 280.0
@@ -75,6 +75,8 @@ var _world_is_new := false
 
 func _ready() -> void:
 	Settings.load_settings()
+	_near_voxels = int(Settings.view_distance / VOXEL_SIZE)
+	_far_hide_radius = _near_voxels * VOXEL_SIZE - 15.0
 	if _arg("--capture=") != "":
 		_capture = CaptureMode.new()
 		_capture.main = self
@@ -84,6 +86,8 @@ func _ready() -> void:
 	if _arg("--textures=") != "":  # capturas: probar un paquete de texturas
 		Settings.texture_pack = _arg("--textures=")
 	UiTheme.apply_cursor()
+	PerfStats.enable(get_viewport(), true)  # tiempos de la gráfica para el F3
+	Settings.apply_graphics(get_tree())  # suavizado (las sombras y el relieve, al crearse)
 	_sfx = Sfx.new()
 	add_child(_sfx)
 	_build_world()
@@ -134,7 +138,7 @@ func _build_world() -> void:
 	terrain.bounds = AABB(Vector3(-IslandGenerator.MAP_HALF, 0, -IslandGenerator.MAP_HALF), Vector3(IslandGenerator.MAP_HALF * 2.0, 256, IslandGenerator.MAP_HALF * 2.0))
 	# Mallas de 32³ voxels: 8 veces menos objetos de malla y colisión que con 16³.
 	terrain.mesh_block_size = 32
-	terrain.max_view_distance = NEAR_VIEW_VOXELS + 64
+	terrain.max_view_distance = _near_voxels + 64
 	terrain.scale = Vector3.ONE * VOXEL_SIZE  # voxels más pequeños (estilo Cube World)
 	terrain.add_to_group("voxel_terrain")
 	add_child(terrain)
@@ -156,7 +160,7 @@ func _build_far_terrain() -> void:
 	for id in Blocks.COLORS:
 		colors[id] = BlockTextures.average_color(id, 0)
 	colors[IslandGenerator.WATER] = Blocks.color_of(IslandGenerator.WATER)
-	far.build(_generator, colors, VOXEL_SIZE, FAR_HIDE_RADIUS)
+	far.build(_generator, colors, VOXEL_SIZE, _far_hide_radius)
 	add_child(far)
 
 
@@ -214,7 +218,7 @@ func _build_player() -> void:
 	# pero flota quieto hasta que hay suelo con colisión debajo.
 	var ground := _generator.get_ground_height(Structures.spawn_voxel().x, Structures.spawn_voxel().y)
 	_player = Player.new()
-	_player.near_view_voxels = NEAR_VIEW_VOXELS
+	_player.near_view_voxels = _near_voxels
 	_player.position = Vector3(Structures.spawn_voxel().x, ground + 4, Structures.spawn_voxel().y) * VOXEL_SIZE
 	add_child(_player)
 	_player.rotation.y = Structures.spawn_yaw()  # mirando al barco naufragado
@@ -338,7 +342,7 @@ func _enter_game() -> void:
 
 
 func _near_spawn_area() -> AABB:
-	var r := NEAR_VIEW_VOXELS * 0.8
+	var r := _near_voxels * 0.8
 	return AABB(Vector3(Structures.spawn_voxel().x - r, 0, Structures.spawn_voxel().y - r), Vector3(2 * r, 256, 2 * r)).intersection(_terrain.bounds)  # sin salirse del mundo (si no, nunca termina)
 
 
@@ -480,7 +484,7 @@ func _process(delta: float) -> void:
 	_notice.modulate.a = clampf(_notice_time, 0.0, 1.0)
 	_hud.text = _day_night.get_clock_text()
 	if Settings.show_fps:
-		_hud.text += "  ·  %d FPS" % Engine.get_frames_per_second()
+		_hud.text += "  ·  " + PerfStats.text(get_viewport())
 	_help.visible = _help_on and not reading
 	_update_ambience(delta)
 	# Cada mañana, el mar trae restos del naufragio a la orilla.

@@ -94,6 +94,10 @@ func update() -> void:
 				main._player.breaker.cracks.show_on(main._terrain.to_global(Vector3(t["voxel"])), Main.VOXEL_SIZE, float(main._arg("--cracks=")))
 		if OS.get_cmdline_user_args().has("--pause"):  # menú de pausa a la vista (sin pausar: la foto debe salir)
 			main._pause.visible = true
+			if main._arg("--page=") != "":  # una página del menú: "graphics", "options"...
+				main._pause._show_page(main._arg("--page="))
+		if OS.get_cmdline_user_args().has("--fps"):  # el texto de rendimiento (F3)
+			Settings.show_fps = true
 		if OS.get_cmdline_user_args().has("--help"):
 			main._help_on = true
 		if OS.get_cmdline_user_args().has("--inventory"):

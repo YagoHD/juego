@@ -63,14 +63,16 @@ var _clouds: Clouds
 func setup(parent: Node3D, fog_begin: float, fog_end: float, fog_max: float) -> void:
 	_sun = DirectionalLight3D.new()
 	_sun.shadow_enabled = true
-	_sun.directional_shadow_max_distance = 250.0
+
 	parent.add_child(_sun)  # primera luz direccional = LIGHT0 del cielo (sol)
 
 	_moon = DirectionalLight3D.new()
 	_moon.light_color = MOON_COLOR
 	_moon.shadow_enabled = true
-	_moon.directional_shadow_max_distance = 150.0
+
 	parent.add_child(_moon)  # segunda = LIGHT1 (luna)
+	add_to_group("graphics")
+	apply_graphics()
 
 	_sky_material = ShaderMaterial.new()
 	_sky_material.shader = load("res://assets/shaders/sky.gdshader")
@@ -140,7 +142,7 @@ func _apply() -> void:
 	_sun.visible = sun_dir.y > -0.05
 	_sun.light_energy = SUN_ENERGY * sun_up * (1.0 - 0.6 * overcast)
 	_sun.light_color = k["sun"]
-	_sun.shadow_enabled = sun_dir.y > 0.02
+	_sun.shadow_enabled = sun_dir.y > 0.02 and Settings.shadows > 0
 
 	# Luna: recorre el otro medio círculo durante la noche.
 	var night_len := 24.0 - (SUNSET - SUNRISE)
@@ -150,7 +152,7 @@ func _apply() -> void:
 	var moon_up := smoothstep(-0.04, 0.15, moon_dir.y)
 	_moon.visible = moon_dir.y > -0.05
 	_moon.light_energy = MOON_ENERGY * moon_up
-	_moon.shadow_enabled = moon_dir.y > 0.05 and not _sun.shadow_enabled
+	_moon.shadow_enabled = moon_dir.y > 0.05 and not _sun.shadow_enabled and Settings.shadows > 0
 
 	var grey := Color(0.42, 0.45, 0.5) * (0.35 + 0.65 * sun_up)
 	var top: Color = (k["top"] as Color).lerp(grey, 0.65 * overcast)
@@ -201,3 +203,16 @@ func _sample(h: float) -> Dictionary:
 					out[key] = lerpf(float(va), float(b[key]), t)
 			return out
 	return KEYS[0]
+
+
+## Calidad de las sombras (Opciones > Gráficos): hasta dónde llegan y en cuántos tramos se reparten
+## (más tramos y más lejos = más nítidas, pero la gráfica vuelve a dibujar más mundo).
+func apply_graphics() -> void:
+	var distance: float = [0.0, 50.0, 100.0, 200.0][Settings.shadows]
+	var mode := DirectionalLight3D.SHADOW_PARALLEL_4_SPLITS if Settings.shadows == 3 else DirectionalLight3D.SHADOW_PARALLEL_2_SPLITS
+	for light in [_sun, _moon]:
+		var l := light as DirectionalLight3D
+		if l == null:
+			continue
+		l.directional_shadow_max_distance = distance if l == _sun else distance * 0.6
+		l.directional_shadow_mode = mode
