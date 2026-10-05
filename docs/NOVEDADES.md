@@ -233,3 +233,11 @@ Todo lo de Kenney y OpenGameArt es CC0 (créditos en `assets/third_party/*/` y
   talar, tocones, rebrote, colocar...) funciona igual. En la vista del bosque desde lo alto:
   119 → 144 FPS, la gráfica de 7,7 a ~3 ms, de 35 a ~12 millones de triángulos.
 - El mundo se vuelve a generar al entrar (los árboles van ahora en su propio archivo).
+- **Sin tirones al andar por el bosque**: crear el choque exacto de los troncos al cargar trozos
+  de bosque daba parones de 100 ms; ahora la madera choca con una caja (al chocar no se nota) y
+  el mundo de los árboles se carga en trozos más pequeños. Prueba volando a toda velocidad: de
+  36 tirones (peor 111 ms) a ninguno. El F3 cuenta los tirones y se apuntan en `tirones.txt`.
+- **Árboles bien plantados**: el pie va a la altura del punto más bajo (sin raíces colgando en
+  las cuestas), no nacen en cuestas muy empinadas, hay una distancia mínima entre troncos y los
+  arbustos y rocas no nacen bajo la copa de un árbol.
+- Arreglo: el guardado automático no guardaba los árboles talados (podían volver al recargar).

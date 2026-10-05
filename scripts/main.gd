@@ -115,7 +115,10 @@ func _notification(what: int) -> void:
 func _save_world() -> void:
 	# Guarda en disco los bloques que el jugador ha cambiado.
 	if _terrain != null and not _loading:
+		StutterLog.mark("guardado automático")
 		_terrain.save_modified_blocks()
+		if WorldVoxels.tool() != null and WorldVoxels.tool().trees != null:
+			WorldVoxels.tool().trees.save_modified_blocks()  # los árboles talados, en su terreno
 		_save_player()
 		_chests.save_to(_chests_save_path())
 		_ground.save_to(_ground_save_path())
@@ -134,7 +137,7 @@ func _build_world() -> void:
 	terrain.mesher = mesher
 	terrain.generator = _generator
 	terrain.stream = null if _showroom() else _make_world_stream()  # la sala no se guarda
-	terrain.generate_collisions = true
+	terrain.generate_collisions = not _arg("--debug-nocol=").contains("ground")  # (experimento de tirones)
 	# Solo existen voxels dentro de la isla y entre el fondo marino y las cimas.
 	terrain.bounds = AABB(Vector3(-IslandGenerator.MAP_HALF, 0, -IslandGenerator.MAP_HALF), Vector3(IslandGenerator.MAP_HALF * 2.0, 256, IslandGenerator.MAP_HALF * 2.0))
 	# Mallas de 32³ voxels: 8 veces menos objetos de malla y colisión que con 16³.
@@ -156,9 +159,9 @@ func _build_world() -> void:
 		trees.mesher = mesher
 		trees.generator = _tree_generator
 		trees.stream = _make_world_stream("arboles")
-		trees.generate_collisions = true
+		trees.generate_collisions = not _arg("--debug-nocol=").contains("trees")  # (experimento de tirones)
 		trees.bounds = terrain.bounds
-		trees.mesh_block_size = 32
+		trees.mesh_block_size = 16  # trozos pequeños: cada uno se prepara rápido (sin tirones al cargar)
 		trees.max_view_distance = int(Settings.tree_distance / VOXEL_SIZE)
 		trees.scale = terrain.scale
 		add_child(trees)
@@ -375,6 +378,9 @@ func _near_spawn_area() -> AABB:
 
 
 func _finish_loading() -> void:
+	var stutters := StutterLog.new()  # registro de tirones (user://tirones.txt)
+	stutters.name = "StutterLog"
+	add_child(stutters)
 	_loading = false
 	if _title != null:
 		_title.queue_free()

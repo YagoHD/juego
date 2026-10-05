@@ -89,7 +89,7 @@ func _find_tree(tool: WorldVoxels, me: Vector3i) -> bool:
 				var name: String = PrefabLibrary.NAMES[prefab]
 				if not (name.begins_with("t_oak") or name.begins_with("t_pine")):
 					continue
-				var base := Vector3i(x, gen._height_at(x, z), z)
+				var base := Vector3i(x, gen.tree_base(x, z), z)
 				if PrefabLibrary.prefab_of(tool.get_voxel(base + Vector3i.UP)) != name:
 					continue  # sin cargar, o lo tapa otro árbol
 				_base = base

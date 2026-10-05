@@ -18,5 +18,5 @@ static func text(viewport: Viewport) -> String:
 	var tris := Performance.get_monitor(Performance.RENDER_TOTAL_PRIMITIVES_IN_FRAME)
 	var calls := Performance.get_monitor(Performance.RENDER_TOTAL_DRAW_CALLS_IN_FRAME)
 	var objects := Performance.get_monitor(Performance.RENDER_TOTAL_OBJECTS_IN_FRAME)
-	return "%d FPS\nGráfica %.1f ms · Procesador: juego %.1f ms, física %.1f ms, preparar dibujo %.1f ms\nTriángulos %d mil · Llamadas de dibujo %d · Objetos %d" % [
-		Engine.get_frames_per_second(), gpu, process, physics, render_cpu, int(tris / 1000.0), int(calls), int(objects)]
+	return "%d FPS\nGráfica %.1f ms · Procesador: juego %.1f ms, física %.1f ms, preparar dibujo %.1f ms\nTriángulos %d mil · Llamadas de dibujo %d · Objetos %d\n%s" % [
+		Engine.get_frames_per_second(), gpu, process, physics, render_cpu, int(tris / 1000.0), int(calls), int(objects), StutterLog.summary()]

@@ -60,7 +60,7 @@ func _scan() -> void:
 				size = 0.85  # roble e inclinado (el modelo es del tamaño de un gigante pequeño)
 			else:
 				size = 1.7
-			var base := _gen._height_at(wx, wz)
+			var base := _gen.tree_base(wx, wz)
 			var pos := Vector3((wx + 0.5) * _voxel, base * _voxel, (wz + 0.5) * _voxel)
 			var r := _gen._hash01(wx * 31 + 5, wz * 17 + 3)
 			found[model].append([pos, size * (0.9 + r * 0.2), r * TAU, 0.9 + r * 0.2])

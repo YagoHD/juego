@@ -141,12 +141,23 @@ func update() -> void:
 			var parts := action.split(":")
 			main._player.debug_avatar_action(parts[0], float(parts[1]))
 		frames = int(main._arg("--wait=", "90"))
+		var walk := float(main._arg("--walk=", "0"))  # prueba de tirones: volar recto N segundos
+		if walk > 0.0:
+			frames = int(walk * 60.0)
+			main._player._flying = true
+			var w := InputEventKey.new()
+			w.keycode = KEY_W
+			w.physical_keycode = KEY_W
+			w.pressed = true
+			Input.parse_input_event(w)
 		return
 	frames -= 1
 	var swing_at := int(main._arg("--swing=", "-1"))  # frames antes de la foto en que lanzar un golpe
 	if frames == swing_at:
 		main._player.debug_swing()
 	if frames == 0:
+		if main._arg("--walk=") != "":
+			print("[tirones] ", StutterLog.summary(), " — detalle en ", ProjectSettings.globalize_path(StutterLog.PATH))
 		main.get_viewport().get_texture().get_image().save_png(path)
 		print("[captura] guardada en ", path)
 		main.get_tree().quit()

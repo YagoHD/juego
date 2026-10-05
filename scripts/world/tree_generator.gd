@@ -19,12 +19,12 @@ func _generate_block(out_buffer: VoxelBuffer, origin: Vector3i, lod: int) -> voi
 			var kind := _tree_kind(wx, wz)
 			if kind == 0:
 				continue
-			var base := _height_at(wx, wz)
+			var base := tree_base(wx, wz)
 			if base + MAX_TREE_HEIGHT < origin.y or base > origin.y + size.y:
 				continue
 			for piece in PrefabLibrary.pieces(_tree_prefab(wx, wz, kind)):
 				var c: Vector3i = piece[0]
 				var cell := Vector3i(wx + c.x, base + c.y, wz + c.z)
-				if c.y < 4 and cell.y < _height_at(cell.x, cell.z):
+				if c.y < 6 and cell.y < _height_at(cell.x, cell.z):
 					continue  # raíz o rama metida en una cuesta: ahí manda el suelo
 				_set_if_air(out_buffer, origin, size, cell.x, cell.y, cell.z, piece[1])

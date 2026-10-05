@@ -69,6 +69,7 @@ static func try_fell(parent: Node, terrain: VoxelTerrain, cut: Vector3i, cut_id:
 		tree.free()
 		return false
 	tree._leave_stump(cut)
+	StutterLog.mark("árbol cae")
 	parent.add_child(tree)
 	tree._start(from)
 	return true
@@ -326,6 +327,7 @@ const MAX_DROPS := 12            # objetos sueltos como mucho (los troncos se ag
 ## El tronco golpea el suelo y revienta: astillas, y la madera queda en el suelo como objetos
 ## para recoger (un tronco por bloque, en montones repartidos a lo largo de donde cayó).
 func _shatter() -> void:
+	StutterLog.mark("árbol revienta")
 	_done = true
 	freeze = true
 	if not _leaves_broken:

@@ -131,7 +131,46 @@ static func make_model(id: int) -> VoxelBlockyModelMesh:
 		model.collision_aabbs = []
 	else:
 		model.collision_aabbs = [mesh.get_aabb()]
+		if prefab_of(id).begins_with("t_"):
+			model.mesh = _with_box_collision(mesh)
+			model.set_material_override(1, _invisible())
+			model.set_mesh_collision_enabled(0, false)
+			model.set_mesh_collision_enabled(1, true)
 	return model
+
+
+## La madera de los árboles choca con una caja (la de su trozo), no con su forma de cubitos: crear
+## el choque exacto de miles de trozos de tronco, al cargar el bosque, daba tirones de 100 ms.
+## Malla con dos superficies: la que se ve (sin choque) y la caja (que choca y no se ve).
+static func _with_box_collision(visual: ArrayMesh) -> ArrayMesh:
+	var out := ArrayMesh.new()
+	out.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, visual.surface_get_arrays(0))
+	var box := BoxMesh.new()
+	var aabb := visual.get_aabb()
+	box.size = aabb.size
+	var arrays := box.get_mesh_arrays()
+	var verts: PackedVector3Array = arrays[Mesh.ARRAY_VERTEX]
+	for i in verts.size():
+		verts[i] += aabb.get_center()
+	arrays[Mesh.ARRAY_VERTEX] = verts
+	out.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
+	return out
+
+
+static var _invisible_material: ShaderMaterial
+
+
+## Material que no dibuja nada (la caja del choque de la madera).
+static func _invisible() -> ShaderMaterial:
+	if _invisible_material == null:
+		var shader := Shader.new()
+		shader.code = "shader_type spatial;
+render_mode unshaded, shadows_disabled;
+void vertex() { POSITION = vec4(2.0, 2.0, 2.0, 1.0); }
+"
+		_invisible_material = ShaderMaterial.new()
+		_invisible_material.shader = shader
+	return _invisible_material
 
 
 ## ¿Es un cubo entero? (tras juntar caras, un cubo macizo de un color son 6 caras: 12 triángulos;

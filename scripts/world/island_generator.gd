@@ -72,6 +72,8 @@ const DIRT_DEPTH := 3
 const TREE_MARGIN := 5        # columnas extra alrededor del chunk para no cortar copas
 const MAX_TREE_HEIGHT := 20
 const MAX_TREE_DENSITY := 0.063  # la densidad del mapa va en milésimas (máx. 63)
+const TREE_SPACING := 3          # columnas mínimas entre dos troncos
+const MAX_TREE_SLOPE := 4        # desnivel máximo (bloques) bajo el pie de un árbol
 
 var _n := 0
 var _h := PackedFloat32Array()
@@ -295,6 +297,8 @@ func _prefab_at(wx: int, wz: int) -> int:
 		return -1  # descarte barato
 	if Vector2(wx, wz).distance_to(Vector2(Structures.spawn_voxel())) < 12.0:
 		return -1  # el sitio donde aparece el jugador, despejado
+	if _under_canopy(wx, wz):
+		return -1  # bajo la copa de un árbol: ni arbustos ni rocas montados en el tronco
 	var i := _index(wx, wz)
 	if i < 0:
 		return -1
@@ -354,6 +358,30 @@ func _decor_at(wx: int, wz: int, top: int) -> int:
 
 # Tipos de árbol: 0 ninguno, 1 frondoso, 2 pino, 3 muerto.
 func _tree_kind(wx: int, wz: int) -> int:
+	var kind := _tree_candidate(wx, wz)
+	if kind == 0:
+		return 0
+	# Separación: si otro candidato a menos de TREE_SPACING columnas tiene la tirada más baja, nace
+	# ese y este no (antes podían nacer troncos montados uno sobre otro).
+	var roll := _hash01(wx, wz)
+	for dx in range(-TREE_SPACING, TREE_SPACING + 1):
+		for dz in range(-TREE_SPACING, TREE_SPACING + 1):
+			if (dx != 0 or dz != 0) and _tree_candidate(wx + dx, wz + dz) != 0 and _hash01(wx + dx, wz + dz) < roll:
+				return 0
+	# Ni en cuestas muy empinadas (el pie quedaría colgando).
+	var low := _height_at(wx, wz)
+	var high := low
+	for d: Vector2i in [Vector2i(2, 0), Vector2i(-2, 0), Vector2i(0, 2), Vector2i(0, -2)]:
+		var h := _height_at(wx + d.x, wz + d.y)
+		low = mini(low, h)
+		high = maxi(high, h)
+	if high - low > MAX_TREE_SLOPE:
+		return 0
+	return kind
+
+
+## Tipo de árbol que tocaría en esta columna según el mapa de densidad (sin mirar a los vecinos).
+func _tree_candidate(wx: int, wz: int) -> int:
 	var roll := _hash01(wx, wz)
 	if roll >= MAX_TREE_DENSITY:
 		return 0  # descarte barato antes de mirar el mapa
@@ -364,6 +392,16 @@ func _tree_kind(wx: int, wz: int) -> int:
 	if roll >= float(code & 63) / 1000.0:
 		return 0
 	return code >> 6
+
+
+## Altura del pie de un árbol: la del punto más bajo bajo su tronco y sus raíces, para que en una
+## cuesta no queden raíces colgando (las del lado alto quedan dentro de la tierra y no se ponen).
+func tree_base(wx: int, wz: int) -> int:
+	var low := _height_at(wx, wz)
+	for dx in range(-2, 3):
+		for dz in range(-2, 3):
+			low = mini(low, _height_at(wx + dx, wz + dz))
+	return low
 
 
 ## Árboles de la hoja del concepto (prefabs de TreeBuilder): versiones de cada tipo.
@@ -542,7 +580,7 @@ func _stamp_column(buffer: VoxelBuffer, origin: Vector3i, size: Vector3i, wx: in
 	if skip_trees:
 		return  # los árboles van en su propio terreno
 	if base < 0:
-		base = _height_at(wx, wz)
+		base = tree_base(wx, wz)
 	if base + MAX_TREE_HEIGHT < origin.y or base > origin.y + size.y:
 		return  # el árbol no toca este bloque
 	_stamp_tree(buffer, origin, size, wx, wz, base, kind)
@@ -573,6 +611,15 @@ func regrow(tool: VoxelTool, cell: Vector3i) -> void:
 func _near_trunk(wx: int, wz: int) -> bool:
 	for dx in range(-1, 2):
 		for dz in range(-1, 2):
+			if _tree_kind(wx + dx, wz + dz) != 0:
+				return true
+	return false
+
+
+## ¿Hay un árbol a menos de 4 columnas? (su copa ocuparía este sitio)
+func _under_canopy(wx: int, wz: int) -> bool:
+	for dx in range(-4, 5):
+		for dz in range(-4, 5):
 			if _tree_kind(wx + dx, wz + dz) != 0:
 				return true
 	return false
