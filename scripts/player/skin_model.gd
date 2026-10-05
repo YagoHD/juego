@@ -25,6 +25,8 @@ const HIP_OVERLAP := 2.5      # px que el muslo sube dentro del torso (sin hueco
 const JOINT_INSET := 0.05     # px de estrechamiento de las piezas que se solapan (evita parpadeos)
 ## Cuerpo de cubitos (VoxelBody) con manos de 5 dedos (VoxelHand) en vez de cajas lisas.
 const VOXEL := true
+## El personaje es el náufrago modelado con cubitos (CastawayModel), no una skin de cajas.
+const CASTAWAY := true
 const HAND_CUT := 2           # px del final del brazo que se cambian por la mano de cubitos
 ## Redondeo de las aristas de cada parte (px) y si se redondean también arriba y abajo.
 const ROUNDING := {"head": [1.5, true], "body": [1.0, false], "arm_right": [0.75, false],
@@ -192,6 +194,9 @@ static func make_material(texture: Texture2D, on_top := false) -> StandardMateri
 ## (hombro, cadera, cuello...). Brazos y piernas llevan además un nodo hijo "lower" en el codo
 ## o la rodilla, con el segmento de abajo: girándolo se dobla la articulación.
 static func make_part(part: String, texture: Texture2D, slim: bool, layer: int, on_top := false) -> Node3D:
+	# El náufrago modelado con cubitos (CastawayModel), salvo que el jugador tenga su propia skin.
+	if CASTAWAY and not FileAccess.file_exists(SkinComposer.USER_SKIN_PATH):
+		return CastawayModel.make_part(part, layer, on_top)
 	var pivot := Node3D.new()
 	pivot.name = part
 	pivot.position = Vector3(PARTS[part]["pivot"]) * PIXEL

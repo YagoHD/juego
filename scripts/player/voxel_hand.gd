@@ -9,7 +9,7 @@ class_name VoxelHand
 ## hacia la palma). Relajada, la mano gira para que la palma mire al cuerpo.
 
 const CUBE := 1.0 / 3.0          # cubito, en píxeles de skin
-const PALM := Vector3i(11, 7, 5)  # en cubitos
+const PALM := Vector3i(8, 7, 4)   # en cubitos
 const FINGER := [4, 3]           # largo de las dos falanges (cubitos)
 
 ## Agarres: [dedos (falange 1, falange 2) en grados, pulgar (giro hacia dentro, doblez), giro de
@@ -46,7 +46,7 @@ func build(skin: Color, right: bool, material: Material, layer: int, on_top: boo
 	# Cuatro dedos en fila (de dentro a fuera), algo por delante del centro de la palma.
 	for i in 4:
 		var root := Node3D.new()
-		var x := (-PALM.x * 0.5 + 1.0 + i * 3.0) * c * side
+		var x := (-PALM.x * 0.5 + 1.0 + i * 2.0) * c * side
 		root.position = Vector3(x, -PALM.y * c, -0.5 * c)
 		add_child(root)
 		var length := FINGER[0] - (1 if i == 3 else 0)  # el meñique, más corto
@@ -140,3 +140,12 @@ func _node(cells: Dictionary, material: Material, layer: int, on_top: bool) -> M
 	if on_top:
 		mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	return mi
+
+
+## Dónde va el objeto que lleva (en el espacio del antebrazo, como la propia mano): con mango,
+## dentro del puño; si no, delante de la palma.
+func item_point(item_id: String) -> Vector3:
+	var c := CUBE * SkinModel.PIXEL
+	if item_id in HANDLED:
+		return position + Vector3(0, -(PALM.y + 2.5), -2.5) * c
+	return position + Vector3(0, -(PALM.y + 1.5), -5.0) * c

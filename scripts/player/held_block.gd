@@ -74,7 +74,7 @@ func _show_item(id: String) -> void:
 	if hand != null:
 		hand.grip_for(id)  # los dedos se cierran según lo que lleve
 		# Con mango: dentro del puño; si no, delante de la palma.
-		_block_mesh.position = (Vector3(0.0, -7.0, -1.4) if id in VoxelHand.HANDLED else Vector3(0.0, -7.2, -2.6)) * SkinModel.PIXEL
+		_block_mesh.position = hand.item_point(id)
 	if id == "":
 		return
 	var held_size := BLOCK_SIZE * (1.6 if ItemDB.block_of(id) < 0 else 1.0)

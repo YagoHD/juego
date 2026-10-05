@@ -794,6 +794,8 @@ func update_appearance() -> void:
 	options["pants_style"] = "largo" if equipment["pants"] != "" else "corto"
 	options["belt"] = equipment["belt"] != ""
 	options["straps"] = equipment["backpack"] != ""
+	CastawayModel.outfit = {"shirt": equipment["shirt"] != "", "pants": equipment["pants"] != "",
+		"belt": equipment["belt"] != "", "straps": equipment["backpack"] != ""}
 	apply_skin(SkinComposer.load_player_skin(options), options["slim"])
 	_avatar.set_backpack(equipment["backpack"])
 

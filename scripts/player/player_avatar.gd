@@ -75,7 +75,10 @@ func build(texture: Texture2D, slim: bool) -> void:
 	_held.layers = LAYER
 	_arm_right.get_node("lower").add_child(_held)
 
-	_build_lids(texture)
+	# Párpados: los del modelo del náufrago si los trae; si no, sacados de la skin.
+	_lids = _head.get_node_or_null("lids")
+	if _lids == null:
+		_build_lids(texture)
 	_build_backpack()
 	set_item(_item_id)
 
@@ -164,7 +167,7 @@ func set_item(id: String) -> void:
 		hand.grip_for(id)  # los dedos se cierran según lo que lleve
 		if _held != null:
 			# Con mango: dentro del puño; si no, delante de la palma.
-			_held.position = (Vector3(0.0, -7.0, -1.4) if id in VoxelHand.HANDLED else Vector3(0.0, -7.2, -2.4)) * SkinModel.PIXEL
+			_held.position = hand.item_point(id)
 	if _held != null:
 		_held.visible = id != ""  # "" = mano vacía
 		if id == "":
