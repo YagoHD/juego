@@ -120,7 +120,7 @@ var breaker: BlockBreaker         # romper manteniendo el clic, grietas (compone
 var builder: PlayerBuilder        # colocar objetos, losas, velas y cuerdas (componente)
 var _terrain: VoxelTerrain
 var _generator: IslandGenerator
-var _tool: VoxelTool
+var _tool: WorldVoxels
 var _sea_y := -INF               # altura (mundo) de la superficie del mar
 var _head_underwater := false
 
@@ -204,7 +204,7 @@ func _ready() -> void:
 	if terrains.size() > 0:
 		_terrain = terrains[0] as VoxelTerrain
 		_generator = _terrain.generator as IslandGenerator
-		_tool = _terrain.get_voxel_tool()
+		_tool = WorldVoxels.tool()
 		_tool.channel = VoxelBuffer.CHANNEL_TYPE
 		_sea_y = IslandGenerator.SEA_LEVEL * _terrain.scale.x - 0.08
 
@@ -586,7 +586,7 @@ func _edit_block(place: bool) -> void:
 		else:
 			builder.pick_up_placed(target["item"], Input.is_key_pressed(KEY_SHIFT))
 		return
-	var tool := _terrain.get_voxel_tool()
+	var tool := WorldVoxels.tool()
 	tool.channel = VoxelBuffer.CHANNEL_TYPE
 	if place:
 		var used: Vector3i = target["voxel"]

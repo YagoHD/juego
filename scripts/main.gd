@@ -66,6 +66,7 @@ var _chests := ChestStorage.new()
 var _world_id := ""  # huella del mundo (nombre de sus archivos de guardado)
 var _terrain: VoxelTerrain
 var _generator: IslandGenerator
+var _tree_generator: TreeGenerator  # el de los árboles detallados (null en la sala de muestras)
 var _loading := true
 var _title: TitleScreen
 var _waiting_play := false   # el mundo ya está listo; la pantalla de título espera a "Jugar"
@@ -143,6 +144,25 @@ func _build_world() -> void:
 	terrain.add_to_group("voxel_terrain")
 	add_child(terrain)
 	_terrain = terrain
+	# Los árboles detallados, en un terreno aparte con menos distancia (más allá se ven los
+	# sencillos de FarTrees): los árboles son casi todo lo que cuesta dibujar. WorldVoxels hace
+	# que el resto del juego vea los dos terrenos como uno.
+	var trees: VoxelTerrain = null
+	if not _showroom():
+		_generator.skip_trees = true
+		_tree_generator = TreeGenerator.new()
+		trees = VoxelTerrain.new()
+		trees.name = "TreeTerrain"
+		trees.mesher = mesher
+		trees.generator = _tree_generator
+		trees.stream = _make_world_stream("arboles")
+		trees.generate_collisions = true
+		trees.bounds = terrain.bounds
+		trees.mesh_block_size = 32
+		trees.max_view_distance = int(Settings.tree_distance / VOXEL_SIZE)
+		trees.scale = terrain.scale
+		add_child(trees)
+	WorldVoxels.setup(terrain, trees)
 	var water_flow := WaterFlow.new()  # el agua que corre al abrirle hueco
 	water_flow.name = "WaterFlow"
 	water_flow.terrain = terrain
@@ -166,22 +186,23 @@ func _build_far_terrain() -> void:
 	if Settings.far_trees:
 		var trees := FarTrees.new()
 		add_child(trees)
-		# Se esconden donde ya hay árboles de verdad (hasta donde llegan los voxels cargados).
-		trees.start(_generator, VOXEL_SIZE, (_near_voxels + 48) * VOXEL_SIZE)
+		# Se esconden donde ya hay árboles detallados (el terreno de los árboles).
+		trees.start(_generator, VOXEL_SIZE, Settings.tree_distance)
 
 
-func _make_world_stream() -> VoxelStreamSQLite:
+func _make_world_stream(part := "") -> VoxelStreamSQLite:
 	# El mundo se guarda en un archivo: lo ya visitado se lee de ahí (rápido) y conserva lo
 	# que el jugador construya. El nombre lleva una "huella" de los mapas y del generador:
 	# si cambian, se crea un mundo nuevo.
 	DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(_world_dir()))
-	if _is_test():
+	if _is_test() and part == "":  # (una sola vez: con el terreno principal)
 		if not keep_test_world:
 			_clear_test_world()  # cada prueba empieza con el mundo recién creado
 	_world_id = _world_fingerprint()
-	var file_name := "isla_%s.sqlite" % _world_id
+	var file_name := ("isla_%s.sqlite" % _world_id) if part == "" else ("isla_%s_%s.sqlite" % [_world_id, part])
 	var path := _world_dir().path_join(file_name)
-	_world_is_new = not FileAccess.file_exists(path)
+	if part == "":
+		_world_is_new = not FileAccess.file_exists(path)
 	# Las huellas distintas crean mapas separados. Conservamos los anteriores para que cambiar
 	# los mapas o volver a una versión anterior no borre construcciones, inventario ni cofres.
 	var stream := VoxelStreamSQLite.new()
@@ -197,6 +218,7 @@ func _world_fingerprint() -> String:
 	text += FileAccess.get_md5("res://scripts/world/island_generator.gd")
 	text += FileAccess.get_md5("res://scripts/world/structures.gd")
 	text += FileAccess.get_md5("res://scripts/world/shipwreck.gd")
+	text += FileAccess.get_md5("res://scripts/world/tree_generator.gd")
 	# Las piezas horneadas (árboles, rocas...): si cambia la forma de una, el mundo se rehace.
 	for n: String in PrefabLibrary.NAMES:
 		if FileAccess.file_exists(PrefabLibrary.DIR + n + ".res"):
@@ -265,7 +287,7 @@ func _build_player() -> void:
 	var regrowth := TreeRegrowth.new()  # los árboles talados rebrotan de su tocón
 	regrowth.name = "TreeRegrowth"
 	regrowth.terrain = _terrain
-	regrowth.generator = _generator
+	regrowth.generator = _tree_generator if _tree_generator != null else _generator
 	regrowth.player = _player
 	add_child(regrowth)
 	_needs = Needs.new()
@@ -831,7 +853,7 @@ const DRIFT_LOOT := [
 func _drift_ashore() -> void:
 	var rng := RandomNumberGenerator.new()
 	rng.randomize()
-	var tool := _terrain.get_voxel_tool()
+	var tool := WorldVoxels.tool()
 	tool.channel = VoxelBuffer.CHANNEL_TYPE
 	var ship := Structures.ship_voxel()
 	var placed := 0

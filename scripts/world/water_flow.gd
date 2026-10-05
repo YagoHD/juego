@@ -15,7 +15,7 @@ const SEEK := 4               # distancia a la que busca un hueco por donde caer
 const HORIZONTAL: Array[Vector3i] = [Vector3i(1, 0, 0), Vector3i(-1, 0, 0), Vector3i(0, 0, 1), Vector3i(0, 0, -1)]
 
 var terrain: VoxelTerrain
-var _tool: VoxelTool
+var _tool: WorldVoxels
 var _due := {}                # celdas que revisar en el siguiente paso
 var _time := 0.0
 
@@ -50,7 +50,7 @@ func _process(delta: float) -> void:
 ## Un paso de la simulación (público para las pruebas).
 func step() -> void:
 	if _tool == null:
-		_tool = terrain.get_voxel_tool()
+		_tool = WorldVoxels.tool()
 		_tool.channel = VoxelBuffer.CHANNEL_TYPE
 	var cells: Array = _due.keys()
 	_due.clear()

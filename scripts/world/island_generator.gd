@@ -85,6 +85,8 @@ var _fingerprint := ""
 var _margin := TREE_MARGIN     # columnas de margen: lo que más se aleja un árbol o un prefab de su pie
 var _palms: Array[int] = []
 var _rocks: Array[int] = []
+## Con el mundo de árboles aparte (TreeGenerator), este generador no pone los árboles detallados.
+var skip_trees := false
 
 
 func _init() -> void:
@@ -266,6 +268,8 @@ func _generate_block(out_buffer: VoxelBuffer, origin_in_voxels: Vector3i, lod: i
 
 	# --- 3b. Decoración del suelo (después de los árboles, para no ocupar el pie de un tronco).
 	for d in decor:
+		if skip_trees and _near_trunk(origin_in_voxels.x + d.x, origin_in_voxels.z + d.z):
+			continue  # ahí está el pie de un árbol (en su terreno): sin hierba dentro del tronco
 		if out_buffer.get_voxel(d.x, d.y, d.z, VoxelBuffer.CHANNEL_TYPE) == AIR:
 			out_buffer.set_voxel(d.w, d.x, d.y, d.z, VoxelBuffer.CHANNEL_TYPE)
 
@@ -522,7 +526,7 @@ func map_pixels() -> int:
 
 # ------------------------------------------------------------------ árbol (o prefab) de una columna
 
-## Planta lo que nace en la columna (wx, wz): un árbol nuestro, uno de Kenney o un prefab (palmera,
+## Planta lo que nace en la columna (wx, wz): uno de nuestros árboles o un prefab (palmera,
 ## roca...). 'base' es la altura del pie (por defecto, el suelo del mapa).
 func _stamp_column(buffer: VoxelBuffer, origin: Vector3i, size: Vector3i, wx: int, wz: int, base := -1) -> void:
 	var kind := _tree_kind(wx, wz)
@@ -535,6 +539,8 @@ func _stamp_column(buffer: VoxelBuffer, origin: Vector3i, size: Vector3i, wx: in
 					var pc: Vector3i = piece[0]
 					_set_if_air(buffer, origin, size, wx + pc.x, pbase + pc.y, wz + pc.z, piece[1])
 		return
+	if skip_trees:
+		return  # los árboles van en su propio terreno
 	if base < 0:
 		base = _height_at(wx, wz)
 	if base + MAX_TREE_HEIGHT < origin.y or base > origin.y + size.y:
@@ -561,3 +567,12 @@ func regrow(tool: VoxelTool, cell: Vector3i) -> void:
 	buffer.set_voxel(AIR, r, 0, r, VoxelBuffer.CHANNEL_TYPE)  # quitar el tocón
 	_stamp_column(buffer, origin, buffer.get_size(), cell.x, cell.z, cell.y)
 	tool.paste(origin, buffer, 1 << VoxelBuffer.CHANNEL_TYPE)
+
+
+## ¿Nace un árbol en esta columna o en una de al lado? (los troncos ocupan 3x3 en la base)
+func _near_trunk(wx: int, wz: int) -> bool:
+	for dx in range(-1, 2):
+		for dz in range(-1, 2):
+			if _tree_kind(wx + dx, wz + dz) != 0:
+				return true
+	return false

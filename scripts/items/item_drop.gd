@@ -25,7 +25,7 @@ var pickup_delay := PICKUP_DELAY  # al tirarlo con Q es mayor, para que no vuelv
 var _resting := false
 var _visual: MeshInstance3D
 var _base_y := 0.0
-var _tool: VoxelTool
+var _tool: WorldVoxels
 var _terrain: VoxelTerrain
 
 
@@ -201,7 +201,7 @@ func _setup_tool() -> bool:
 	_terrain = get_tree().get_first_node_in_group("voxel_terrain") as VoxelTerrain
 	if _terrain == null:
 		return false
-	_tool = _terrain.get_voxel_tool()
+	_tool = WorldVoxels.tool()
 	_tool.channel = VoxelBuffer.CHANNEL_TYPE
 	return true
 

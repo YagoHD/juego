@@ -25,7 +25,7 @@ func _process(_delta: float) -> bool:
 	if player == null or _main.get("_loading") or not player.is_on_ground_ready():
 		return false
 	var terrain: VoxelTerrain = _main.get("_terrain")
-	var tool := terrain.get_voxel_tool()
+	var tool := WorldVoxels.tool()
 	tool.channel = VoxelBuffer.CHANNEL_TYPE
 	match _step:
 		0:
@@ -75,7 +75,7 @@ func _process(_delta: float) -> bool:
 
 
 ## Busca cerca un roble o un pino ya cargado, con hueco a su alrededor para caer.
-func _find_tree(tool: VoxelTool, me: Vector3i) -> bool:
+func _find_tree(tool: WorldVoxels, me: Vector3i) -> bool:
 	var gen: IslandGenerator = _main.get("_generator")
 	for r in range(6, 90):
 		for dx in range(-r, r + 1):

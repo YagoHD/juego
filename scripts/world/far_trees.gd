@@ -6,8 +6,11 @@ class_name FarTrees
 ## una sola orden a la tarjeta gráfica (MultiMesh). Dentro de la zona de detalle se esconden: ahí
 ## están los árboles completos. Dónde va cada uno se calcula en otro hilo, para no frenar la carga.
 
-const LEAF := Color(0.30, 0.58, 0.14)
-const LEAF_DARK := Color(0.16, 0.40, 0.12)
+# Los verdes de los árboles de cerca (TreeBuilder), algo apagados: allí las copas tienen sombras
+# entre los racimos y aquí no. Así casan al pasar de unos a otros.
+const LEAF := Color(0.25, 0.47, 0.15)
+const LEAF_DARK := Color(0.14, 0.33, 0.11)
+const LEAF_LIGHT := Color(0.37, 0.58, 0.17)
 const PINE := Color(0.13, 0.40, 0.19)
 const BARK := Color(0.50, 0.31, 0.15)
 const DEAD := Color(0.56, 0.52, 0.56)
@@ -53,7 +56,9 @@ func _scan() -> void:
 			elif name.begins_with("t_bush") or name.begins_with("t_berry"):
 				model = "bush"
 				size = 1.3 if name.begins_with("t_berry") else 1.0
-			elif name.begins_with("t_giant"):
+			elif not name.begins_with("t_giant"):
+				size = 0.85  # roble e inclinado (el modelo es del tamaño de un gigante pequeño)
+			else:
 				size = 1.7
 			var base := _gen._height_at(wx, wz)
 			var pos := Vector3((wx + 0.5) * _voxel, base * _voxel, (wz + 0.5) * _voxel)
@@ -97,11 +102,14 @@ func _mesh(model: String) -> ArrayMesh:
 	var st := SurfaceTool.new()
 	st.begin(Mesh.PRIMITIVE_TRIANGLES)
 	match model:
-		"broad":  # copa redonda de tres bultos sobre un tronco
+		"broad":  # copa redonda: un bulto grande, uno arriba y cuatro alrededor, en tres tonos
 			_box(st, Vector3(0, 1.0, 0), Vector3(0.45, 2.0, 0.45), BARK)
-			_box(st, Vector3(0, 2.9, 0), Vector3(3.2, 2.0, 3.2), LEAF)
-			_box(st, Vector3(0.7, 3.7, 0.4), Vector3(2.0, 1.4, 2.0), LEAF.lightened(0.12))
-			_box(st, Vector3(-0.8, 2.5, -0.5), Vector3(1.8, 1.3, 1.8), LEAF_DARK)
+			_box(st, Vector3(0, 2.9, 0), Vector3(2.8, 1.8, 2.8), LEAF)
+			_box(st, Vector3(0.2, 3.9, -0.1), Vector3(2.0, 1.0, 2.0), LEAF_LIGHT)
+			_box(st, Vector3(1.3, 2.7, 0.3), Vector3(1.3, 1.3, 1.6), LEAF_DARK)
+			_box(st, Vector3(-1.3, 2.9, -0.2), Vector3(1.3, 1.4, 1.7), LEAF)
+			_box(st, Vector3(0.2, 2.6, 1.3), Vector3(1.7, 1.2, 1.3), LEAF_DARK)
+			_box(st, Vector3(-0.3, 3.1, -1.3), Vector3(1.6, 1.3, 1.3), LEAF_LIGHT)
 		"pine":  # tres pisos que se estrechan
 			_box(st, Vector3(0, 1.2, 0), Vector3(0.35, 2.4, 0.35), BARK)
 			_box(st, Vector3(0, 1.7, 0), Vector3(3.0, 1.2, 3.0), PINE)

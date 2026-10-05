@@ -8,7 +8,7 @@ const GROW_SECONDS := 600.0   # diez minutos de juego
 const CLEAR := 3.0            # metros: no rebrota con el jugador encima (lo encerraría)
 
 var terrain: VoxelTerrain
-var generator: IslandGenerator
+var generator: IslandGenerator   # el que planta los árboles (TreeGenerator si van aparte)
 var player: Node3D
 var _stumps := {}             # "x,y,z" -> segundos que le quedan
 var _check := 0.0
@@ -39,7 +39,7 @@ func _process(delta: float) -> void:
 
 ## Avanza el tiempo 'seconds' (público para las pruebas).
 func step(seconds: float) -> void:
-	var tool := terrain.get_voxel_tool()
+	var tool := WorldVoxels.tool()
 	tool.channel = VoxelBuffer.CHANNEL_TYPE
 	for key in _stumps.keys():
 		var p: PackedStringArray = String(key).split(",")
@@ -54,7 +54,8 @@ func step(seconds: float) -> void:
 			continue
 		if player != null and player.global_position.distance_to(terrain.to_global(Vector3(cell))) < CLEAR:
 			continue  # espera a que se aparte
-		generator.regrow(tool, cell)
+		tool.set_voxel(cell, IslandGenerator.AIR)  # el tocón (en el suelo) deja sitio al tronco
+		generator.regrow(tool.trees_tool(), cell)  # el árbol, en el terreno de los árboles
 		_stumps.erase(key)
 
 

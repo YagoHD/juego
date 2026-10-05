@@ -27,7 +27,7 @@ func _physics_process(_delta: float) -> bool:
 		return false
 	var terrain: VoxelTerrain = _main.get("_terrain")
 	var flow: WaterFlow = _main.get_node("WaterFlow")
-	var tool := terrain.get_voxel_tool()
+	var tool := WorldVoxels.tool()
 	tool.channel = VoxelBuffer.CHANNEL_TYPE
 	var base := Vector3i((player.global_position / 0.5).floor()) + Vector3i(0, 14, 0)
 	# Losa de piedra de 15x15 y aire encima.

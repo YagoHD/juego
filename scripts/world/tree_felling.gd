@@ -24,7 +24,7 @@ const PHYSICS_LAYER := 1 << 3    # capa propia: choca con el terreno, no con el 
 const MAX_TIME := 10.0           # pase lo que pase, a los 10 s revienta
 
 var _terrain: VoxelTerrain
-var _tool: VoxelTool
+var _tool: WorldVoxels
 var _vs := 0.5                   # metros por bloque
 var _woods := {}                 # Vector3i -> id
 var _leaves := {}                # Vector3i -> id
@@ -58,7 +58,7 @@ static func _is_leaf(id: int) -> bool:
 static func try_fell(parent: Node, terrain: VoxelTerrain, cut: Vector3i, cut_id: int, from: Vector3) -> bool:
 	if not _is_wood(cut_id):
 		return false
-	var tool := terrain.get_voxel_tool()
+	var tool := WorldVoxels.tool()
 	tool.channel = VoxelBuffer.CHANNEL_TYPE
 	var tree := TreeFelling.new()
 	tree._terrain = terrain

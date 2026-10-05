@@ -15,9 +15,11 @@ static var invert_y := false
 # Gráficos (Opciones > Gráficos). La distancia de detalle se aplica al entrar en la partida; lo
 # demás, al momento (los nodos del grupo "graphics" reciben apply_graphics()).
 const VIEW_DISTANCES := [96.0, 128.0, 160.0]   # metros de terreno con todo el detalle
+const TREE_DISTANCES := [48.0, 64.0, 96.0]    # metros de árboles con todo el detalle (más allá, sencillos)
 const SHADOW_NAMES := ["Sin sombras", "Bajas", "Medias", "Altas"]
 const AA_NAMES := ["Sin suavizado", "FXAA (ligero)", "MSAA x2"]
 static var view_distance := 128.0
+static var tree_distance := 64.0
 static var shadows := 2                          # índice de SHADOW_NAMES
 static var antialias := 1                        # índice de AA_NAMES
 static var relief := true                        # relieve de las texturas de cerca
@@ -40,6 +42,7 @@ static func load_settings() -> void:
 	music = float(cfg.get_value("sonido", "musica", music))
 	texture_pack = str(cfg.get_value("video", "texturas", texture_pack))
 	view_distance = float(cfg.get_value("graficos", "distancia", view_distance))
+	tree_distance = float(cfg.get_value("graficos", "distancia_arboles", tree_distance))
 	shadows = int(cfg.get_value("graficos", "sombras", shadows))
 	antialias = int(cfg.get_value("graficos", "suavizado", antialias))
 	relief = bool(cfg.get_value("graficos", "relieve", relief))
@@ -57,6 +60,7 @@ static func save_settings() -> void:
 	cfg.set_value("sonido", "musica", music)
 	cfg.set_value("video", "texturas", texture_pack)
 	cfg.set_value("graficos", "distancia", view_distance)
+	cfg.set_value("graficos", "distancia_arboles", tree_distance)
 	cfg.set_value("graficos", "sombras", shadows)
 	cfg.set_value("graficos", "suavizado", antialias)
 	cfg.set_value("graficos", "relieve", relief)

@@ -165,6 +165,12 @@ func _build_graphics() -> Control:
 	box.add_child(_choice("Distancia de detalle (al volver a entrar)", distances,
 		Settings.VIEW_DISTANCES.find(Settings.view_distance),
 		func(i: int) -> void: Settings.view_distance = Settings.VIEW_DISTANCES[i]))
+	var tree_distances: Array[String] = []
+	for d: float in Settings.TREE_DISTANCES:
+		tree_distances.append("%d m" % d)
+	box.add_child(_choice("Detalle de los árboles (al volver a entrar)", tree_distances,
+		Settings.TREE_DISTANCES.find(Settings.tree_distance),
+		func(i: int) -> void: Settings.tree_distance = Settings.TREE_DISTANCES[i]))
 	box.add_child(_choice("Sombras", Settings.SHADOW_NAMES, Settings.shadows,
 		func(i: int) -> void: Settings.shadows = i))
 	box.add_child(_choice("Suavizado de bordes", Settings.AA_NAMES, Settings.antialias,

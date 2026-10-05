@@ -121,7 +121,7 @@ func update() -> void:
 					for z in range(-d, d + 1):
 						for y in range(-3, 4):
 							var c := me + Vector3i(x, y, z)
-							if not found and main._terrain.get_voxel_tool().get_voxel(c) == IslandGenerator.CHEST:
+							if not found and WorldVoxels.tool().get_voxel(c) == IslandGenerator.CHEST:
 								var box := main._chests.get_or_create(c)
 								if range(box.size()).all(func(i: int) -> bool: return box.get_slot(i).is_empty()):
 									for item in [["rope", 5], ["wood", 30], ["berries", 12], ["stone_axe", 1], ["flint", 3], ["cloth", 8]]:
@@ -181,7 +181,7 @@ func _debug_bench() -> void:
 	var forward := Vector3i(int(signf(f.x)), 0, 0) if absf(f.x) > absf(f.z) else Vector3i(0, 0, int(signf(f.z)))
 	var right := Vector3i(Vector3(forward).cross(Vector3.UP))
 	var feet := Vector3i((main._player.global_position / Main.VOXEL_SIZE).floor())
-	var tool := main._terrain.get_voxel_tool()
+	var tool := WorldVoxels.tool()
 	tool.channel = VoxelBuffer.CHANNEL_TYPE
 	var cells := [feet + forward * 3, feet + forward * 3 + right]
 	for c: Vector3i in cells:

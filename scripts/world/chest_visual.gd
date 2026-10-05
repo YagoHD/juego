@@ -28,7 +28,7 @@ static func open_at(parent: Node, terrain: VoxelTerrain, cell: Vector3i, content
 func _build(contents: Inventory) -> void:
 	var vs := _terrain.scale.x
 	global_position = _terrain.to_global(Vector3(_cell))
-	var tool := _terrain.get_voxel_tool()
+	var tool := WorldVoxels.tool()
 	tool.channel = VoxelBuffer.CHANNEL_TYPE
 	tool.set_voxel(_cell, IslandGenerator.CHEST_OPEN)
 	# Tapa, con la bisagra atrás (+Z) arriba de la caja.
@@ -77,7 +77,7 @@ func close() -> void:
 
 
 func _finish() -> void:
-	var tool := _terrain.get_voxel_tool()
+	var tool := WorldVoxels.tool()
 	tool.channel = VoxelBuffer.CHANNEL_TYPE
 	if tool.get_voxel(_cell) == IslandGenerator.CHEST_OPEN:
 		tool.set_voxel(_cell, IslandGenerator.CHEST)

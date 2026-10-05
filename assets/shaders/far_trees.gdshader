@@ -14,7 +14,9 @@ void vertex() {
 }
 
 void fragment() {
-	ALBEDO = COLOR.rgb;
+	// Los colores van en sRGB (como los de los dibujos): se pasan a lineal, como hace la textura de los
+	// árboles de cerca. Sin esto salían mucho más claros.
+	ALBEDO = pow(COLOR.rgb, vec3(2.2));
 	ROUGHNESS = 1.0;
 	SPECULAR = 0.1;
 }

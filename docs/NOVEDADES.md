@@ -228,3 +228,8 @@ Todo lo de Kenney y OpenGameArt es CC0 (créditos en `assets/third_party/*/` y
 - **Hierba más natural**: lisa casi siempre y con florecitas 1 de cada 10; la cara de arriba de
   hierba, tierra, arena... se gira al azar en cada bloque y cambia un pelín de tono; sin las
   rayas en cuadrícula.
+- **Árboles en un mundo aparte**: los árboles detallados se ven hasta 64 m (Opciones > Gráficos
+  > Detalle de los árboles: 48, 64 o 96 m); más allá, los sencillos. Todo lo demás (picar,
+  talar, tocones, rebrote, colocar...) funciona igual. En la vista del bosque desde lo alto:
+  119 → 144 FPS, la gráfica de 7,7 a ~3 ms, de 35 a ~12 millones de triángulos.
+- El mundo se vuelve a generar al entrar (los árboles van ahora en su propio archivo).

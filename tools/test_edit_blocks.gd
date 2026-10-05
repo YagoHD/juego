@@ -30,7 +30,7 @@ func _process(_delta: float) -> bool:
 	if _wait < 30:
 		return false  # deja que se asienten la física y la cámara
 	var terrain: VoxelTerrain = _main.get("_terrain")
-	var tool := terrain.get_voxel_tool()
+	var tool := WorldVoxels.tool()
 	tool.channel = VoxelBuffer.CHANNEL_TYPE
 
 	match _step:

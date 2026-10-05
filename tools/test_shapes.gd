@@ -40,7 +40,7 @@ func _physics_process(_delta: float) -> bool:
 	_check("Las piedrecitas son bajitas", BlockAim.shape_box(IslandGenerator.PEBBLES).size.y < 0.4)
 	# Hierba alta delante: el rayo que pasa por la esquina de su cubo no la coge; el del centro sí.
 	var terrain: VoxelTerrain = _main.get("_terrain")
-	var tool := terrain.get_voxel_tool()
+	var tool := WorldVoxels.tool()
 	tool.channel = VoxelBuffer.CHANNEL_TYPE
 	var cell := Vector3i((player.global_position / 0.5).floor()) + Vector3i(2, 1, 0)
 	for x in range(-1, 4):

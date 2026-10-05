@@ -18,7 +18,7 @@ static func can_plant_on(block_id: int) -> bool:
 
 ## Planta en 'cell' (el hueco encima del suelo). Devuelve false si no se puede.
 func plant(cell: Vector3i) -> bool:
-	var tool := terrain.get_voxel_tool()
+	var tool := WorldVoxels.tool()
 	tool.channel = VoxelBuffer.CHANNEL_TYPE
 	if tool.get_voxel(cell) != IslandGenerator.AIR or not can_plant_on(tool.get_voxel(cell - Vector3i.UP)):
 		return false
@@ -35,7 +35,7 @@ func _process(delta: float) -> void:
 		return
 	var step := _check
 	_check = 0.0
-	var tool := terrain.get_voxel_tool()
+	var tool := WorldVoxels.tool()
 	tool.channel = VoxelBuffer.CHANNEL_TYPE
 	var young := PrefabLibrary.first_id("wheat_a")
 	for key in _growing.keys():
