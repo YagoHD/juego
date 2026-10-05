@@ -42,7 +42,10 @@ enganche y primer hito.
 
 ### Estructura general
 - **Beta:** isla remota con supervivencia, torre que emerge, campamento enemigo y portal.
-- **Mundo grande:** tras el portal, mundo masivo procedural con biomas variados y una guerra de fondo.
+- **Mundo grande (el juego de verdad):** tras el portal, un mundo **medieval**, grande y a poder ser
+  **generado proceduralmente**, con biomas variados y una guerra de fondo. La isla y el naufragio son
+  solo la Beta: lo que se programe debe servir sobre todo para el mundo grande (sistemas generales,
+  no cosas solo de playa).
 - Este documento cubre **solo la Beta**. Todos los nombres son provisionales.
 
 ### Cómo se cuenta la historia sola (3 trucos)
