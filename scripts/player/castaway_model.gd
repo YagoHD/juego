@@ -42,6 +42,10 @@ const KNEE_Y := 25.0
 
 
 static func make_part(part: String, layer: int, on_top: bool) -> Node3D:
+	if SmoothCharacter.available(Settings.body):  # el de Meshy, liso (hombre o mujer)
+		return SmoothCharacter.make_part(Settings.body, part, layer, on_top)
+	if ResourceLoader.exists(MeshyCastaway.DATA):
+		return MeshyCastaway.make_part(part, layer, on_top)
 	var material := SkinModel.make_voxel_material(on_top)
 	var pivot := Node3D.new()
 	pivot.name = part

@@ -168,6 +168,8 @@ func set_item(id: String) -> void:
 		if _held != null:
 			# Con mango: dentro del puño; si no, delante de la palma.
 			_held.position = hand.item_point(id)
+	elif _held != null and _arm_right != null and _arm_right.has_node("lower/grip"):
+		_held.position = (_arm_right.get_node("lower/grip") as Node3D).position
 	if _held != null:
 		_held.visible = id != ""  # "" = mano vacía
 		if id == "":

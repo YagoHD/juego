@@ -75,6 +75,8 @@ func _show_item(id: String) -> void:
 		hand.grip_for(id)  # los dedos se cierran según lo que lleve
 		# Con mango: dentro del puño; si no, delante de la palma.
 		_block_mesh.position = hand.item_point(id)
+	elif _forearm != null and _forearm.has_node("grip"):  # mano del modelo (sin dedos que se muevan)
+		_block_mesh.position = (_forearm.get_node("grip") as Node3D).position
 	if id == "":
 		return
 	var held_size := BLOCK_SIZE * (1.6 if ItemDB.block_of(id) < 0 else 1.0)

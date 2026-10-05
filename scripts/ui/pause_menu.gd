@@ -117,6 +117,12 @@ func _build_main() -> Control:
 func _build_options() -> Control:
 	var box := _column()
 	box.add_child(title_label("Opciones", 24))
+	# Cuerpo del personaje: se cambia al momento.
+	box.add_child(_choice("Cuerpo", ["Hombre", "Mujer"], 1 if Settings.body == "mujer" else 0,
+		func(i: int) -> void:
+			Settings.body = "mujer" if i == 1 else "hombre"
+			for p in get_tree().get_nodes_in_group("player"):
+				p.update_appearance()))
 	box.add_child(_slider("Sensibilidad del ratón", 0.3, 3.0, Settings.sensitivity / Settings.DEFAULT_SENSITIVITY,
 		func(v: float) -> void: Settings.sensitivity = Settings.DEFAULT_SENSITIVITY * v, "x%.1f"))
 	box.add_child(_slider("Campo de visión", 60.0, 100.0, Settings.fov,
