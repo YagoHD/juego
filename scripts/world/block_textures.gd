@@ -18,6 +18,7 @@ const PACKS := {"16x16": "res://assets/third_party/textures_16x16/"}
 ## Texturas de cada bloque: [arriba, lados, abajo].
 const FACES := {
 	IslandGenerator.GRASS: ["grass_top", "grass_side", "dirt"],
+	IslandGenerator.GRASS_FLOWERS: ["grass_top_flowers", "grass_side", "dirt"],
 	IslandGenerator.DIRT: ["dirt", "dirt_side", "dirt"],
 	IslandGenerator.STONE: ["stone", "stone_side", "stone"],
 	IslandGenerator.SAND: ["sand", "sand_side", "sand"],
@@ -302,6 +303,18 @@ static func make_terrain_material() -> ShaderMaterial:
 		glow.append(Vector2(-1, -1))
 	mat.set_shader_parameter("glow_tiles", PackedVector2Array(glow))
 	mat.set_shader_parameter("glow_count", 4)
+	# Caras de arriba que se giran al azar en cada bloque (las dos primeras, la hierba, además
+	# cambian un pelín de tono): un prado o una playa no se ven como un patrón repetido.
+	var turn: Array[Vector2] = []
+	for n in ["grass_top", "grass_top_flowers", "dirt", "sand", "snow", "gravel", "wet_sand", "mud"]:
+		if _tiles.has(n):
+			turn.append(Vector2(_tiles[n]))
+	while turn.size() < 8:
+		turn.append(Vector2(-1, -1))
+	mat.set_shader_parameter("rotate_tiles", PackedVector2Array(turn))
+	mat.set_shader_parameter("rotate_count", 8)
+	mat.set_shader_parameter("tint_count", 2)
+	mat.set_shader_parameter("block_size", 0.5)
 	_terrain_material = mat
 	set_relief(Settings.relief)
 	return mat

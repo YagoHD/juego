@@ -5,6 +5,10 @@ class_name Relief
 ## piedras) y levantar lo que sobresale (la hierba sobre la tierra, la nieve, el musgo, los
 ## cristales del mineral). Los bordes de cada cara se bajan un poco: bloques biselados.
 
+## Suelos sin bisel: en un prado o una playa grandes, el borde de cada bloque dibujaba una
+## cuadrícula de rayas.
+const FLAT_EDGES := ["grass_top", "grass_top_flowers", "dirt", "sand", "snow", "gravel", "wet_sand", "mud"]
+
 ## Lo que sobresale en cada textura: [condición de color, cuánto sube].
 const RAISE := {
 	"grass_side": "green", "grass_top": "none", "snow_side": "white", "mossy_stone": "green",
@@ -68,7 +72,7 @@ static func bake_height(img: Image, name: String) -> void:
 						height += 0.25
 			# Bisel: el borde de la cara baja.
 			var edge := mini(mini(x, w - 1 - x), mini(y, h - 1 - y))
-			if edge < 1:
+			if edge < 1 and not FLAT_EDGES.has(name):
 				height -= 0.1
 			c.a = clampf(height, 0.0, 1.0)
 			img.set_pixel(x, y, c)

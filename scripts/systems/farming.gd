@@ -13,7 +13,7 @@ var _check := 0.0
 
 ## ¿Se puede plantar encima de este bloque?
 static func can_plant_on(block_id: int) -> bool:
-	return block_id == IslandGenerator.GRASS or block_id == IslandGenerator.DIRT
+	return block_id in [IslandGenerator.GRASS, IslandGenerator.GRASS_FLOWERS, IslandGenerator.DIRT]
 
 
 ## Planta en 'cell' (el hueco encima del suelo). Devuelve false si no se puede.

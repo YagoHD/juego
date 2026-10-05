@@ -61,6 +61,7 @@ const ROPE_HANGING := 49 # cuerda que cuelga (de un mástil, de un techo...)
 const SAIL_X := 50       # vela o tela de pie: una lámina fina (X: de cara al eje X)
 const SAIL_Z := 51
 const CHEST_OPEN := 52   # cofre abierto mientras se mira dentro (la tapa la anima ChestVisual)
+const GRASS_FLOWERS := 53 # hierba con florecitas (1 de cada 10 bloques de hierba: rompe el patrón)
 
 const MAP_DIR := "res://assets/island/"
 const MAP_HALF := 512.0       # los mapas cubren [-MAP_HALF, MAP_HALF] voxels en X y Z (la isla a la mitad
@@ -234,6 +235,8 @@ func _generate_block(out_buffer: VoxelBuffer, origin_in_voxels: Vector3i, lod: i
 				top = CLAY if _hash01(floori(wx / 4.0) * 3 + 1, floori(wz / 4.0) * 5 + 2) < 0.3 else GRAVEL
 			elif height > SEA_LEVEL and water_top == height and (top == GRASS or top == DIRT):
 				top = MUD
+			if top == GRASS and _hash01(wx * 3 + 7, wz * 5 + 1) < 0.1:
+				top = GRASS_FLOWERS  # de vez en cuando, con florecitas
 			var sub_start := height - 1 - DIRT_DEPTH
 			_fill_run(out_buffer, origin_in_voxels, size, x, z, STONE, origin_in_voxels.y, sub_start)
 			_fill_run(out_buffer, origin_in_voxels, size, x, z, sub, sub_start, height - 1)

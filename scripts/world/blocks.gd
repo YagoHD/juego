@@ -4,6 +4,7 @@ class_name Blocks
 
 const COLORS := {
 	IslandGenerator.GRASS: Color(0.37, 0.65, 0.33),
+	IslandGenerator.GRASS_FLOWERS: Color(0.40, 0.65, 0.30),
 	IslandGenerator.DIRT: Color(0.55, 0.40, 0.26),
 	IslandGenerator.STONE: Color(0.50, 0.50, 0.52),
 	IslandGenerator.SAND: Color(0.88, 0.80, 0.56),
@@ -47,6 +48,7 @@ const COLORS := {
 
 const NAMES := {
 	IslandGenerator.GRASS: "Hierba",
+	IslandGenerator.GRASS_FLOWERS: "Hierba con flores",
 	IslandGenerator.DIRT: "Tierra",
 	IslandGenerator.STONE: "Piedra",
 	IslandGenerator.SAND: "Arena",
@@ -95,7 +97,7 @@ const HOTBAR: Array[int] = [
 	IslandGenerator.LEAVES, IslandGenerator.WATER, IslandGenerator.WHEAT,
 ]
 
-const LAST_ID := IslandGenerator.CHEST_OPEN
+const LAST_ID := IslandGenerator.GRASS_FLOWERS
 
 
 
@@ -137,7 +139,7 @@ const HARDNESS := {
 	IslandGenerator.SLAB_DOWN: 1.0, IslandGenerator.SLAB_UP: 1.0, IslandGenerator.SLAB_N: 1.0, IslandGenerator.SLAB_S: 1.0,
 	IslandGenerator.SLAB_W: 1.0, IslandGenerator.SLAB_E: 1.0, IslandGenerator.ROPE_HANGING: 0.3,
 	IslandGenerator.SAIL_X: 0.35, IslandGenerator.SAIL_Z: 0.35, IslandGenerator.CHEST_OPEN: 1.8,
-	IslandGenerator.DIRT: 0.6, IslandGenerator.GRASS: 0.7, IslandGenerator.CORRUPT_SOIL: 0.9,
+	IslandGenerator.DIRT: 0.6, IslandGenerator.GRASS: 0.7, IslandGenerator.GRASS_FLOWERS: 0.7, IslandGenerator.CORRUPT_SOIL: 0.9,
 	IslandGenerator.DRIFTWOOD: 1.6, IslandGenerator.DEAD_WOOD: 1.8, IslandGenerator.PLANKS: 1.8,
 	IslandGenerator.CHEST: 1.8, IslandGenerator.WORKBENCH: 1.8, IslandGenerator.WOOD: 2.4,
 	IslandGenerator.LOG_X: 2.4, IslandGenerator.LOG_Z: 2.4, IslandGenerator.DEAD_LOG_X: 1.8, IslandGenerator.DEAD_LOG_Z: 1.8,

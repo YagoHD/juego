@@ -36,6 +36,10 @@ func _generate_block(out_buffer: VoxelBuffer, origin: Vector3i, _lod: int) -> vo
 		for z in size.z:
 			_fill_run(out_buffer, origin, size, x, z, STONE, origin.y, FLOOR - 1)
 			_fill_run(out_buffer, origin, size, x, z, SAND, FLOOR - 1, FLOOR)
+	# Un prado a la izquierda (como en la isla: 1 de cada 10 con flores), para ver si se repite.
+	for x in range(c.x + 14, c.x + 40):
+		for z in range(c.y - 4, c.y + 20):
+			_put_at(out_buffer, origin, size, x, FLOOR - 1, z, GRASS_FLOWERS if _hash01(x * 3 + 7, z * 5 + 1) < 0.1 else GRASS)
 	var list := samples()
 	# Mirando hacia +Z, la X crece hacia la izquierda: se empieza por la derecha para que la
 	# fila se lea de izquierda a derecha en el mismo orden que la hoja del concepto.

@@ -242,5 +242,40 @@ func _sheet2() -> void:
 		var side: String = S2_TEXTURES[name][1]
 		var tex := _face("s2_" + S2_TEXTURES[name][0], side)
 		_brighten(tex, (float(ratio[side]) * 0.9 if side != "top" else 1.0) * EXPOSURE)
+		if name == "grass_top":
+			# Dos hierbas: con las florecitas del dibujo (sale de vez en cuando) y lisa (la normal):
+			# en un prado de cientos de bloques, las flores repetidas en todos se veían como un patrón.
+			tex.save_png(ProjectSettings.globalize_path(OUT + "grass_top_flowers.png"))
+			_remove_flowers(tex)
 		tex.save_png(ProjectSettings.globalize_path(OUT + name + ".png"))
 		print("[textura hoja 2] ", name)
+
+
+## Quita las florecitas (puntos amarillos y naranjas) de una textura de hierba: cada píxel de
+## flor toma el verde medio de sus vecinos que no son flor.
+func _remove_flowers(img: Image) -> void:
+	var w := img.get_width()
+	var h := img.get_height()
+	var flower := func(c: Color) -> bool: return c.r >= c.g * 0.9 or (c.r > 0.75 and c.g > 0.75 and c.b > 0.6)
+	for pass_i in 4:
+		var changed := false
+		var copy := img.duplicate() as Image
+		for y in h:
+			for x in w:
+				if not flower.call(copy.get_pixel(x, y)):
+					continue
+				var sum := Color(0, 0, 0, 0)
+				var n := 0
+				for dy in range(-1, 2):
+					for dx in range(-1, 2):
+						var c := copy.get_pixel(clampi(x + dx, 0, w - 1), clampi(y + dy, 0, h - 1))
+						if not flower.call(c):
+							sum += c
+							n += 1
+				if n > 0:
+					var avg := sum / n
+					avg.a = 1.0
+					img.set_pixel(x, y, avg)
+					changed = true
+		if not changed:
+			break

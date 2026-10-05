@@ -36,6 +36,7 @@ const BLOCK_ITEMS := {
 ## Minecraft; el agua no se puede romper.
 const DROPS := {
 	IslandGenerator.GRASS: "dirt",
+	IslandGenerator.GRASS_FLOWERS: "dirt",
 	IslandGenerator.DIRT: "dirt",
 	IslandGenerator.STONE: "stone",
 	IslandGenerator.SAND: "sand",
