@@ -11,7 +11,7 @@ uniform vec3 shallow_color : source_color = vec3(0.20, 0.82, 0.80);
 uniform vec3 deep_color : source_color = vec3(0.02, 0.22, 0.45);
 uniform vec3 foam_color : source_color = vec3(0.95, 0.98, 0.97);
 uniform float depth_to_deep = 9.0;    // metros hasta el color profundo
-uniform float clear_depth = 3.0;      // metros en los que aún se ve bien el fondo
+uniform float clear_depth = 1.4;      // metros en los que aún se ve bien el fondo
 uniform float foam_width = 0.8;       // metros de espuma junto a la orilla
 uniform float refraction = 0.025;
 
@@ -28,7 +28,7 @@ float hash(vec2 p) {
 float noise(vec2 p) {
 	vec2 i = floor(p);
 	vec2 f = fract(p);
-	f = f * f * (3.0 - 2.0 * f);
+	f = f * f * f * (f * (f * 6.0 - 15.0) + 10.0);  // suave: sin facetas en las ondas
 	return mix(mix(hash(i), hash(i + vec2(1.0, 0.0)), f.x),
 		mix(hash(i + vec2(0.0, 1.0)), hash(i + vec2(1.0, 1.0)), f.x), f.y);
 }
@@ -48,7 +48,7 @@ void fragment() {
 	// A lo lejos las olas se suavizan (si no, se ven como ruido de televisión).
 	float calm = clamp(1.0 - length(VERTEX) / 70.0, 0.08, 1.0);
 	slope *= calm;
-	vec3 n = normalize(vec3(-slope.x * 0.18, 1.0, -slope.y * 0.18));
+	vec3 n = normalize(vec3(-slope.x * 0.1, 1.0, -slope.y * 0.1));
 	NORMAL = normalize((VIEW_MATRIX * vec4(n, 0.0)).xyz);
 
 	// Profundidad del agua en este punto (distancia de la superficie al fondo, en la vista).
@@ -73,8 +73,10 @@ void fragment() {
 	vec3 water = mix(shallow_color, deep_color, deep);
 	float murk = clamp(depth / clear_depth, 0.0, 1.0);
 	// El fondo ya viene iluminado: va como emisión; el color del agua sí recibe la luz del sol.
-	float m = clamp(murk * 0.85 + deep * 0.15, 0.0, 1.0);
-	vec3 seen_bottom = bottom * mix(vec3(1.0), shallow_color * 1.1, 0.4) * (1.0 - m);
+	// Mirando de lado el agua refleja el cielo (Fresnel): de lejos casi no se ve el fondo.
+	float fresnel = pow(1.0 - clamp(dot(NORMAL, VIEW), 0.0, 1.0), 4.0);
+	float m = clamp(murk * 0.85 + deep * 0.15 + fresnel * 0.75, 0.0, 1.0);
+	vec3 seen_bottom = bottom * mix(vec3(1.0), shallow_color, 0.65) * (1.0 - m);
 
 	// Espuma: una franja junto a la arena que va y viene, rota por el ruido, en escalones.
 	float shore = 1.0 - clamp(depth / foam_width, 0.0, 1.0);
@@ -83,9 +85,10 @@ void fragment() {
 	float foam = step(0.55, shore * (0.65 + 0.5 * surge) + broken * 0.35);
 	foam = max(foam, step(0.93, shore));
 	float f = foam * 0.85;
-	ALBEDO = mix(water * m, foam_color, f);
+	vec3 sky_tint = mix(water, vec3(0.62, 0.78, 0.9), fresnel * 0.6);
+	ALBEDO = mix(sky_tint * m, foam_color, f);
 	EMISSION = seen_bottom * (1.0 - f);
 	ALPHA = 1.0;
-	ROUGHNESS = mix(0.04, 0.6, foam);
+	ROUGHNESS = mix(0.2, 0.6, foam);  // algo rugosa: el reflejo de las nubes de bloques se difumina
 	SPECULAR = 0.55;
 }

@@ -26,6 +26,7 @@ func update() -> void:
 			var vz := int(xz[1])
 			var ground := main._generator.get_ground_height(vx, vz)
 			main._player.global_position = Vector3(vx, ground + 2, vz) * Main.VOXEL_SIZE
+		main._aim_at_micro_ship()  # "--mirar-barco": delante del barco de cubitos
 		main._player.debug_pose(OS.get_cmdline_user_args().has("--tp"), float(main._arg("--pitch=", "0")),
 			float(main._arg("--yaw=", str(rad_to_deg(main._player.rotation.y)))), float(main._arg("--up=", "0")) + (0.01 if at != "" else 0.0))
 		var wear := main._arg("--wear=")  # ropa para la foto: "shirt,pants,belt,backpack"

@@ -47,6 +47,19 @@ static func loot_for_chest(cell: Vector3i) -> Array:
 
 
 ## Dónde aparece el jugador (columna en voxels) y hacia dónde mira (radianes).
+## Dónde va el barco de cubitos (en voxels: x, altura del fondo, z) y su giro.
+static var _micro_wreck := Vector3.ZERO
+static var _micro_wreck_yaw := 0.0
+
+
+static func micro_wreck() -> Vector3:
+	return _micro_wreck
+
+
+static func micro_wreck_yaw() -> float:
+	return _micro_wreck_yaw
+
+
 static func spawn_voxel() -> Vector2i:
 	return _spawn
 
@@ -128,6 +141,12 @@ static func _build_shipwreck(gen: IslandGenerator) -> void:
 	for p: Vector3i in ship.cells:
 		var cell := _ship_to_world(p, center, base_y, along_x, sgn)
 		_put(cell, _ship_block(ship.cells[p], along_x, sgn))
+	# Prueba visual: el barco de cubitos pequeños (WreckModel), mar adentro junto al de bloques,
+	# donde el agua cubre unos 2,5 m (main.gd lo coloca).
+	var spot := shore + dir * 30.0 + bow * 26.0
+	var floor_y := IslandGenerator.SEA_LEVEL - 1  # la quilla, medio metro bajo el agua (lo de debajo queda en la arena)
+	_micro_wreck = Vector3(spot.x, floor_y, spot.y)
+	_micro_wreck_yaw = atan2(-bow.y, bow.x)
 	_chest_loot[_ship_to_world(ship.hold_chest, center, base_y, along_x, sgn)] = [
 		# Casi nada: lo que se salvó del agua. El resto lo irá trayendo el mar.
 		{"id": "cloth", "count": 3}, {"id": "note_backpack", "count": 1}, {"id": "shirt", "count": 1},

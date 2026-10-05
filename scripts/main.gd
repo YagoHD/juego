@@ -56,6 +56,7 @@ var _session: CraftSession     # inventario de rodillas y vista de fabricar
 var _crosshair: Label
 var _needs: Needs
 var _hunger_bar: ProgressBar
+var _micro_ship: Node3D  # prueba visual: el barco de cubitos
 var _thirst_bar: ProgressBar
 var _hotbar: Hotbar
 var _underwater: ColorRect
@@ -173,6 +174,7 @@ func _build_world() -> void:
 
 	if not _showroom():
 		_build_sea()
+		_build_micro_wreck()
 
 
 func _build_far_terrain() -> void:
@@ -253,8 +255,10 @@ func _build_player() -> void:
 	_player.position = Vector3(Structures.spawn_voxel().x, ground + 4, Structures.spawn_voxel().y) * VOXEL_SIZE
 	add_child(_player)
 	_player.rotation.y = Structures.spawn_yaw()  # mirando al barco naufragado
+	_aim_at_micro_ship()
 	if _showroom():
 		_player.rotation.y = PI  # mirando a la fila de muestras
+		_build_micro_showcase()
 	_chests.load_from(_chests_save_path())
 	_ground = GroundCrafting.new()
 	add_child(_ground)
@@ -991,3 +995,58 @@ func _spawn_raft(data: Variant) -> void:
 	boat.add_to_group("rafts")
 	boat.global_position = Vector3(float(pos[0]), boat.sea_y(), float(pos[1]))
 	boat.rotation.y = float(data.get("yaw", 0.0))
+
+
+## Prueba visual (sala de muestras): el barco naufragado y restos hechos de cubitos pequeños
+## (MicroVoxels), como en el arte conceptual "posible". Solo decoración: no se rompen.
+func _build_micro_showcase() -> void:
+	var c := ShowroomGenerator.center()
+	var floor_y := float(_generator.get_ground_height(c.x, c.y) + 1) * VOXEL_SIZE
+	var size := VOXEL_SIZE / MicroVoxels.RES
+	var holder := Node3D.new()
+	holder.name = "MicroVoxeles"
+	add_child(holder)
+	# Barco: de costado, escorado y medio enterrado, a la derecha de la fila de muestras.
+	var ship := WreckModel.make_node()
+	ship.position = Vector3((c.x - 44) * VOXEL_SIZE, floor_y - 1.1, (c.y + 10) * VOXEL_SIZE)
+	ship.rotation.y = deg_to_rad(18.0)
+	holder.add_child(ship)
+	# Restos por la arena: cajas, un barril, troncos.
+	var wood := Color(0.5, 0.33, 0.19)
+	var bits := [
+		[MicroVoxels.crate(Vector3i(12, 11, 12), wood), Vector3(-17, 0, 3), 20.0],
+		[MicroVoxels.crate(Vector3i(10, 9, 14), wood.darkened(0.1)), Vector3(-19, 0, 6), -35.0],
+		[MicroVoxels.barrel(4.5, 14, Color(0.45, 0.29, 0.16)), Vector3(-15, 0, 7), 0.0],
+		[MicroVoxels.log_x(48, 3.2, Color(0.33, 0.24, 0.16), Color(0.72, 0.56, 0.36)), Vector3(-14, 0, -1), 60.0],
+		[MicroVoxels.log_x(30, 2.6, Color(0.36, 0.26, 0.17), Color(0.75, 0.6, 0.4)), Vector3(-22, 0, 1), -10.0],
+	]
+	for bit: Array in bits:
+		var node := MicroVoxels.make_node(bit[0], size)
+		var at: Vector3 = bit[1]
+		node.position = Vector3((c.x + at.x) * VOXEL_SIZE, floor_y, (c.y + at.z) * VOXEL_SIZE)
+		node.rotation.y = deg_to_rad(bit[2])
+		holder.add_child(node)
+
+
+## Prueba visual: el barco naufragado de cubitos pequeños, en el agua junto a la playa.
+func _build_micro_wreck() -> void:
+	var spot := Structures.micro_wreck()
+	if spot == Vector3.ZERO:
+		return
+	var ship := WreckModel.make_node()
+	ship.position = spot * VOXEL_SIZE - Vector3(0, 0.6, 0)
+	ship.rotation.y = Structures.micro_wreck_yaw()
+	add_child(ship)
+	_micro_ship = ship
+	_aim_at_micro_ship()
+
+
+## Capturas de prueba ("--mirar-barco"): el jugador, en el agua delante del barco de cubitos.
+func _aim_at_micro_ship() -> void:
+	if not OS.get_cmdline_user_args().has("--mirar-barco") or _micro_ship == null or _player == null:
+		return
+	_player.position = _micro_ship.position + Vector3(2, 0, 15).rotated(Vector3.UP, _micro_ship.rotation.y)
+	_player.position.y = IslandGenerator.SEA_LEVEL * VOXEL_SIZE + 1.2
+	_player._flying = true  # quieto sobre el agua (si no, se hunde hasta el fondo)
+	var to := _micro_ship.position + Vector3(8, 0, 0).rotated(Vector3.UP, _micro_ship.rotation.y) - _player.position
+	_player.rotation.y = atan2(-to.x, -to.z)
