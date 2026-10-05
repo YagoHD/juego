@@ -19,6 +19,11 @@ Hojas hechas (`docs/concept/`):
 | hoja4 | palmeras, rocas y plantas |
 | hoja5 | bloques de árbol y animales |
 | hoja6 | objetos de recolección |
+| hoja10 | decoración, bloques pequeños y objetos sueltos |
+| hoja11 | efectos y cielo |
+| hoja12 | diario y logo |
+| personaje_a / personaje_b | el náufrago (cuerpo) y su ropa en piezas |
+| personaje_mujer | la náufraga y su ropa (para cuando haya elección de cuerpo) |
 
 ---
 
@@ -50,8 +55,8 @@ Hojas hechas (`docs/concept/`):
 | Cultivo de trigo (bloque de tierra con trigo) | 🟡 | 5 (nº 6) |
 | Tronco de palmera | 🟡 | 5 (nº 5); aún no existe como bloque |
 | Agua (quieta, corriente, cascada) | ❌ | se pinta con un shader animado; sin prompt (no hace falta imagen) |
-| Cuerda colgando | ❌ | prompt **hoja 10** |
-| Tocón pequeño (el que queda al talar) | ❌ | prompt **hoja 10** |
+| Cuerda colgando | 🟡 | 10 (nº 4) |
+| Tocón pequeño (el que queda al talar) | 🟡 | 10 (nº 3) |
 
 ## Árboles, plantas, rocas y decoración del suelo
 
@@ -61,8 +66,9 @@ Hojas hechas (`docs/concept/`):
 | Palmeras (3), tocón viejo, tronco caído, rocas (3), setas (2), trigo (2) | ✅ | 4 |
 | Hierba alta, flor roja, flor amarilla (decoración) | ✅ | 1 |
 | Hierba alta de la hoja 4 (nº 11) | 🟡 | 4: aún no está en la isla |
-| Piedrecitas del suelo | ❌ | prompt **hoja 10** |
-| Palitos del suelo | ❌ | prompt **hoja 10** |
+| Piedrecitas del suelo | 🟡 | 10 (nº 1) |
+| Palitos del suelo | 🟡 | 10 (nº 2) |
+| Brotes de trigo, vela colgando | 🟡 | 10 (nº 5-6) |
 | Concha del suelo | 🟡 | 6 (nº 10, el icono sirve de modelo) |
 
 ## Animales
@@ -95,8 +101,8 @@ Hojas hechas (`docs/concept/`):
 | Lanza | ❌ | prompt **hoja 7** |
 | Antorcha | ❌ | prompt **hoja 7** |
 | Tabla | ❌ | prompt **hoja 7** |
-| Camiseta, pantalón, cinturón | ❌ | prompt **hoja 7** |
-| Mochila improvisada, mochila de marinero | ❌ | prompt **hoja 7** |
+| Camiseta, pantalón, cinturón | 🟡 | personaje_b (nº 1-3; sirven también de icono) |
+| Mochila improvisada, mochila de marinero | 🟡 | personaje_b (nº 5-6; sirven también de icono) |
 | Diario del capitán | ❌ | prompt **hoja 7** |
 | Pescado crudo y asado | ❌ | prompt **hoja 8** |
 | Cangrejo crudo y asado | ❌ | prompt **hoja 8** |
@@ -105,29 +111,31 @@ Hojas hechas (`docs/concept/`):
 | Mineral verde (trozo) | ❌ | prompt **hoja 8** |
 | Notas (cinturón, mochila, pico) | ❌ | prompt **hoja 8** |
 | Hoguera, saco de dormir, balsa | ❌ | prompt **hoja 9** |
-| Hoja, agujas de pino, corteza | ❌ | prompt **hoja 10** |
-| Flor roja, flor amarilla (recogidas) | ❌ | prompt **hoja 10** |
+| Hoja, agujas de pino, corteza | 🟡 | 10 (nº 7-9) |
+| Flor roja, flor amarilla (recogidas) | 🟡 | 10 (nº 10-11) |
+| Coco (aún no es un objeto del juego) | 🟡 | 10 (nº 12) |
 | Bloques en la mano (tierra, piedra, tablones...) | ✅ | se dibujan con la textura del bloque |
 
 ## Personaje
 
 | Cosa | Estado | Prompt |
 |---|---|---|
-| Cuerpo base (proporciones, cara, pelo) | ❌ | **personaje A** |
-| Ropa del náufrago (camisa rota, pantalón raído, cinturón de cuerda) | ❌ | **personaje B** |
-| Mochilas puestas | ❌ | **personaje B** |
+| Cuerpo base (proporciones, cara, pelo) | 🟡 | personaje_a |
+| Ropa del náufrago (camisa rota, pantalón raído, cinturón de cuerda, pañuelo) | 🟡 | personaje_b |
+| Cuerpo de mujer y su ropa | 🟡 | personaje_mujer |
+| Mochilas puestas | 🟡 | personaje_b (nº 5-6) |
 | Armaduras (futuro: corteza...) | ❌ | se añadirán cuando existan |
 
 ## Efectos, cielo e interfaz
 
 | Cosa | Estado | Prompt |
 |---|---|---|
-| Fuego de la hoguera y antorcha, humo | ❌ | **hoja 11** |
-| Grietas al picar (5 fases) | ❌ | **hoja 11** |
-| Trocitos al romper, salpicadura de agua | ❌ | **hoja 11** |
-| Nubes, sol, luna, estrellas | ❌ | **hoja 11** |
+| Fuego de la hoguera y antorcha, humo | 🟡 | 11 (nº 1-3) |
+| Grietas al picar (5 fases) | 🟡 | 11 (nº 6) |
+| Trocitos al romper, salpicadura de agua, espuma | 🟡 | 11 (nº 4, 5, 12) |
+| Nubes, sol, luna, estrellas, lluvia | 🟡 | 11 (nº 7-11) |
 | Inventario, fabricación, barra rápida, menús | ❌ | ya hay prompt aparte: `docs/PROMPT_UI_INVENTARIO.md` |
-| Páginas del diario, pantalla de título / logo | ❌ | **hoja 12** |
+| Páginas del diario, logo | 🟡 | 12 |
 
 ---
 
