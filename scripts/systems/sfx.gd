@@ -241,6 +241,7 @@ static func _synth(sound: String) -> PackedFloat32Array:
 		"olas": return _waves_loop(rng)
 		"lluvia": return _rain_loop(rng)
 		"gaviota": return _gull(rng)
+		"hojas": return _rustle(rng)
 	return PackedFloat32Array()
 
 
@@ -424,4 +425,17 @@ static func _gull(rng: RandomNumberGenerator) -> PackedFloat32Array:
 			out.append(rough * 0.18 * sin(PI * t / length))
 		for i in int(0.06 * RATE):
 			out.append(0.0)
+	return out
+
+
+## Pasar entre hojas y ramas (como por una zarza): un roce que sube y baja con chasquidos de
+## ramitas por encima.
+static func _rustle(rng: RandomNumberGenerator) -> PackedFloat32Array:
+	var out := _mix(_noise(rng, 0.42, 0.0, 0.5, 0.42, true), _delay(_noise(rng, 0.25, 0.0, 0.75, 0.25, true), 0.1))
+	for k in rng.randi_range(4, 7):  # chasquidos cortos
+		var at := int(rng.randf_range(0.03, 0.38) * RATE)
+		var gain := rng.randf_range(0.25, 0.5)
+		for i in int(0.006 * RATE):
+			if at + i < out.size():
+				out[at + i] += rng.randf_range(-1.0, 1.0) * gain * exp(-float(i) / (0.0015 * RATE))
 	return out

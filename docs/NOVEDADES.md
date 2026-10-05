@@ -250,3 +250,9 @@ Todo lo de Kenney y OpenGameArt es CC0 (créditos en `assets/third_party/*/` y
 - Los árboles talados (si dejas el tocón) **rebrotan a los 2 días de juego**. El tiempo corre
   aunque te vayas lejos; crece cuando vuelves. Con T (adelantar el reloj) también va más deprisa.
 - Arreglado: al juntarse montones iguales en el suelo a veces se perdían objetos (p. ej. madera al talar).
+
+## Hojas de los árboles (5 de octubre)
+
+- Las copas ya **no están huecas**: al picar un trozo de hojas se ven las hojas de dentro, no el paisaje de detrás.
+- Se siguen **atravesando**, pero dentro de una copa vas a menos de la mitad de velocidad.
+  Suena un roce de ramas, como al pasar por una zarza, y el personaje se pone las manos delante de la cara.

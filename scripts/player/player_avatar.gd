@@ -32,6 +32,8 @@ var _working := false
 var _work := 0.0             # 0..1: mezcla de la postura de trabajar agachado
 var _kneeling := false
 var _kneel := 0.0            # 0..1: mezcla de la postura de rodillas (inventario y fabricar)
+var _in_leaves := false
+var _leaves := 0.0           # 0..1: mezcla de la postura de apartar hojas (cruzando una copa)
 
 var _time := 0.0
 var _walk_phase := 0.0
@@ -182,6 +184,13 @@ func set_kneeling(on: bool) -> void:
 		_cancel_idle()
 
 
+## Cruzando hojas: las manos delante de la cara, apartando las ramas.
+func set_in_leaves(on: bool) -> void:
+	_in_leaves = on
+	if on:
+		_cancel_idle()
+
+
 ## Agacharse a trabajar con las manos (fabricar en el suelo).
 func set_working(on: bool) -> void:
 	_working = on
@@ -266,6 +275,9 @@ func _process(delta: float) -> void:
 	_kneel = move_toward(_kneel, 1.0 if _kneeling else 0.0, delta * 3.0)
 	if _kneel > 0.0:
 		_kneel_pose(pose, smoothstep(0.0, 1.0, _kneel))
+	_leaves = move_toward(_leaves, 1.0 if _in_leaves else 0.0, delta * 5.0)
+	if _leaves > 0.0:
+		_leaves_pose(pose, smoothstep(0.0, 1.0, _leaves))
 	_work = move_toward(_work, 1.0 if _working else 0.0, delta * 4.0)
 	if _work > 0.0:
 		_work_pose(pose, _work)
@@ -350,6 +362,20 @@ func _work_pose(pose: Dictionary, w: float) -> void:
 		for key in ["root_y", "leg_r", "leg_l", "knee_r", "knee_l"]:
 			target.erase(key)
 		target["root_rot"] = Vector3(-0.3, 0.0, 0.0)
+	for key in target:
+		pose[key] = _mix(pose[key], target[key], w)
+
+
+## Brazos levantados delante de la cara, codos doblados, apartando ramas a un lado y a otro.
+func _leaves_pose(pose: Dictionary, w: float) -> void:
+	var a := sin(_time * 5.0)
+	var target := {
+		"arm_r": Vector3(1.25 + 0.12 * a, 0.0, -0.45 + 0.15 * a),
+		"elbow_r": 1.5 - 0.2 * a,
+		"arm_l": Vector3(1.25 - 0.12 * a, 0.0, 0.45 + 0.15 * a),
+		"elbow_l": 1.5 + 0.2 * a,
+		"head": Vector3(-0.15, 0.0, 0.0),
+	}
 	for key in target:
 		pose[key] = _mix(pose[key], target[key], w)
 

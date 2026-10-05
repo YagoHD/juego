@@ -75,6 +75,9 @@ func update() -> void:
 		var shape := main._arg("--shape=")  # receta dibujada en el suelo delante del jugador
 		if shape != "":
 			_debug_lay_shape(shape)
+		if OS.get_cmdline_user_args().has("--leaves"):  # postura de cruzar hojas (manos delante de la cara)
+			main._player.get("_avatar").set_in_leaves(true)
+			main._player.get("_held").set_in_leaves(true)
 		if OS.get_cmdline_user_args().has("--working"):
 			main._player.debug_work_pose()
 		if main._arg("--drop=") != "":  # soltar un objeto delante del jugador para verlo en el suelo

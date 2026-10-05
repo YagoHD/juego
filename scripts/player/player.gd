@@ -52,6 +52,7 @@ const ZOOM_MOUSE_SPEED := 0.02 * B  # por píxel de ratón (manteniendo V)
 const ZOOM_WHEEL_STEP := 0.8 * B    # por paso de rueda (manteniendo V)
 const THIRD_PERSON_SHOULDER := 0.6 * B  # desplazamiento a la derecha (vista "por encima del hombro")
 const SWIM_SPEED := 3.0 * B        # velocidad horizontal en el agua
+const LEAVES_SPEED := 0.45         # entre las hojas de una copa se va a menos de la mitad
 const SWIM_UP_SPEED := 4.0 * B     # nadar hacia arriba (Espacio con la cabeza bajo el agua)
 const WATER_GRAVITY := 6.0 * B     # en el agua se hunde despacio...
 const MAX_SINK_SPEED := 3.0 * B    # ...y sin pasar de esta velocidad
@@ -100,6 +101,8 @@ var _working := false        # agachado fabricando
 var _work_swing := 0.0
 var _crouch := 0.0           # 0..1: cuánto baja la vista al agacharse
 var _step_distance := 0.0     # metros andados desde el último paso (para el sonido)
+var _leaf_distance := 0.0     # metros andados entre hojas desde el último roce
+var _in_leaves := false
 var _was_in_air := false
 var _loot_rng := RandomNumberGenerator.new()
 var _hand_light: OmniLight3D  # luz de la antorcha que se lleva en la mano
@@ -388,6 +391,7 @@ func _physics_process(delta: float) -> void:
 		return
 
 	var feet_wet := _in_water(global_position + Vector3.UP * BODY_HEIGHT * 0.28)
+	_update_leaves(delta)
 	_head_underwater = _in_water(_head.global_position)
 
 	if feet_wet:
@@ -413,6 +417,8 @@ func _physics_process(delta: float) -> void:
 	var speed := SWIM_SPEED if feet_wet else (SPRINT_SPEED if _sprinting else SPEED)
 	if needs != null:
 		speed *= needs.speed_factor()
+	if _in_leaves:
+		speed *= LEAVES_SPEED  # las ramas frenan
 	velocity.x = dir.x * speed
 	velocity.z = dir.z * speed
 	var push := _water_push()  # la corriente del río o del agua que corre arrastra
@@ -1036,3 +1042,33 @@ func _water_push() -> Vector2:
 		var other := WaterFlow.level_of(n) if Blocks.is_water(n) else (0 if n == IslandGenerator.AIR or Blocks.DECOR.has(n) else level)
 		dir += Vector2(d.x, d.z) * float(level - other)
 	return dir.normalized() * FLOW_PUSH if dir.length() > 0.01 else Vector2.ZERO
+
+
+# ------------------------------------------------------------------ cruzar hojas
+
+## Las hojas de los árboles se atraviesan, pero frenan, suenan como una zarza y el personaje
+## se pone las manos delante de la cara.
+func _update_leaves(delta: float) -> void:
+	var was := _in_leaves
+	_in_leaves = _leaf_at(global_position + Vector3.UP * BODY_HEIGHT * 0.25) or _leaf_at(global_position + Vector3.UP * BODY_HEIGHT * 0.6) \
+		or _leaf_at(_head.global_position)
+	if _in_leaves != was:
+		_avatar.set_in_leaves(_in_leaves)
+		_held.set_in_leaves(_in_leaves)
+	if not _in_leaves:
+		_leaf_distance = 0.0
+		return
+	var moved := velocity.length() * delta
+	if not was:
+		_leaf_distance = 1.0  # al entrar, suena enseguida
+	_leaf_distance += moved
+	if _leaf_distance >= 0.7:
+		_leaf_distance = 0.0
+		Sfx.play("hojas", null, -6.0, 0.18)
+
+
+func _leaf_at(world_pos: Vector3) -> bool:
+	if _tool == null:
+		return false
+	var id := _tool.get_voxel(aim.world_to_voxel(world_pos))
+	return PrefabLibrary.is_prefab(id) and PrefabLibrary.kind(id) == "leaves"

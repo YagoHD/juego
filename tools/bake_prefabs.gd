@@ -368,10 +368,9 @@ func _cut_tree(prefab_name: String, build: Callable) -> Prefab:
 			if best == "" or int(counts[b][type]) > int(counts[b][best]):
 				best = type
 		p.cells.append(b)
-		# Las hojas no dibujan las caras que tocan otro trozo (no se ven nunca; al romper un trozo de
-		# hojas se ve el hueco, pero las hojas se atraviesan y al talar saltan): muchas menos caras.
-		# La madera sí: un tronco no debe verse hueco al picarlo.
-		p.meshes.append(_piece_mesh(sub, tree.cells if best == "leaf" else {}, b * res, res))
+		# Piel completa también en las hojas: al picar un trozo de la copa no se ve hueca por dentro. Las
+		# caras que tocan a un trozo vecino lleno las quita el motor al dibujar (no cuestan).
+		p.meshes.append(_piece_mesh(sub, {}, b * res, res))
 		p.outlines.append(_outline(sub, res))
 		p.kinds.append({"leaf": "leaves", "wood": "wood", "root": "root", "rock": "rock", "mushroom": "mushroom", "crop": "crop"}[best])
 		p.fills.append(float(sub.size()) / (res * res * res))

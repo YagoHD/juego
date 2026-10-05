@@ -24,6 +24,8 @@ var _swing := 0.0   # 1 al empezar un golpe, baja a 0
 var _equip := 0.0   # 1 al cambiar de bloque (el brazo viene desde abajo), baja a 0
 var _bob_phase := 0.0
 var _bob_amount := 0.0
+var _in_leaves := false
+var _leaves := 0.0  # 0..1: la mano sube delante de la cara apartando hojas
 
 
 func _ready() -> void:
@@ -85,6 +87,11 @@ func swing() -> void:
 
 
 ## Balanceo al andar: speed01 = 0 quieto, 1 andando a velocidad normal.
+## Cruzando hojas: la mano sube delante de la cara.
+func set_in_leaves(on: bool) -> void:
+	_in_leaves = on
+
+
 func update_walk(speed01: float, delta: float) -> void:
 	_bob_amount = lerpf(_bob_amount, clampf(speed01, 0.0, 1.0), 1.0 - exp(-10.0 * delta))
 	_bob_phase += delta * 9.0 * _bob_amount
@@ -93,6 +100,7 @@ func update_walk(speed01: float, delta: float) -> void:
 func _process(delta: float) -> void:
 	_swing = maxf(_swing - delta * 4.0, 0.0)
 	_equip = maxf(_equip - delta * 5.0, 0.0)
+	_leaves = move_toward(_leaves, 1.0 if _in_leaves else 0.0, delta * 5.0)
 
 	# Golpe: el brazo baja y gira hacia el centro en un arco desde el hombro, y vuelve.
 	var s := sin(_swing * PI)
@@ -102,6 +110,11 @@ func _process(delta: float) -> void:
 	# hasta salirse de la vista.
 	position = REST_POSITION + bob + Vector3(-0.10 * s2, 0.02 * s - 0.30 * _equip, -0.07 * s)
 	rotation = REST_ROTATION + Vector3(0.22 * s, 0.45 * s2, -0.18 * s)
+	if _leaves > 0.0:  # apartando hojas: la mano sube y cruza delante de la cara, de lado a lado
+		var w := smoothstep(0.0, 1.0, _leaves)
+		var a := sin(Time.get_ticks_msec() * 0.005)
+		position += Vector3(-0.10 + 0.04 * a, 0.07, 0.04) * w
+		rotation += Vector3(0.12, 0.35 + 0.12 * a, 0.0) * w
 	# Codo algo doblado sosteniendo el bloque; al golpear se estira hacia él.
 	if _forearm != null:
 		_forearm.rotation.x = ELBOW_REST - 0.3 * s
