@@ -246,3 +246,7 @@ Then, below the grid, show the full character from the front wearing pieces 1, 2
 Cuando lleguen las imágenes, ajusto el modelo del cuerpo a las proporciones nuevas. El cuerpo,
 la ropa y las mochilas quedan como capas separadas que se cambian solas al vestirse. Más adelante
 se podrán añadir la cara, el cuerpo de mujer y las armaduras como capas nuevas.
+
+## Modelos 3D (Meshy)
+
+Objetos en 3D hechos con ChatGPT (imagen) y Meshy (modelo): prompts en `docs/PROMPTS_MESHY.md`. Cada modelo va en `assets/models/items/<id>.glb` y el juego lo pasa a cubitos. Estado: todos pendientes.
