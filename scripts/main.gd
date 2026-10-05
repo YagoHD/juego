@@ -56,7 +56,8 @@ var _session: CraftSession     # inventario de rodillas y vista de fabricar
 var _crosshair: Label
 var _needs: Needs
 var _hunger_bar: ProgressBar
-var _micro_ship: Node3D  # prueba visual: el barco de cubitos
+var _micro_ship: Node3D  # el barco de cubitos
+var _salvage: Salvage    # restos de la playa que se desmontan
 var _thirst_bar: ProgressBar
 var _hotbar: Hotbar
 var _underwater: ColorRect
@@ -222,7 +223,6 @@ func _world_fingerprint() -> String:
 	var text := _generator.get_maps_fingerprint()
 	text += FileAccess.get_md5("res://scripts/world/island_generator.gd")
 	text += FileAccess.get_md5("res://scripts/world/structures.gd")
-	text += FileAccess.get_md5("res://scripts/world/shipwreck.gd")
 	text += FileAccess.get_md5("res://scripts/world/tree_generator.gd")
 	# Las piezas horneadas (árboles, rocas...): si cambia la forma de una, el mundo se rehace.
 	for n: String in PrefabLibrary.NAMES:
@@ -255,6 +255,9 @@ func _build_player() -> void:
 	_player.position = Vector3(Structures.spawn_voxel().x, ground + 4, Structures.spawn_voxel().y) * VOXEL_SIZE
 	add_child(_player)
 	_player.rotation.y = Structures.spawn_yaw()  # mirando al barco naufragado
+	if _salvage != null:
+		_salvage.player = _player
+		_player.salvage = _salvage
 	_aim_at_micro_ship()
 	if _showroom():
 		_player.rotation.y = PI  # mirando a la fila de muestras
@@ -1028,17 +1031,46 @@ func _build_micro_showcase() -> void:
 		holder.add_child(node)
 
 
-## Prueba visual: el barco naufragado de cubitos pequeños, en el agua junto a la playa.
+## El barco naufragado de cubitos pequeños, encallado en la orilla, y los restos de la arena
+## (Salvage: se desmontan a golpes y dan material).
 func _build_micro_wreck() -> void:
 	var spot := Structures.micro_wreck()
 	if spot == Vector3.ZERO:
 		return
-	var ship := WreckModel.make_node()
-	ship.position = spot * VOXEL_SIZE - Vector3(0, 0.6, 0)
+	var ship := WreckModel.make_node(-6.0)
+	ship.position = spot * VOXEL_SIZE - Vector3(0, 0.2, 0)  # la quilla, un poco enterrada
 	ship.rotation.y = Structures.micro_wreck_yaw()
 	add_child(ship)
 	_micro_ship = ship
 	_aim_at_micro_ship()
+	_build_debris()
+
+
+func _build_debris() -> void:
+	_salvage = Salvage.new()
+	_salvage.name = "Restos"
+	add_child(_salvage)
+	_salvage.load_from(_world_dir().path_join("jugador_%s_restos.json" % _world_id))
+	var wood := Color(0.5, 0.33, 0.19)
+	for d: Array in Structures.debris():
+		var x := int(d[2])
+		var z := int(d[3])
+		var ground := _generator.get_ground_height(x, z)
+		if ground < IslandGenerator.SEA_LEVEL:
+			continue
+		var cells: Dictionary
+		match String(d[1]):
+			"plank": cells = MicroVoxels.plank(28 + (x * 7 + z) % 14, wood.lerp(Color(0.4, 0.38, 0.33), float(abs(x + z) % 5) * 0.08))
+			"planks": cells = MicroVoxels.plank_pile(wood)
+			"crate": cells = MicroVoxels.crate(Vector3i(11, 10, 11), wood.darkened(0.08))
+			"barrel": cells = MicroVoxels.barrel(4.0, 13, Color(0.45, 0.29, 0.16))
+			"log": cells = MicroVoxels.log_x(40, 3.0, Color(0.36, 0.27, 0.18), Color(0.74, 0.6, 0.42))
+			"cloth": cells = MicroVoxels.cloth(Vector2i(22, 16), Color(0.85, 0.79, 0.66))
+		var pos := Vector3(x + 0.5, ground + 1, z + 0.5) * VOXEL_SIZE - Vector3(0, 0.03, 0)
+		_salvage.add(String(d[0]), String(d[1]), cells, pos, float(d[4]))
+	_salvage.player = _player
+	if _player != null:
+		_player.salvage = _salvage
 
 
 ## Capturas de prueba ("--mirar-barco"): el jugador, en el agua delante del barco de cubitos.

@@ -1,11 +1,10 @@
 class_name Structures
 ## Estructuras fabricadas a mano que el generador "estampa" en la isla. De momento, el
 ## naufragio del inicio (ver docs/DESIGN.md, "El naufragio"):
-##   - el barco entero pero encallado en la orilla de la bahía del pueblo (ver Shipwreck): casco
-##     curvo, camarote, mástiles con vela y una cuerda colgando, bodega con escalera, alguna rotura;
-##   - en la playa: la punta del trinquete caída con su vela tirada en la arena, tablones sueltos
-##     y un cofre medio enterrado;
-##   - en la bodega, otro cofre con lo que se salvó.
+##   - el barco roto y encallado en la orilla de la bahía del pueblo, hecho de cubitos pequeños
+##     (WreckModel; main.gd lo coloca donde dice micro_wreck());
+##   - dentro, en la popa, un cofre con materiales (nada fabricado);
+##   - restos por la arena que se desmontan a golpes (debris(); los pone Salvage).
 ## El jugador aparece en la playa mirando al barco.
 ##
 ## Se construye una sola vez (al crear el generador, en el hilo principal) y luego el
@@ -50,6 +49,11 @@ static func loot_for_chest(cell: Vector3i) -> Array:
 ## Dónde va el barco de cubitos (en voxels: x, altura del fondo, z) y su giro.
 static var _micro_wreck := Vector3.ZERO
 static var _micro_wreck_yaw := 0.0
+static var _debris: Array = []  # restos de la playa: [nombre, tipo, x, z, giro] (voxels)
+
+
+static func debris() -> Array:
+	return _debris
 
 
 static func micro_wreck() -> Vector3:
@@ -126,108 +130,43 @@ static func _build_shipwreck(gen: IslandGenerator) -> void:
 		if gen.get_ground_height(int(p.x), int(p.y)) <= IslandGenerator.SEA_LEVEL:
 			shore = p
 			break
+	var along := dir.orthogonal()  # a lo largo de la orilla
 
-	# El barco entero, encallado en la orilla y alineado con ella (ver Shipwreck).
-	var ship := Shipwreck.new()
-	ship.build()
-	var shore_dir := dir.orthogonal()
-	var along_x := absf(shore_dir.x) >= absf(shore_dir.y)
-	var sgn := signf(shore_dir.x if along_x else shore_dir.y)
-	# Un poco hacia el agua y hacia la popa: así la proa no se mete en la ladera de la bahía.
-	var bow := Vector2(sgn, 0) if along_x else Vector2(0, sgn)
-	var center := shore + dir * 6.0 - bow * 6.0
+	# El barco de cubitos (WreckModel; lo pone main.gd), encallado en la orilla y a lo largo de
+	# ella: medio en la arena mojada, medio en el agua.
+	var center := shore + dir * 2.0
 	_ship = Vector2i(center)
-	var base_y := IslandGenerator.SEA_LEVEL - 2
-	for p: Vector3i in ship.cells:
-		var cell := _ship_to_world(p, center, base_y, along_x, sgn)
-		_put(cell, _ship_block(ship.cells[p], along_x, sgn))
-	# Prueba visual: el barco de cubitos pequeños (WreckModel), mar adentro junto al de bloques,
-	# donde el agua cubre unos 2,5 m (main.gd lo coloca).
-	var spot := shore + dir * 30.0 + bow * 26.0
-	var floor_y := IslandGenerator.SEA_LEVEL - 1  # la quilla, medio metro bajo el agua (lo de debajo queda en la arena)
-	_micro_wreck = Vector3(spot.x, floor_y, spot.y)
-	_micro_wreck_yaw = atan2(-bow.y, bow.x)
-	_chest_loot[_ship_to_world(ship.hold_chest, center, base_y, along_x, sgn)] = [
-		# Casi nada: lo que se salvó del agua. El resto lo irá trayendo el mar.
-		{"id": "cloth", "count": 3}, {"id": "note_backpack", "count": 1}, {"id": "shirt", "count": 1},
-		{"id": "berries", "count": 4},
+	var stern := center - along * (WreckModel.LENGTH / float(MicroVoxels.RES) * 0.5)
+	var keel := gen.get_ground_height(int(center.x), int(center.y)) + 1
+	_micro_wreck = Vector3(stern.x, keel, stern.y)
+	_micro_wreck_yaw = atan2(-along.y, along.x)
+
+	# Cofre dentro del barco, en la popa (lo que se salvó: materiales, nada fabricado).
+	var inside := stern + along * 4.0
+	var ih := gen.get_ground_height(int(inside.x), int(inside.y))
+	var ship_chest := Vector3i(int(inside.x), maxi(ih + 1, IslandGenerator.SEA_LEVEL), int(inside.y))
+	_put(ship_chest, IslandGenerator.CHEST)
+	_chest_loot[ship_chest] = [
+		{"id": "cloth", "count": 4}, {"id": "fiber", "count": 6}, {"id": "sticks", "count": 4},
+		{"id": "rock", "count": 3}, {"id": "berries", "count": 4},
+		{"id": "note_belt", "count": 1}, {"id": "note_backpack", "count": 1},
 	]
 
-	# En la playa: el mástil caído hacia tierra, con la vela tirada al lado.
-	var mast_dir := -dir.rotated(0.5)
-	var mast_start := shore - dir * 2.0
-	for i in 18:
-		var p := mast_start + mast_dir * i
-		var h := gen.get_ground_height(int(p.x), int(p.y))
-		_put(Vector3i(int(p.x), h, int(p.y)), IslandGenerator.WOOD)
-	var sail_center := mast_start + mast_dir * 11.0 + mast_dir.orthogonal() * 3.5
-	for sx in range(-4, 5):
-		var half_span := 3 - int(abs(sx) / 2)
-		for sz in range(-half_span, half_span + 1):
-			if _hash(sx, sz, 7) > (0.68 if abs(sz) == half_span else 0.88):
-				continue  # vela rota: le faltan trozos
-			var p := sail_center + mast_dir * sx + mast_dir.orthogonal() * sz
-			var h := gen.get_ground_height(int(p.x), int(p.y))
-			_put(Vector3i(int(p.x), h, int(p.y)), IslandGenerator.CLOTH)
-
-	# Restos en pequeños grupos, con huecos entre ellos, en vez de tablones aislados en fila.
-	for i in 9:
-		var along := (_hash(i, 1, 3) - 0.5) * 38.0
-		var inland := _hash(i, 2, 3) * 10.0
-		for piece in 3:
-			var p := shore + dir.orthogonal() * (along + (_hash(i, piece, 31) - 0.5) * 4.0) \
-				- dir * (inland + (_hash(i, piece, 37) - 0.5) * 3.0)
-			var h := gen.get_ground_height(int(p.x), int(p.y))
-			if h > IslandGenerator.SEA_LEVEL:
-				var debris_id := IslandGenerator.DRIFTWOOD if _hash(i, piece, 41) > 0.55 else IslandGenerator.PLANKS
-				_put(Vector3i(int(p.x), h, int(p.y)), debris_id)
-
-	# Cofre medio enterrado en la arena.
-	var buried := shore - dir * 6.0 + dir.orthogonal() * 7.0
-	var bh := gen.get_ground_height(int(buried.x), int(buried.y))
-	var beach_chest := Vector3i(int(buried.x), bh - 1, int(buried.y))
-	_put(beach_chest, IslandGenerator.CHEST)
-	_chest_loot[beach_chest] = [
-		{"id": "chest", "count": 1}, {"id": "note_belt", "count": 1}, {"id": "rope", "count": 1},
-	]
+	# Restos por la arena (Salvage; los pone main.gd): [nombre, tipo, x, z, giro].
+	_debris.clear()
+	var kinds := ["plank", "plank", "planks", "crate", "plank", "barrel", "log", "cloth", "plank",
+		"crate", "planks", "plank", "log", "cloth", "plank", "barrel"]
+	for i in kinds.size():
+		var a := (_hash(i, 1, 5) - 0.5) * 34.0
+		var inland := 2.0 + _hash(i, 2, 5) * 9.0
+		var p := shore + along * a - dir * inland
+		_debris.append(["resto_%d" % i, kinds[i], p.x, p.y, _hash(i, 3, 5) * TAU])
 
 	# El jugador aparece en la playa, unos metros tierra adentro, mirando al barco.
 	var spawn := shore - dir * 14.0
 	_spawn = Vector2i(int(spawn.x), int(spawn.y))
 	var look := center - spawn
 	_spawn_yaw = atan2(-look.x, -look.y)  # el jugador mira hacia su -Z
-
-
-## Celda del mundo de un punto del barco (x de popa a proa, z de lado a lado), girado para
-## quedar a lo largo de la orilla.
-static func _ship_to_world(p: Vector3i, center: Vector2, base_y: int, along_x: bool, sgn: float) -> Vector3i:
-	var lx := p.x - Shipwreck.LENGTH / 2
-	var s := int(sgn)
-	if along_x:
-		return Vector3i(int(center.x) + lx * s, base_y + p.y, int(center.y) + p.z * s)
-	return Vector3i(int(center.x) - p.z * s, base_y + p.y, int(center.y) + lx * s)
-
-
-## El bloque del barco ya girado: las medias losas, troncos tumbados y velas cambian de lado.
-static func _ship_block(value: Variant, along_x: bool, sgn: float) -> int:
-	var s := int(sgn)
-	if value is String:
-		var side: String = String(value).trim_prefix("slab:")
-		if side == "-y":
-			return IslandGenerator.SLAB_DOWN
-		var local_z := -1 if side == "-z" else 1
-		var world := Vector3i(0, 0, local_z * s) if along_x else Vector3i(-local_z * s, 0, 0)
-		match world:
-			Vector3i(0, 0, -1): return IslandGenerator.SLAB_N
-			Vector3i(0, 0, 1): return IslandGenerator.SLAB_S
-			Vector3i(-1, 0, 0): return IslandGenerator.SLAB_W
-		return IslandGenerator.SLAB_E
-	var id: int = value
-	if not along_x:
-		match id:
-			IslandGenerator.LOG_Z: return IslandGenerator.LOG_X
-			IslandGenerator.SAIL_X: return IslandGenerator.SAIL_Z
-	return id
 
 
 static func _put(cell: Vector3i, id: int) -> void:

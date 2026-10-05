@@ -143,3 +143,47 @@ static func log_x(length: int, radius: float, bark: Color, core: Color) -> Dicti
 					c = bark if d > radius - 1.2 else core
 				cells[p] = jitter(c, p, 0.1)
 	return cells
+
+
+## Tabla suelta a lo largo de X (algo combada y con una punta rota).
+static func plank(length: int, wood: Color) -> Dictionary:
+	var cells := {}
+	var broken := 3 + int(hash01(Vector3i(length, 1, 2)) * 5.0)
+	for x in length:
+		var bend := int(1.5 * sin(PI * float(x) / length))
+		for z in 5:
+			if x > length - broken and z > 4 - (x - (length - broken)):
+				continue  # punta astillada
+			for y in 2:
+				var p := Vector3i(x, y + bend, z)
+				var c := wood.darkened(0.2) if (y == 1 and (x % 9 == 0)) else wood
+				cells[p] = jitter(c, p, 0.09)
+	return cells
+
+
+## Montón de tablas cruzadas.
+static func plank_pile(wood: Color) -> Dictionary:
+	var cells := {}
+	for i in 4:
+		var board := plank(26 + i * 4, wood.lerp(Color(0.35, 0.3, 0.25), 0.15 * i))
+		var angle := (i * 0.9) - 1.3
+		for p: Vector3i in board:
+			var v := Vector2(p.x - 14, p.z - 2).rotated(angle)
+			var q := Vector3i(roundi(v.x), p.y + i * 2, roundi(v.y))
+			cells[q] = board[p]
+	return cells
+
+
+## Tela de vela tirada en la arena, arrugada y con un borde roto.
+static func cloth(size: Vector2i, color: Color) -> Dictionary:
+	var cells := {}
+	for x in size.x:
+		for z in size.y:
+			var edge := mini(mini(x, size.x - 1 - x), mini(z, size.y - 1 - z))
+			if edge == 0 and hash01(Vector3i(x, 0, z)) > 0.55:
+				continue
+			var y := int(1.6 * (sin(x * 0.35) + cos(z * 0.45 + x * 0.1)) + 1.6)
+			var p := Vector3i(x, y, z)
+			var c := color if hash01(Vector3i(x / 3, 1, z / 3)) < 0.8 else color.darkened(0.15)
+			cells[p] = jitter(c, p, 0.04)
+	return cells

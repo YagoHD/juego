@@ -10,14 +10,15 @@ signal completed(text: String)
 const STEPS := [
 	["Recoge el diario que hay en la arena (clic izquierdo)", "_has_journal"],
 	["Lee el diario del capitán (J)", "_read_journal"],
-	["Busca los cofres del naufragio (clic derecho para abrirlos)", "_opened_chest"],
-	["Ponte la ropa que encuentres: abre el inventario (E) y llévala a su hueco", "_wears_clothes"],
+	["Busca el cofre dentro del barco (clic derecho para abrirlo)", "_opened_chest"],
 	["Haz cuerda: arranca hierba alta para sacar fibra; luego E, Fabricar y 3 fibras en línea", "_made_rope"],
+	["Haz el cinturón de la nota (3 cuerdas en línea) y póntelo en el inventario (E)", "_wears_clothes"],
+	["Desmonta a golpes los restos de la playa (clic izquierdo) y saca 8 tablones", "_has_planks"],
 	["Haz una piedra afilada: una piedra encima de otra (las piedrecitas del suelo dan piedras)", "_made_sharp_rock"],
 	["Monta una hoguera y enciéndela con pedernal (clic derecho)", "_lit_fire"],
 	["Asa algo en la hoguera (pescado, setas, bayas, insectos...) y cómetelo", "_ate_cooked"],
 	["Lee la nota de la mochila (clic derecho) y fabrícala", "_has_backpack"],
-	["Desmonta el cofre: en Fabricar, arrástralo solo al suelo y pulsa Desmontar", "_knows_chest"],
+	["Monta un cofre: 8 tablones en un cubo de 2x2x2", "_made_chest"],
 	["Cose un saco de dormir y duerme una noche (clic derecho en el saco)", "_slept"],
 	["Explora la isla: busca las ruinas del noroeste (mira el mapa del diario); dicen que hay un cofre", "_near_ruins"],
 ]
@@ -116,7 +117,15 @@ func _opened_chest() -> bool:
 
 
 func _wears_clothes() -> bool:
-	return player.equipment["shirt"] != "" or player.equipment["pants"] != ""
+	return player.equipment["shirt"] != "" or player.equipment["pants"] != "" or player.equipment["belt"] != ""
+
+
+func _has_planks() -> bool:
+	return player.inventory.count_of("planks") >= 8 or _flags.has("hecho_chest")
+
+
+func _made_chest() -> bool:
+	return _flags.has("hecho_chest")
 
 
 func _made_rope() -> bool:
@@ -141,10 +150,6 @@ func _slept() -> bool:
 
 func _has_backpack() -> bool:
 	return player.equipment["backpack"] != ""
-
-
-func _knows_chest() -> bool:
-	return player.known_recipes.has("chest")
 
 
 func _near_ruins() -> bool:

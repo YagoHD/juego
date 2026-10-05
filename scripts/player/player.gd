@@ -96,6 +96,7 @@ var fish: FishSchool         # peces del mar (lo pone main.gd)
 var farm: Farming           # cultivos (lo pone main.gd)
 var weather: Weather        # el tiempo (lo pone main.gd)
 var wildlife: Wildlife      # cangrejos y gaviotas (lo pone main.gd)
+var salvage: Salvage        # restos del naufragio que se desmontan a golpes (lo pone main.gd)
 var raft: Raft               # la balsa en la que va montado (o null)
 var _working := false        # agachado fabricando
 var _work_swing := 0.0
@@ -258,6 +259,9 @@ func _unhandled_input(event: InputEvent) -> void:
 			MOUSE_BUTTON_LEFT:
 				if survival.spear_fish() or survival.grab_crab():
 					pass
+				elif salvage != null and salvage.hit(_camera.global_position, -_camera.global_transform.basis.z):
+					_held.swing()  # golpe a un resto del naufragio
+					_avatar.swing()
 				elif creative:
 					_edit_block(false)  # en creativo se rompe al momento
 				else:
@@ -1075,3 +1079,9 @@ func _leaf_at(world_pos: Vector3) -> bool:
 		return false
 	var id := _tool.get_voxel(aim.world_to_voxel(world_pos))
 	return PrefabLibrary.is_prefab(id) and PrefabLibrary.kind(id) == "leaves"
+
+
+## Objeto de la mano ("" si está vacía).
+func held_item() -> String:
+	var stack := active_inventory().get_slot(_hotbar_index)
+	return "" if stack.is_empty() else String(stack["id"])
