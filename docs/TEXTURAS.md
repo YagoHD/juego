@@ -1,0 +1,233 @@
+# Texturas y arte del juego: qué está hecho y qué falta
+
+**Regla:** cada vez que se añade al juego un bloque, objeto, animal, efecto o pantalla que
+necesite textura o modelo, se apunta aquí. Si no tiene arte de ChatGPT, se añade también a un
+prompt de la sección "Prompts pendientes". Así los prompts se van generando a medida que el juego crece.
+
+Estados:
+- ✅ **En el juego**: hecho por ChatGPT y ya integrado.
+- 🟡 **Dibujado, falta integrar**: ChatGPT ya lo hizo (está en `docs/concept/`), pero el juego aún usa el dibujo antiguo.
+- ❌ **Sin arte**: dibujado por código, modelo de Kenney o nada. Va en un prompt pendiente.
+
+Hojas hechas (`docs/concept/`):
+
+| Hoja | Contenido |
+|---|---|
+| hoja1 | bloques del suelo y de madera |
+| hoja2 | bloques del suelo |
+| hoja3 | árboles |
+| hoja4 | palmeras, rocas y plantas |
+| hoja5 | bloques de árbol y animales |
+| hoja6 | objetos de recolección |
+
+---
+
+## Bloques
+
+| Bloque | Estado | Hoja |
+|---|---|---|
+| Hierba (y con flores) | ✅ | 1-2 |
+| Tierra | ✅ | 1-2 |
+| Arena | ✅ | 1-2 |
+| Arena mojada | ✅ | 2 |
+| Piedra | ✅ | 1-2 |
+| Piedra con musgo | ✅ | 1-2 |
+| Nieve | ✅ | 1-2 |
+| Tierra corrupta | ✅ | 1-2 |
+| Mineral verde | ✅ | 1-2 |
+| Grava | ✅ | 2 |
+| Arcilla | ✅ | 2 |
+| Barro | ✅ | 2 |
+| Tronco (de pie y tumbado) | ✅ | 1 |
+| Tablones (y losas) | ✅ | 1 |
+| Madera de deriva | ✅ | 1 |
+| Tela / vela | ✅ | 1 |
+| Cofre | ✅ | 1 (el modelo 3D se hizo a partir de él) |
+| Mesa de trabajo | ✅ | 1 (modelo 3D) |
+| Bloque de hojas | 🟡 | 5 (nº 1) |
+| Bloque de agujas de pino | 🟡 | 5 (nº 2) |
+| Tronco seco | 🟡 | 5 (nº 4) |
+| Cultivo de trigo (bloque de tierra con trigo) | 🟡 | 5 (nº 6) |
+| Tronco de palmera | 🟡 | 5 (nº 5); aún no existe como bloque |
+| Agua (quieta, corriente, cascada) | ❌ | se pinta con un shader animado; sin prompt (no hace falta imagen) |
+| Cuerda colgando | ❌ | prompt **hoja 10** |
+| Tocón pequeño (el que queda al talar) | ❌ | prompt **hoja 10** |
+
+## Árboles, plantas, rocas y decoración del suelo
+
+| Cosa | Estado | Hoja |
+|---|---|---|
+| Robles, roble inclinado, árbol gigante, pinos (3), árbol seco, arbustos, arbusto de bayas | ✅ | 3 |
+| Palmeras (3), tocón viejo, tronco caído, rocas (3), setas (2), trigo (2) | ✅ | 4 |
+| Hierba alta, flor roja, flor amarilla (decoración) | ✅ | 1 |
+| Hierba alta de la hoja 4 (nº 11) | 🟡 | 4: aún no está en la isla |
+| Piedrecitas del suelo | ❌ | prompt **hoja 10** |
+| Palitos del suelo | ❌ | prompt **hoja 10** |
+| Concha del suelo | 🟡 | 6 (nº 10, el icono sirve de modelo) |
+
+## Animales
+
+| Animal | Estado | Hoja |
+|---|---|---|
+| Cangrejo | 🟡 | 5 (nº 7); en el juego, modelo hecho por código |
+| Gaviota volando / posada | 🟡 | 5 (nº 8-9) |
+| Pez tropical pequeño | 🟡 | 5 (nº 10); en el juego, modelo de Kenney |
+| Pez grande azul | 🟡 | 5 (nº 11) |
+| Escarabajo (insecto) | 🟡 | 5 (nº 12) |
+
+## Objetos (iconos del inventario)
+
+| Objeto | Estado | Hoja / prompt |
+|---|---|---|
+| Fibra | 🟡 | 6 (nº 1) |
+| Cuerda | 🟡 | 6 (nº 2) |
+| Palo | 🟡 | 6 (nº 3) |
+| Piedra | 🟡 | 6 (nº 4) |
+| Pedernal | 🟡 | 6 (nº 5) |
+| Piedra afilada | 🟡 | 6 (nº 6) |
+| Resina | 🟡 | 6 (nº 7) |
+| Semillas | 🟡 | 6 (nº 8) |
+| Insecto | 🟡 | 6 (nº 9) |
+| Concha | 🟡 | 6 (nº 10) |
+| Seta | 🟡 | 6 (nº 11) |
+| Bayas silvestres | 🟡 | 6 (nº 12) |
+| Cuchillo, hacha y pico de piedra | ❌ | prompt **hoja 7** |
+| Lanza | ❌ | prompt **hoja 7** |
+| Antorcha | ❌ | prompt **hoja 7** |
+| Tabla | ❌ | prompt **hoja 7** |
+| Camiseta, pantalón, cinturón | ❌ | prompt **hoja 7** |
+| Mochila improvisada, mochila de marinero | ❌ | prompt **hoja 7** |
+| Diario del capitán | ❌ | prompt **hoja 7** |
+| Pescado crudo y asado | ❌ | prompt **hoja 8** |
+| Cangrejo crudo y asado | ❌ | prompt **hoja 8** |
+| Insecto asado, bayas asadas, semillas tostadas, seta asada | ❌ | prompt **hoja 8** |
+| Torta de pan, manojo de trigo | ❌ | prompt **hoja 8** |
+| Mineral verde (trozo) | ❌ | prompt **hoja 8** |
+| Notas (cinturón, mochila, pico) | ❌ | prompt **hoja 8** |
+| Hoguera, saco de dormir, balsa | ❌ | prompt **hoja 9** |
+| Hoja, agujas de pino, corteza | ❌ | prompt **hoja 10** |
+| Flor roja, flor amarilla (recogidas) | ❌ | prompt **hoja 10** |
+| Bloques en la mano (tierra, piedra, tablones...) | ✅ | se dibujan con la textura del bloque |
+
+## Personaje
+
+| Cosa | Estado | Prompt |
+|---|---|---|
+| Cuerpo base (proporciones, cara, pelo) | ❌ | **personaje A** |
+| Ropa del náufrago (camisa rota, pantalón raído, cinturón de cuerda) | ❌ | **personaje B** |
+| Mochilas puestas | ❌ | **personaje B** |
+| Armaduras (futuro: corteza...) | ❌ | se añadirán cuando existan |
+
+## Efectos, cielo e interfaz
+
+| Cosa | Estado | Prompt |
+|---|---|---|
+| Fuego de la hoguera y antorcha, humo | ❌ | **hoja 11** |
+| Grietas al picar (5 fases) | ❌ | **hoja 11** |
+| Trocitos al romper, salpicadura de agua | ❌ | **hoja 11** |
+| Nubes, sol, luna, estrellas | ❌ | **hoja 11** |
+| Inventario, fabricación, barra rápida, menús | ❌ | ya hay prompt aparte: `docs/PROMPT_UI_INVENTARIO.md` |
+| Páginas del diario, pantalla de título / logo | ❌ | **hoja 12** |
+
+---
+
+# Prompts pendientes
+
+Cómo usarlos (como siempre):
+- Úsalos en la misma conversación de ChatGPT de las hojas anteriores. Si es una conversación nueva, sube antes `docs/concept/hoja2_bloques.png` y pega el prompt 0 de `docs/PROMPT_CONCEPT_ART_2.md`.
+- Una hoja cada vez, y guárdala en `docs/concept/` con su número (hoja7_herramientas.png...).
+- Las **hojas 7, 8 y 9** ya están escritas en `docs/PROMPT_CONCEPT_ART_2.md` (secciones 7, 8 y 9): herramientas y equipo, comida, y objetos que se colocan.
+
+## Hoja 10: lo que faltaba (decoración, bloques pequeños y objetos sueltos)
+
+```
+Same style as the block sheets. A clean 4x3 grid of 12 items, one per cell, numbered 1-12 under
+each, plain beige background, no ground shadows. Items 1-6 in isometric 3/4 view (they sit in
+the world); items 7-12 are INVENTORY ICONS (front view, slightly tilted, centered, filling most
+of the cell):
+1 small cluster of pebbles lying on the ground
+2 a few dry twigs lying crossed on the ground
+3 small freshly cut tree stump, flat top with growth rings, short roots
+4 thick fiber rope hanging down vertically from above, with a knot at the bottom end
+5 young green wheat sprouts (small, just planted)
+6 a large piece of sail cloth hanging straight, slightly torn at the edges
+7 single green tree leaf
+8 small bundle of dark green pine needles
+9 curved strip of brown tree bark
+10 picked red flower with a short stem
+11 picked yellow flower with a short stem
+12 coconut, half brown husk
+```
+
+## Hoja 11: efectos y cielo
+
+```
+Same style as the block sheets: chunky voxel cubes, flat painted shading. A clean 4x3 grid,
+numbered 1-12 under each, plain beige background, no shadows. These are game EFFECTS seen from
+the front:
+1 campfire flames made of chunky orange and yellow voxel cubes (no logs, just the fire)
+2 small torch flame made of voxel cubes
+3 puff of grey smoke made of soft round voxel clumps
+4 small brown and grey debris cubes flying apart (a block breaking)
+5 water splash made of white and turquoise voxel droplets
+6 five stages of cracks on a plain grey square, from a tiny crack to almost shattered, in a row
+7 big fluffy white cloud made of voxel cubes
+8 blocky voxel sun, warm yellow, glowing
+9 blocky voxel moon, pale blue-white, with craters
+10 a few small blocky stars, twinkling
+11 rain drops made of thin blue voxel streaks
+12 white sea foam made of small voxel cubes, as seen from above
+```
+
+## Hoja 12: diario y título
+
+```
+Same style as before, warm hand-painted look with chunky pixel details. Two images side by side,
+plain beige background:
+1 an open old leather journal, two yellowed water-stained pages, empty space for text, a rope
+  bookmark, seen from the front (it is the background of the in-game journal screen)
+2 the game logo "ISLA DEL NAUFRAGIO" in chunky voxel letters made of weathered wooden planks,
+  with a small palm tree and a broken ship mast behind it
+```
+
+---
+
+## Personaje A: el náufrago base (cuerpo)
+
+El juego usa skins como las de Minecraft (64x64), pero las proporciones las decide el juego: con
+esta imagen se ajustan el cuerpo y la cara. El cuerpo base va **en ropa interior** porque la ropa
+va en capas aparte, y lo que te pongas (una armadura, por ejemplo) sustituye a esa capa.
+
+```
+Same voxel style as the block sheets (chunky cubes, flat hand-painted shading, warm colors,
+light from the top-left). Character model sheet of the BASE player character of my survival
+game: a young adult man who survived a shipwreck on a tropical island. Blocky voxel body made of
+boxes (head, torso, two arms, two legs, like Minecraft/Hytale/Cube World characters) but with
+good, slightly heroic proportions: the head a bit big and cute (about 1/5 of the height), broad
+shoulders, arms reaching mid-thigh, legs a bit longer than the torso.
+Show him THREE times side by side, same size, standing straight with arms slightly away from the
+body (T-pose relaxed): FRONT view, SIDE view, BACK view.
+He wears ONLY plain dark short underwear (this is the base body; clothes will be separate
+layers). Sun-tanned skin, a bit of stubble, messy dark brown hair, friendly brown eyes, a small
+scar on one eyebrow. Bare feet.
+Plain beige background, no shadows on the ground, no text.
+```
+
+## Personaje B: la ropa del náufrago (piezas sueltas)
+
+```
+Same character and same style. Now show his clothes as SEPARATE pieces, each one alone in its own
+cell, front view, in a clean 3x2 grid numbered 1-6 under each, plain beige background, no shadows.
+Each piece must fit exactly on the blocky body from the previous image:
+1 torn white-blue sailor shirt, short ripped sleeves, salt stains
+2 ragged brown canvas trousers cut below the knee, frayed edges, one patch
+3 rope belt with a small knot and a little cloth pouch
+4 red bandana tied around the head
+5 makeshift backpack made of sail cloth tied with rope
+6 canvas sailor backpack with leather straps
+Then, below the grid, show the full character from the front wearing pieces 1, 2, 3 and 4.
+```
+
+Cuando lleguen las imágenes, ajusto el modelo del cuerpo a las proporciones nuevas. El cuerpo,
+la ropa y las mochilas quedan como capas separadas que se cambian solas al vestirse. Más adelante
+se podrán añadir la cara, el cuerpo de mujer y las armaduras como capas nuevas.
