@@ -81,6 +81,7 @@ func _init() -> void:
 		sprite.save_png(ProjectSettings.globalize_path(DECOR_OUT + name + ".png"))
 		print("[planta] ", name)
 	_sheet2()
+	_sheet5()
 	quit()
 
 
@@ -279,3 +280,33 @@ func _remove_flowers(img: Image) -> void:
 					changed = true
 		if not changed:
 			break
+
+
+# ------------------------------------------------------------------ hoja 5 (bloques de árbol)
+
+const SHEET5 := "res://docs/concept/hoja5_bloques_animales.png"
+## Esquinas T, UL, UR, B de cada cubo (las hojas son abultadas: se toma el cubo de dentro).
+const S5_CUBES := {
+	"leaves": [Vector2(196, 38), Vector2(58, 102), Vector2(334, 102), Vector2(196, 312)],
+	"pine": [Vector2(572, 52), Vector2(444, 110), Vector2(700, 110), Vector2(572, 306)],
+	"dead_log": [Vector2(1338, 46), Vector2(1214, 104), Vector2(1458, 104), Vector2(1335, 318)],
+}
+const S5_TEXTURES := {
+	"leaves": ["leaves", "top"],
+	"pine_leaves": ["pine", "top"],
+	"dead_log_top": ["dead_log", "top"], "dead_log_side": ["dead_log", "left"],
+}
+const S5_SIDE_LIGHT := 1.25  # los lados del dibujo, más oscuros que arriba
+
+
+func _sheet5() -> void:
+	_img = Image.load_from_file(ProjectSettings.globalize_path(SHEET5))
+	_img.convert(Image.FORMAT_RGBA8)
+	for cube: String in S5_CUBES:
+		_cubes["s5_" + cube] = S5_CUBES[cube]
+	for name: String in S5_TEXTURES:
+		var side: String = S5_TEXTURES[name][1]
+		var tex := _face("s5_" + S5_TEXTURES[name][0], side)
+		_brighten(tex, (S5_SIDE_LIGHT if side != "top" else 1.0) * EXPOSURE)
+		tex.save_png(ProjectSettings.globalize_path(OUT + name + ".png"))
+		print("[textura hoja 5] ", name)

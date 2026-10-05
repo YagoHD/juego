@@ -14,7 +14,7 @@ const PER_ROW := 12                 # muestras por fila
 ## Bloques que se enseñan (en este orden, de izquierda a derecha).
 static func samples() -> Array[int]:
 	var out: Array[int] = [GRASS, DIRT, SAND, WET_SAND, STONE, MOSSY_STONE, SNOW, CORRUPT_SOIL, ORE, GRAVEL, CLAY, MUD,
-		WOOD, PLANKS, DRIFTWOOD, CLOTH, CHEST, WORKBENCH, LOG_X, DEAD_WOOD, WATER,
+		WOOD, PLANKS, DRIFTWOOD, CLOTH, CHEST, WORKBENCH, LOG_X, DEAD_WOOD, LEAVES, PINE_LEAVES, WATER,
 		TALL_GRASS, FLOWER_RED, FLOWER_YELLOW, PEBBLES, GROUND_STICKS, SHELL,
 		SLAB_DOWN, SLAB_UP, SLAB_N, SLAB_E, ROPE_HANGING, SAIL_X, SAIL_Z]
 	return out

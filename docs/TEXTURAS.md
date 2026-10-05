@@ -49,9 +49,9 @@ Hojas hechas (`docs/concept/`):
 | Tela / vela | ✅ | 1 |
 | Cofre | ✅ | 1 (el modelo 3D se hizo a partir de él) |
 | Mesa de trabajo | ✅ | 1 (modelo 3D) |
-| Bloque de hojas | 🟡 | 5 (nº 1) |
-| Bloque de agujas de pino | 🟡 | 5 (nº 2) |
-| Tronco seco | 🟡 | 5 (nº 4) |
+| Bloque de hojas | ✅ | 5 (nº 1) |
+| Bloque de agujas de pino | ✅ | 5 (nº 2) |
+| Tronco seco | ✅ | 5 (nº 4) |
 | Cultivo de trigo (bloque de tierra con trigo) | 🟡 | 5 (nº 6) |
 | Tronco de palmera | 🟡 | 5 (nº 5); aún no existe como bloque |
 | Agua (quieta, corriente, cascada) | ❌ | se pinta con un shader animado; sin prompt (no hace falta imagen) |
