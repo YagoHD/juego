@@ -305,6 +305,46 @@ func _stump() -> Prefab:
 
 
 
+## Grupo de setas en un solo bloque (se rompe entero de una vez y da de 1 a 3 setas): una grande
+## y cuatro pequeñas, como en la hoja 4 del concepto. Rojas con puntos blancos o marrones.
+func _mushrooms(prefab_name: String, red: bool) -> Prefab:
+	var sub := {}
+	var cap := Color(0.80, 0.12, 0.10) if red else Color(0.55, 0.35, 0.19)
+	var stem := Color(0.92, 0.87, 0.76)
+	var gills := Color(0.86, 0.78, 0.64)
+	# [centro (x, z), alto del pie, radio del sombrero]
+	var spots := [[Vector2(8, 8), 7, 5.0], [Vector2(3.5, 11.5), 4, 2.8], [Vector2(12.5, 11), 4, 2.8],
+		[Vector2(11.5, 3.5), 2, 2.3], [Vector2(4, 4), 3, 2.3]]
+	for s in spots:
+		var c: Vector2 = s[0]
+		var h: int = s[1]
+		var r: float = s[2]
+		var sr := maxf(1.0, r * 0.32)  # grosor del pie
+		for y in h:
+			for x in range(int(c.x - sr - 1), int(c.x + sr + 2)):
+				for z in range(int(c.y - sr - 1), int(c.y + sr + 2)):
+					if Vector2(x + 0.5, z + 0.5).distance_to(c) <= sr:
+						sub[Vector3i(x, y, z)] = stem.darkened(0.12) if y == 0 else stem
+		# Sombrero: cúpula achatada, más oscura por debajo del borde, con láminas claras debajo.
+		var top_h := int(ceilf(r * 0.8))
+		for y in top_h:
+			var ry := r * sqrt(1.0 - pow(float(y) / top_h, 2.0))
+			for x in range(int(c.x - r - 1), int(c.x + r + 2)):
+				for z in range(int(c.y - r - 1), int(c.y + r + 2)):
+					var d := Vector2(x + 0.5, z + 0.5).distance_to(c)
+					if d > ry or x < 0 or z < 0 or x >= BENCH_RES or z >= BENCH_RES:
+						continue
+					var col := cap
+					if y == 0:
+						col = gills if d < ry - 1.0 else cap.darkened(0.2)
+					elif red and (x * 7 + z * 13 + y * 5) % 9 == 0:
+						col = Color(0.97, 0.95, 0.90)  # puntos blancos
+					elif not red and y == top_h - 1:
+						col = cap.lightened(0.15)
+					sub[Vector3i(x, h + y, z)] = col
+	return _decor_prefab(prefab_name, sub, "mushroom")
+
+
 ## Árboles de la hoja del concepto (TreeBuilder), varias versiones de cada uno. El orden es el de
 ## PrefabLibrary.NAMES (siempre añadir al final).
 var TREES := [
@@ -327,7 +367,7 @@ var NATURE := {
 	"palm_short": NatureBuilder.palm_short.bind(203),
 	"rock_a": NatureBuilder.boulder.bind(211), "rock_d": NatureBuilder.rock_pile.bind(212),
 	"rock_tall": NatureBuilder.pillar.bind(213), "stump": NatureBuilder.big_stump.bind(221),
-	"mushrooms_red": NatureBuilder.mushrooms.bind(231, true), "mushrooms_tan": NatureBuilder.mushrooms.bind(232, false),
+	"mushrooms_red": _mushrooms.bind("mushrooms_red", true), "mushrooms_tan": _mushrooms.bind("mushrooms_tan", false),
 	"wheat_a": NatureBuilder.wheat.bind(241, false), "wheat_b": NatureBuilder.wheat.bind(242, true),
 }
 
@@ -387,7 +427,8 @@ func _init() -> void:
 	var prefabs: Array[Prefab] = []
 	for entry in LIST:
 		if NATURE.has(entry[0]):
-			prefabs.append(_cut_tree(entry[0], NATURE[entry[0]] as Callable))  # el de la hoja 4, no el de Kenney
+			var made: Variant = (NATURE[entry[0]] as Callable).call()
+			prefabs.append(made if made is Prefab else _cut_tree(entry[0], NATURE[entry[0]] as Callable))  # el de la hoja 4, no el de Kenney
 			continue
 		var cells := _voxelize(src_dir.path_join(entry[1] + ".obj"), float(entry[2]))
 		if cells.is_empty():

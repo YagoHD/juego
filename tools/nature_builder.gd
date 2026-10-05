@@ -2,7 +2,7 @@ extends TreeBuilder
 class_name NatureBuilder
 ## Lo de la hoja 4 del arte conceptual (docs/concept/hoja4_palmeras_rocas.png), en cubitos como los
 ## árboles (TreeBuilder): palmeras (alta, curvada y baja), el tocón grande con raíces y musgo, las
-## tres rocas con musgo, los grupos de setas (rojas y marrones) y el trigo (verde y maduro).
+## tres rocas con musgo y el trigo (verde y maduro). Las setas, a más detalle, en bake_prefabs.
 ## Lo usa tools/bake_prefabs.gd, que luego los trocea en bloques.
 
 const FROND := [Color(0.20, 0.45, 0.09), Color(0.33, 0.62, 0.12), Color(0.52, 0.78, 0.18)]
@@ -223,39 +223,7 @@ static func rock_pile(seed_value: int) -> NatureBuilder:
 	return b
 
 
-# ------------------------------------------------------------------ setas y trigo
-
-## Una seta: pie claro y sombrero de cúpula.
-func mushroom(at: Vector3, stem_h: int, cap_r: float, cap: Color, dots: bool) -> void:
-	for y in stem_h:
-		for x in range(-1, 1):
-			for z in range(-1, 1):
-				_put(Vector3i(at.floor()) + Vector3i(x, y, z), Color(0.90, 0.84, 0.72) if y > 0 else Color(0.78, 0.70, 0.56), "mushroom")
-	var top := at + Vector3(0, stem_h, 0)
-	var r := int(ceilf(cap_r))
-	for x in range(-r, r + 1):
-		for z in range(-r, r + 1):
-			for y in range(0, r):
-				var d := Vector3(x, y * 1.5, z)
-				if d.length() > cap_r:
-					continue
-				var col := cap.darkened(0.12) if y == 0 else cap
-				if not dots and y >= r - 2:
-					col = cap.lightened(0.12)
-				if dots and (x * 3 + z * 5 + y * 7) % 11 == 0 and y > 0:
-					col = Color(0.97, 0.95, 0.90)
-				_put(Vector3i(top.floor()) + Vector3i(x, y, z), col, "mushroom", false)
-
-
-static func mushrooms(seed_value: int, red: bool) -> NatureBuilder:
-	var b := NatureBuilder.new(seed_value)
-	var cap := Color(0.80, 0.12, 0.10) if red else Color(0.52, 0.33, 0.18)
-	var spots := [[Vector2(0, 0), 7, 4.4], [Vector2(-4, 3), 4, 3.2], [Vector2(4, 2), 5, 3.2], [Vector2(2, -4), 3, 2.6], [Vector2(-3, -3), 2, 2.2]]
-	for s in spots:
-		var p: Vector2 = s[0]
-		b.mushroom(b._center + Vector3(p.x, 0, p.y), s[1], s[2], cap, red)
-	return b
-
+# ------------------------------------------------------------------ trigo (las setas, en bake_prefabs: a más detalle)
 
 ## Trigo en un solo bloque (los cultivos se cambian de uno en uno): tallos con espigas. Verde
 ## (recién crecido) o dorado (maduro).

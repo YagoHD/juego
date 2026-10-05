@@ -128,7 +128,7 @@ static func material() -> StandardMaterial3D:
 
 
 ## Modelo del motor de bloques para una pieza: su forma, y choque solo donde hay algo (las
-## hojas no chocan: se atraviesan, como la copa de una palmera).
+## hojas y los cultivos no chocan: se atraviesan; las setas sí, con su forma).
 static func make_model(id: int) -> VoxelBlockyModelMesh:
 	var model := VoxelBlockyModelMesh.new()
 	var mesh: ArrayMesh = _mesh[id]
@@ -139,7 +139,7 @@ static func make_model(id: int) -> VoxelBlockyModelMesh:
 	var box := mesh.get_aabb()
 	model.culls_neighbors = box.size.is_equal_approx(Vector3.ONE) and _is_full(mesh)
 	model.transparency_index = 3
-	if kind(id) in ["leaves", "mushroom", "crop"]:
+	if kind(id) in ["leaves", "crop"]:
 		model.set_mesh_collision_enabled(0, false)
 		model.collision_aabbs = []
 	else:

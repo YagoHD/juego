@@ -229,7 +229,7 @@ static func drops_for(block_id: int, rng: RandomNumberGenerator) -> Array:
 			"wood": return [["wood", 1]]
 			"rock": return [["rock", 1 + int(roll < 0.5)]] if roll > 0.08 else [["flint", 1]]
 			"leaves": return [["leaf", 1 + int(roll < 0.25)]] if roll < 0.6 else ([["fiber", 1]] if roll < 0.75 else [])
-			"mushroom": return [["mushroom", 1 + int(roll < 0.3)]]
+			"mushroom": return [["mushroom", rng.randi_range(1, 3)]]  # el grupo entero: de 1 a 3 setas
 		return []
 	match block_id:
 		IslandGenerator.TALL_GRASS:

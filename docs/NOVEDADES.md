@@ -258,3 +258,5 @@ Todo lo de Kenney y OpenGameArt es CC0 (créditos en `assets/third_party/*/` y
   Suena un roce de ramas, como al pasar por una zarza, y el personaje se pone las manos delante de la cara
   (la izquierda más alta, tapándose los ojos). Desde dentro de la copa se ven las hojas por todos lados,
   sin ver a través (las caras de dentro solo se dibujan en el árbol que tienes al lado: no cuesta FPS).
+- Las **setas** son ahora un solo bloque con su forma (chocan y el recuadro sigue su contorno): se rompen
+  enteras de un golpe y dan **de 1 a 3 setas** al azar.
