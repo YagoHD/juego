@@ -1,10 +1,11 @@
 extends Node
 class_name TreeRegrowth
 ## Los árboles talados vuelven a crecer: al talar uno por la base queda un tocón (STUMP). Si el
-## jugador no lo quita, pasado un rato el árbol rebrota en el mismo sitio y con la misma forma
+## jugador no lo quita, a los GROW_DAYS días de juego el árbol rebrota en el mismo sitio y con la misma forma
 ## (el generador lo vuelve a plantar). Si se rompe el tocón, ahí ya no crece nada. Se guarda.
 
-const GROW_SECONDS := 600.0   # diez minutos de juego
+const GROW_DAYS := 2.0
+const GROW_SECONDS := GROW_DAYS * DayNight.CYCLE_MINUTES * 60.0  # segundos de juego (2 días)
 const CLEAR := 3.0            # metros: no rebrota con el jugador encima (lo encerraría)
 
 var terrain: VoxelTerrain
@@ -30,7 +31,7 @@ func pending() -> int:
 func _process(delta: float) -> void:
 	if terrain == null or _stumps.is_empty() or get_tree().paused:
 		return
-	_check += delta
+	_check += delta * (DayNight.FAST_FORWARD if Input.is_key_pressed(KEY_T) else 1.0)  # T adelanta el reloj
 	if _check < 2.0:
 		return
 	step(_check)
@@ -44,12 +45,12 @@ func step(seconds: float) -> void:
 	for key in _stumps.keys():
 		var p: PackedStringArray = String(key).split(",")
 		var cell := Vector3i(int(p[0]), int(p[1]), int(p[2]))
+		_stumps[key] = float(_stumps[key]) - seconds  # el tiempo pasa aunque estés lejos
 		if not tool.is_area_editable(AABB(Vector3(cell), Vector3.ONE)):
-			continue  # lejos, sin cargar: espera
+			continue  # lejos, sin cargar: crece cuando vuelvas
 		if tool.get_voxel(cell) != IslandGenerator.STUMP:
 			_stumps.erase(key)  # el jugador quitó el tocón
 			continue
-		_stumps[key] = float(_stumps[key]) - seconds
 		if float(_stumps[key]) > 0.0:
 			continue
 		if player != null and player.global_position.distance_to(terrain.to_global(Vector3(cell))) < CLEAR:
