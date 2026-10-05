@@ -171,7 +171,7 @@ func _build_graphics() -> Control:
 		func(i: int) -> void: Settings.antialias = i))
 	box.add_child(_check("Relieve de las texturas de cerca", Settings.relief,
 		func(on: bool) -> void: Settings.relief = on))
-	box.add_child(_check("Árboles sencillos a lo lejos", Settings.far_trees,
+	box.add_child(_check("Árboles sencillos a lo lejos (al volver a entrar)", Settings.far_trees,
 		func(on: bool) -> void: Settings.far_trees = on))
 	box.add_child(_check("Mostrar FPS y rendimiento (también con F3)", Settings.show_fps,
 		func(on: bool) -> void: Settings.show_fps = on))

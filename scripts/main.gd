@@ -160,8 +160,14 @@ func _build_far_terrain() -> void:
 	for id in Blocks.COLORS:
 		colors[id] = BlockTextures.average_color(id, 0)
 	colors[IslandGenerator.WATER] = Blocks.color_of(IslandGenerator.WATER)
-	far.build(_generator, colors, VOXEL_SIZE, _far_hide_radius)
+	# Con los árboles sencillos a lo lejos, el bosque son árboles; sin ellos, un manto de copas.
+	far.build(_generator, colors, VOXEL_SIZE, _far_hide_radius, not Settings.far_trees)
 	add_child(far)
+	if Settings.far_trees:
+		var trees := FarTrees.new()
+		add_child(trees)
+		# Se esconden donde ya hay árboles de verdad (hasta donde llegan los voxels cargados).
+		trees.start(_generator, VOXEL_SIZE, (_near_voxels + 48) * VOXEL_SIZE)
 
 
 func _make_world_stream() -> VoxelStreamSQLite:

@@ -214,3 +214,17 @@ Todo lo de Kenney y OpenGameArt es CC0 (créditos en `assets/third_party/*/` y
   PlayerBuilder (colocar), PlayerSurvival (comer, beber, pescar...) y RaftRider (balsa).
 - `main.gd` (1234 → ~940) con BlockModels (modelos de bloques) y CaptureMode (capturas).
 - `tools/run_tests.sh` pasa todas las pruebas de una vez.
+
+## Rendimiento y hierba (5 de octubre)
+
+- **F3** enseña ahora el desglose: tiempo de la gráfica y del procesador, triángulos y llamadas
+  de dibujo. **Opciones > Gráficos**: distancia de detalle (96/128/160 m), sombras (no, bajas,
+  medias, altas), suavizado (no, FXAA, MSAA), relieve y árboles lejanos. Por defecto, más ligero
+  que antes: detalle 128 m, sombras medias (100 m), FXAA.
+- **Árboles sencillos a lo lejos**: más allá de la zona de detalle, cada árbol se dibuja con un
+  modelo de pocas cajas en su sitio (antes, un manto verde).
+- **Árboles más ligeros**: cubos de hoja más grandes, corteza en vetas y sin caras ocultas
+  dentro de la copa. En la misma vista: de 70 a 119 FPS (68 → 35 millones de triángulos).
+- **Hierba más natural**: lisa casi siempre y con florecitas 1 de cada 10; la cara de arriba de
+  hierba, tierra, arena... se gira al azar en cada bloque y cambia un pelín de tono; sin las
+  rayas en cuadrícula.

@@ -357,7 +357,10 @@ func _cut_tree(prefab_name: String, build: Callable) -> Prefab:
 			if best == "" or int(counts[b][type]) > int(counts[b][best]):
 				best = type
 		p.cells.append(b)
-		p.meshes.append(_piece_mesh(sub, {}, Vector3i.ZERO, res))
+		# Las hojas no dibujan las caras que tocan otro trozo (no se ven nunca; al romper un trozo de
+		# hojas se ve el hueco, pero las hojas se atraviesan y al talar saltan): muchas menos caras.
+		# La madera sí: un tronco no debe verse hueco al picarlo.
+		p.meshes.append(_piece_mesh(sub, tree.cells if best == "leaf" else {}, b * res, res))
 		p.outlines.append(_outline(sub, res))
 		p.kinds.append({"leaf": "leaves", "wood": "wood", "root": "root"}[best])
 		p.fills.append(float(sub.size()) / (res * res * res))
@@ -521,7 +524,7 @@ func _cut(prefab_name: String, cells: Dictionary, default_kind: String) -> Prefa
 		if sub.size() < 2:
 			continue  # una mota suelta: fuera
 		p.cells.append(b)
-		p.meshes.append(_piece_mesh(sub, cells, b * N))
+		p.meshes.append(_piece_mesh(sub, {}, b * N))  # piel completa: las rocas no se ven huecas al picarlas
 		p.outlines.append(_outline(sub, N))
 		var green := 0
 		var avg := Color(0, 0, 0)
@@ -564,6 +567,7 @@ func _piece_mesh(sub: Dictionary, all_cells: Dictionary, offset: Vector3i, res :
 		box_hi = box_hi.max(c)
 	var st := SurfaceTool.new()
 	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	var drew := false
 	# Por cada dirección y cada capa: máscara de las caras que dan al aire (dentro de la pieza),
 	# y se juntan en rectángulos del mismo color (muchas menos caras que una por cubito).
 	for f in faces:
@@ -579,7 +583,7 @@ func _piece_mesh(sub: Dictionary, all_cells: Dictionary, offset: Vector3i, res :
 					c[axis] = layer
 					c[u] = a
 					c[v] = b
-					if not sub.has(c) or sub.has(c + normal):
+					if not sub.has(c) or sub.has(c + normal) or all_cells.has(offset + c + normal):
 						continue
 					var shade: Color = (sub[c] as Color) * float(f[1])
 					shade.a = 1.0
@@ -617,6 +621,14 @@ func _piece_mesh(sub: Dictionary, all_cells: Dictionary, offset: Vector3i, res :
 					st.set_normal(Vector3(normal))
 					st.set_uv(Vector2(idx, 0.5))  # índice de la paleta (se pasa a UV al final)
 					st.add_vertex((lo + (hi - lo) * t) * size)
+					drew = true
+	if not drew:
+		# Trozo de dentro de la copa, sin ninguna cara a la vista: un triángulo de tamaño cero (el
+		# bloque necesita una malla, pero no hay nada que dibujar).
+		for i in 3:
+			st.set_normal(Vector3.UP)
+			st.set_uv(Vector2(0, 0.5))
+			st.add_vertex(Vector3(0.5, 0.5, 0.5))
 	st.index()
 	return st.commit()
 

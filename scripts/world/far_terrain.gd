@@ -18,7 +18,8 @@ func _noise01(x: int, z: int) -> float:
 	return float(h & 0xffff) / 65535.0
 
 
-func build(gen: IslandGenerator, block_colors: Dictionary, voxel_size: float, hide_radius: float) -> void:
+## canopy: el bosque como un manto de copas (sin los árboles sencillos de FarTrees).
+func build(gen: IslandGenerator, block_colors: Dictionary, voxel_size: float, hide_radius: float, canopy := true) -> void:
 	var n := gen.get_map_size()
 	var vpp := gen.get_voxels_per_px()
 	var heights := gen.get_height_map()
@@ -54,7 +55,7 @@ func build(gen: IslandGenerator, block_colors: Dictionary, voxel_size: float, hi
 				color = water_color
 			else:
 				var tree: int = surface[i * 3 + 2]
-				if (tree & 63) >= CANOPY_MIN_DENSITY:
+				if canopy and (tree & 63) >= CANOPY_MIN_DENSITY:
 					y += CANOPY_VOXELS
 					# Visto de cerca, un bosque es más oscuro que sus hojas por las sombras entre
 					# árboles: se oscurece para que la malla lejana empalme con los voxels.

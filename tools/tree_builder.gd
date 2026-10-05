@@ -33,11 +33,12 @@ func _put(p: Vector3i, col: Color, type: String, over_leaves := true) -> void:
 
 
 ## Corteza: surcos oscuros alrededor del tronco, con vetas claras.
-func _bark(tones: Array, angle: float, y: float) -> Color:
-	var groove := int(floorf((angle + PI) / TAU * 11.0 + y * 0.04)) % 3
-	if groove == 0:
+func _bark(tones: Array, angle: float, _y: float) -> Color:
+	# Vetas verticales seguidas (sin manchas sueltas): sus caras se juntan en tiras largas.
+	var band := int(floorf((angle + PI) / TAU * 11.0))
+	if band % 3 == 0:
 		return tones[0]
-	if int(y * 0.5 + angle * 3.0) % 7 == 0:
+	if band % 5 == 2:
 		return tones[2]
 	return tones[1]
 
@@ -132,7 +133,7 @@ func berries(chance: float) -> void:
 ## cubitos de hojas). Cada cubo, de un solo tono: así sus caras se juntan y se dibujan muchas
 ## menos (con un tono por cubito, un bosque iba a 4 FPS). Luz pintada por cubos: los de arriba de
 ## la copa, más claros; los de debajo, más oscuros.
-const LEAF_CUBE := 2
+const LEAF_CUBE := 4
 
 
 func shade() -> void:
@@ -140,7 +141,7 @@ func shade() -> void:
 	for p: Vector3i in cells:
 		if types[p] == "leaf":
 			var k := Vector3i(floori(p.x / float(LEAF_CUBE)), floori(p.y / float(LEAF_CUBE)), floori(p.z / float(LEAF_CUBE)))
-			if not cubes.has(k) or cells[p] == BERRY:
+			if not cubes.has(k) and cells[p] != BERRY:
 				cubes[k] = cells[p]
 	for k: Vector3i in cubes:
 		var col: Color = cubes[k]
@@ -153,8 +154,8 @@ func shade() -> void:
 			for y in LEAF_CUBE:
 				for z in LEAF_CUBE:
 					var p := k * LEAF_CUBE + Vector3i(x, y, z)
-					if p.y < 0 or (cells.has(p) and types[p] != "leaf"):
-						continue  # la madera manda
+					if p.y < 0 or (cells.has(p) and (types[p] != "leaf" or cells[p] == BERRY)):
+						continue  # la madera y las bayas mandan
 					cells[p] = col
 					types[p] = "leaf"
 
@@ -254,9 +255,9 @@ static func bush(seed_value: int, with_berries := false) -> TreeBuilder:
 	b.trunk(4, 2.5, 2.0, Vector3.ZERO, BARK)
 	var size := Vector3(24, 14, 24) if with_berries else Vector3(17, 13, 17)
 	b.canopy(Vector3(RES * 0.5, size.y, RES * 0.5), size, 18 if with_berries else 12, LEAF)
-	if with_berries:
-		b.berries(0.035)
 	b.shade()
+	if with_berries:
+		b.berries(0.035)  # después de la luz pintada: encima de los cubos de hoja
 	return b
 
 
