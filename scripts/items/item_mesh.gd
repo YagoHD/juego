@@ -60,11 +60,11 @@ static func make_material(id: String) -> StandardMaterial3D:
 
 static func _flat(id: String, size: float) -> Mesh:
 	var img := ItemPainter.paint(id)
-	var n := ItemPainter.S
+	var n := img.get_width()  # 16 los pintados por código, 32 los del arte conceptual
 	var px := size / n
 	var half := n * 0.5
 	# Los objetos de mano deben tener volumen visible; la ropa sigue siendo una pieza fina.
-	var depth := px * (0.8 if id in ["shirt", "pants", "belt", "cloth", "note_belt", "note_backpack", "note_pick"] else 2.6)
+	var depth := size / ItemPainter.S * (0.8 if id in ["shirt", "pants", "belt", "cloth", "note_belt", "note_backpack", "note_pick"] else 2.6)
 	var st := SurfaceTool.new()
 	st.begin(Mesh.PRIMITIVE_TRIANGLES)
 	for y in n:

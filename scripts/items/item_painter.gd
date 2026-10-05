@@ -5,7 +5,18 @@ class_name ItemPainter
 const S := 16
 
 
+## Dibujos propios (sacados del arte conceptual): si existe <id>.png aquí, se usa ese.
+const OVERRIDE_DIR := "res://assets/textures/items/"
+
+
 static func paint(id: String) -> Image:
+	var path := OVERRIDE_DIR + id + ".png"
+	if ResourceLoader.exists(path):
+		var drawn := (load(path) as Texture2D).get_image()
+		if drawn.is_compressed():
+			drawn.decompress()
+		drawn.convert(Image.FORMAT_RGBA8)
+		return drawn
 	var img := Image.create(S, S, false, Image.FORMAT_RGBA8)
 	img.fill(Color(0, 0, 0, 0))
 	match id:

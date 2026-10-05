@@ -82,6 +82,7 @@ func _init() -> void:
 		print("[planta] ", name)
 	_sheet2()
 	_sheet5()
+	_icons()
 	quit()
 
 
@@ -310,3 +311,104 @@ func _sheet5() -> void:
 		_brighten(tex, (S5_SIDE_LIGHT if side != "top" else 1.0) * EXPOSURE)
 		tex.save_png(ProjectSettings.globalize_path(OUT + name + ".png"))
 		print("[textura hoja 5] ", name)
+
+
+# ------------------------------------------------------------------ iconos de objetos (hoja 6...)
+
+const ITEMS_OUT := "res://assets/textures/items/"
+const ICON := 32
+## Hojas de iconos en cuadrícula 4x3: [hoja, franjas de altura de cada fila (sin el número),
+## objeto de cada casilla ("" = no se usa)].
+const ICON_SHEETS := [
+	["res://docs/concept/hoja6_recoleccion.png", [Vector2i(0, 318), Vector2i(345, 640), Vector2i(680, 955)],
+		["fiber", "rope", "sticks", "rock", "flint", "sharp_rock", "resin", "seeds",
+		"insect", "shell", "mushroom", "berries"]],
+]
+
+
+func _icons() -> void:
+	DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(ITEMS_OUT))
+	for sheet: Array in ICON_SHEETS:
+		_img = Image.load_from_file(ProjectSettings.globalize_path(sheet[0]))
+		_img.convert(Image.FORMAT_RGBA8)
+		var cell_w := _img.get_width() / 4
+		var names: Array = sheet[2]
+		for i in names.size():
+			if names[i] == "":
+				continue
+			var band: Vector2i = sheet[1][i / 4]
+			var icon := _icon(Rect2i((i % 4) * cell_w, band.x, cell_w, band.y - band.x))
+			icon.save_png(ProjectSettings.globalize_path(ITEMS_OUT + names[i] + ".png"))
+			print("[icono] ", names[i])
+
+
+## Recorta un objeto de su casilla: el fondo (lo que toca el borde y se parece a él) se vuelve
+## transparente; el objeto queda centrado en un cuadrado de ICON x ICON con 1 px de margen.
+func _icon(r: Rect2i) -> Image:
+	var cut := _img.get_region(r)
+	var w := cut.get_width()
+	var h := cut.get_height()
+	var bg := cut.get_pixel(2, 2)
+	var is_bg := func(c: Color) -> bool: return absf(c.r - bg.r) + absf(c.g - bg.g) + absf(c.b - bg.b) < 0.14
+	# Relleno desde los bordes: solo es fondo lo que está conectado con el borde.
+	var seen := PackedByteArray()
+	seen.resize(w * h)
+	var stack: Array[Vector2i] = []
+	for x in w:
+		stack.append(Vector2i(x, 0))
+		stack.append(Vector2i(x, h - 1))
+	for y in h:
+		stack.append(Vector2i(0, y))
+		stack.append(Vector2i(w - 1, y))
+	while not stack.is_empty():
+		var p: Vector2i = stack.pop_back()
+		if p.x < 0 or p.y < 0 or p.x >= w or p.y >= h or seen[p.y * w + p.x] != 0:
+			continue
+		if not is_bg.call(cut.get_pixelv(p)):
+			continue
+		seen[p.y * w + p.x] = 1
+		cut.set_pixelv(p, Color(0, 0, 0, 0))
+		stack.append(p + Vector2i.LEFT)
+		stack.append(p + Vector2i.RIGHT)
+		stack.append(p + Vector2i.UP)
+		stack.append(p + Vector2i.DOWN)
+	# Huecos cerrados (el aro de la cuerda): lo que es casi igual que el fondo.
+	for y in h:
+		for x in w:
+			var c := cut.get_pixel(x, y)
+			if absf(c.r - bg.r) + absf(c.g - bg.g) + absf(c.b - bg.b) < 0.07:
+				cut.set_pixel(x, y, Color(0, 0, 0, 0))
+	var lo := Vector2i(w, h)
+	var hi := Vector2i(-1, -1)
+	for y in h:
+		for x in w:
+			if cut.get_pixel(x, y).a > 0.5:
+				lo = lo.min(Vector2i(x, y))
+				hi = hi.max(Vector2i(x, y))
+	var side := maxi(hi.x - lo.x, hi.y - lo.y) + 1
+	var square := Image.create(side, side, false, Image.FORMAT_RGBA8)
+	square.fill(Color(0, 0, 0, 0))
+	var bw := hi.x - lo.x + 1
+	var bh := hi.y - lo.y + 1
+	square.blit_rect(cut, Rect2i(lo, Vector2i(bw, bh)), Vector2i((side - bw) / 2, (side - bh) / 2))
+	var inner := ICON - 2
+	var out := Image.create(ICON, ICON, false, Image.FORMAT_RGBA8)
+	out.fill(Color(0, 0, 0, 0))
+	var step := float(side) / inner
+	for y in inner:
+		for x in inner:
+			var sum := Color(0, 0, 0, 0)
+			var n := 0
+			var total := 0
+			for sy in range(int(y * step), int((y + 1) * step)):
+				for sx in range(int(x * step), int((x + 1) * step)):
+					total += 1
+					var c := square.get_pixel(sx, sy)
+					if c.a > 0.5:
+						sum += c
+						n += 1
+			if n > 0 and n * 2 >= total:
+				var col := sum / n
+				col.a = 1.0
+				out.set_pixel(x + 1, y + 1, col)
+	return out

@@ -85,18 +85,18 @@ Hojas hechas (`docs/concept/`):
 
 | Objeto | Estado | Hoja / prompt |
 |---|---|---|
-| Fibra | 🟡 | 6 (nº 1) |
-| Cuerda | 🟡 | 6 (nº 2) |
-| Palo | 🟡 | 6 (nº 3) |
-| Piedra | 🟡 | 6 (nº 4) |
-| Pedernal | 🟡 | 6 (nº 5) |
-| Piedra afilada | 🟡 | 6 (nº 6) |
-| Resina | 🟡 | 6 (nº 7) |
-| Semillas | 🟡 | 6 (nº 8) |
-| Insecto | 🟡 | 6 (nº 9) |
-| Concha | 🟡 | 6 (nº 10) |
-| Seta | 🟡 | 6 (nº 11) |
-| Bayas silvestres | 🟡 | 6 (nº 12) |
+| Fibra | ✅ | 6 (nº 1) |
+| Cuerda | ✅ | 6 (nº 2) |
+| Palo | ✅ | 6 (nº 3) |
+| Piedra | ✅ | 6 (nº 4) |
+| Pedernal | ✅ | 6 (nº 5) |
+| Piedra afilada | ✅ | 6 (nº 6) |
+| Resina | ✅ | 6 (nº 7) |
+| Semillas | ✅ | 6 (nº 8) |
+| Insecto | ✅ | 6 (nº 9) |
+| Concha | ✅ | 6 (nº 10) |
+| Seta | ✅ | 6 (nº 11) |
+| Bayas silvestres | ✅ | 6 (nº 12) |
 | Cuchillo, hacha y pico de piedra | ❌ | prompt **hoja 7** |
 | Lanza | ❌ | prompt **hoja 7** |
 | Antorcha | ❌ | prompt **hoja 7** |
