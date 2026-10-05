@@ -38,6 +38,7 @@ param(
     [string]$Textures = "", # paquete de texturas ("16x16")
     [int]$Page = 0,     # con -Journal: página izquierda (par)
     [string]$Learn = "", # con -Journal: recetas aprendidas, p. ej. "chest,belt"
+    [double]$Dist = 0,    # con -ThirdPerson: distancia de la cámara en bloques (p. ej. 1.6 para ver la cara)
     [int]$Wait = 90,
     [string]$Godot = "$env:USERPROFILE\Desktop\godot.windows.editor.x86_64.exe"
 )
@@ -46,6 +47,7 @@ $gameArgs = @("--path", "`"$project`"", "--", "--capture=$Out", "--pitch=$Pitch"
 if ($ThirdPerson) { $gameArgs += "--tp" }
 if ($Front) { $gameArgs += "--front" }
 if ($Side) { $gameArgs += "--side" }
+if ($Dist -gt 0) { $gameArgs += "--dist=$Dist" }
 if ($Swing -ge 0) { $gameArgs += "--swing=$Swing" }
 if ($Action -ne "") { $gameArgs += "--action=$Action" }
 if ($Time -ne "") { $gameArgs += "--time=$Time" }

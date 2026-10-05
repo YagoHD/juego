@@ -88,21 +88,29 @@ func _build_lids(texture: Texture2D) -> void:
 	# Párpados: dos rectángulos del color de la frente justo delante de los ojos (donde los
 	# pinta SkinComposer: filas 4 de la cara, columnas 1-2 y 5-6).
 	var image := texture.get_image()
+	if image.is_compressed():
+		image.decompress()
+	var k := image.get_width() / SkinModel.TEXTURE_SIZE  # 2 en la skin del náufrago (al doble)
 	var face: Rect2i = SkinModel.face_rects(SkinModel.PARTS["head"]["base"], SkinModel.PARTS["head"]["size"])["front"]
-	var skin_color := image.get_pixel(face.position.x + 3, face.position.y + 2)
+	var skin_color := image.get_pixel(face.position.x * 2 + 5, face.position.y * 2 + 12) if k > 1 \
+		else image.get_pixel(face.position.x + 3, face.position.y + 2)  # la mejilla / la frente
+	# Ojos del náufrago: más abajo y más pequeños (el pelo ocupa la parte de arriba de la cara).
+	var eye_x := 1.5 if k > 1 else 2.0
+	var eye_y := 2.6 if k > 1 else 3.5
+	var eye_size := Vector2(1.4, 0.8) if k > 1 else Vector2(2.0, 1.0)
 	var material := StandardMaterial3D.new()
 	material.albedo_color = skin_color
 	material.roughness = 0.9
 	_lids = Node3D.new()
 	_lids.visible = false
 	_head.add_child(_lids)
-	for x in [2.0, -2.0]:  # en píxeles: derecha del personaje = +X
+	for x in [eye_x, -eye_x]:  # en píxeles: derecha del personaje = +X
 		var lid := MeshInstance3D.new()
 		var quad := BoxMesh.new()
-		quad.size = Vector3(2.0, 1.0, 0.1) * SkinModel.PIXEL
+		quad.size = Vector3(eye_size.x, eye_size.y, 0.1) * SkinModel.PIXEL
 		lid.mesh = quad
 		lid.material_override = material
-		lid.position = Vector3(x, 3.5, -4.06) * SkinModel.PIXEL
+		lid.position = Vector3(x, eye_y, -4.06) * SkinModel.PIXEL
 		lid.layers = LAYER
 		_lids.add_child(lid)
 

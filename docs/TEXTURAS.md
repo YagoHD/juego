@@ -125,10 +125,11 @@ Hojas hechas (`docs/concept/`):
 
 | Cosa | Estado | Prompt |
 |---|---|---|
-| Cuerpo base (proporciones, cara, pelo) | 🟡 | personaje_a |
-| Ropa del náufrago (camisa rota, pantalón raído, cinturón de cuerda, pañuelo) | 🟡 | personaje_b |
+| Cuerpo base (cara, pelo, ropa interior) | ✅ | personaje_a; skin al doble de resolución (tools/extract_skin.gd) |
+| Ropa puesta: camisa, pantalón y cinturón | ✅ | personaje_b (capas que se ponen al vestirse) |
+| Pañuelo rojo de la cabeza | 🟡 | personaje_b (nº 4); aún no es un objeto del juego |
+| Mochilas puestas (modelo 3D a la espalda) | 🟡 | personaje_b (nº 5-6); ahora son cajas de colores |
 | Cuerpo de mujer y su ropa | 🟡 | personaje_mujer |
-| Mochilas puestas | 🟡 | personaje_b (nº 5-6) |
 | Armaduras (futuro: corteza...) | ❌ | se añadirán cuando existan |
 
 ## Efectos, cielo e interfaz

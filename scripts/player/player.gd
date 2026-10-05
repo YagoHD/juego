@@ -855,6 +855,9 @@ func debug_pose(third_person: bool, pitch: float, yaw_degrees: float, up_meters:
 		_front_view = true  # cámara delante del personaje, mirándolo de frente
 	elif OS.get_cmdline_user_args().has("--side"):
 		_debug_camera_yaw = PI / 2.0  # cámara a su derecha, mirándolo de perfil
+	for arg in OS.get_cmdline_user_args():
+		if arg.begins_with("--dist="):  # distancia de la cámara (en bloques), para ver de cerca
+			_camera_distance = float(arg.trim_prefix("--dist=")) * B
 
 
 ## Tecla de movimiento pulsada (siempre "no" mientras hay una pantalla abierta).

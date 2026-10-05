@@ -6,6 +6,8 @@ class_name SkinComposer
 ## Si existe USER_SKIN_PATH (una skin pintada a mano, p. ej. con Blockbench), se usa esa.
 
 const USER_SKIN_PATH := "user://skins/skin.png"
+## Capas del náufrago sacadas del arte conceptual; si no están, se pinta la skin por código.
+const CASTAWAY_DIR := "res://assets/skins/castaway/"
 
 const DEFAULT_OPTIONS := {
 	"skin": Color8(222, 170, 132),
@@ -45,6 +47,8 @@ static func load_player_skin(options := DEFAULT_OPTIONS) -> ImageTexture:
 static func compose(options: Dictionary) -> Image:
 	var o := DEFAULT_OPTIONS.duplicate()
 	o.merge(options, true)
+	if ResourceLoader.exists(CASTAWAY_DIR + "base.png"):
+		return _compose_castaway(o)
 	var img := Image.create(SkinModel.TEXTURE_SIZE, SkinModel.TEXTURE_SIZE, false, Image.FORMAT_RGBA8)
 	img.fill(Color(0, 0, 0, 0))  # la capa exterior queda transparente salvo lo que se pinte
 	var slim: bool = o["slim"]
@@ -78,6 +82,37 @@ static func compose(options: Dictionary) -> Image:
 
 	# 4. Un poco de textura: variación de tono píxel a píxel (como pintado a mano).
 	_add_grain(img)
+	return img
+
+
+## El náufrago del arte conceptual (tools/extract_skin.gd): skin al doble de resolución (128x128,
+## misma distribución). Sin ropa va en ropa interior; cada prenda puesta es una capa encima.
+static func _compose_castaway(o: Dictionary) -> Image:
+	var img := _castaway_layer("base")
+	var layers := []
+	if o["pants_style"] == "largo":
+		layers.append("pants")
+	if o["shirt_style"] == "camiseta":
+		layers.append("shirt")
+	if o["belt"]:
+		layers.append("belt")
+	for layer: String in layers:
+		var top := _castaway_layer(layer)
+		img.blend_rect(top, Rect2i(Vector2i.ZERO, top.get_size()), Vector2i.ZERO)
+	if o["straps"]:  # correas de la mochila por el pecho (2 px de ancho: la skin va al doble)
+		var front: Rect2i = SkinModel.face_rects(Vector2i(16, 16) * 2, Vector3i(8, 12, 4) * 2)["front"]
+		for x in [2, 12]:
+			img.fill_rect(Rect2i(front.position.x + x, front.position.y, 2, 18), STRAP)
+			img.fill_rect(Rect2i(front.position.x + x, front.position.y + 4, 2, 1), STRAP.lightened(0.15))
+		img.fill_rect(Rect2i(front.position.x + 2, front.position.y + 10, 12, 2), STRAP)
+	return img
+
+
+static func _castaway_layer(name: String) -> Image:
+	var img := (load(CASTAWAY_DIR + name + ".png") as Texture2D).get_image()
+	if img.is_compressed():
+		img.decompress()
+	img.convert(Image.FORMAT_RGBA8)
 	return img
 
 

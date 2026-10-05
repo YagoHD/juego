@@ -40,3 +40,15 @@ siendo una skin normal de Minecraft.
 - [`PlayerAvatar`](../scripts/player/player_avatar.gd): el cuerpo animado (andar, respirar,
   balancearse, parpadear y, tras 15 s quieto, estirarse / sentadillas / salto / voltereta).
 - `Player.apply_skin(textura, estrecho)` cambia la skin en caliente (cuerpo y brazo).
+
+## El náufrago del arte conceptual (skin en alta resolución)
+
+`tools/extract_skin.gd` saca la skin de `docs/concept/personaje_a_cuerpo.png` (cuerpo en ropa
+interior, vistas de delante, lado y detrás) y de `personaje_b_ropa.png` (la ropa puesta) y la guarda
+en `assets/skins/castaway/`: `base.png` y las capas `shirt.png`, `pants.png` y `belt.png`. Son de
+**128x128**: la misma distribución de Minecraft al doble (la cara mide 16x16). El modelo 3D no cambia:
+las coordenadas de textura van de 0 a 1, así que vale cualquier tamaño.
+
+Si existe `base.png`, `SkinComposer` usa estas capas en vez de pintar la skin por código: sin ropa,
+ropa interior; cada prenda puesta se pone encima. Una skin propia en `user://skins/skin.png` (64x64)
+sigue mandando sobre todo.
