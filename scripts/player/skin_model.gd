@@ -23,6 +23,14 @@ const JOINT_OVERLAP := 2.0    # px que el segmento inferior se mete en el superi
 const JOINT_UNDERLAP := 1.0   # px que el segmento superior baja dentro del inferior
 const HIP_OVERLAP := 2.5      # px que el muslo sube dentro del torso (sin hueco en la cadera)
 const JOINT_INSET := 0.05     # px de estrechamiento de las piezas que se solapan (evita parpadeos)
+## Cuerpo de cubitos (VoxelBody) con manos de 5 dedos (VoxelHand) en vez de cajas lisas.
+const VOXEL := true
+const HAND_CUT := 2           # px del final del brazo que se cambian por la mano de cubitos
+## Redondeo de las aristas de cada parte (px) y si se redondean también arriba y abajo.
+const ROUNDING := {"head": [1.5, true], "body": [1.0, false], "arm_right": [0.75, false],
+	"arm_left": [0.75, false], "leg_right": [0.75, false], "leg_left": [0.75, false]}
+
+static var _voxel_image: Image  # skin de la que salen los colores de los cubitos (mientras se construye)
 
 ## Partes: tamaño (px), origen en la imagen de la capa base y de la exterior, pivote (px, desde
 ## los pies) y esquina mínima de la caja respecto al pivote. "inflate": cuánto sobresale la capa
@@ -104,6 +112,10 @@ static func part_mesh(part: String, slim: bool, overlay: bool, rows := Vector2i(
 		else Rect2(front.position.x, front.position.y + row_from, front.size.x, 1)
 	rects["bottom"] = Rect2(full["bottom"]) if row_to == size.y \
 		else Rect2(front.position.x, front.position.y + row_to - 1, front.size.x, 1)
+	if VOXEL and _voxel_image != null:
+		var rounding: Array = ROUNDING[part]
+		return VoxelBody.build(lo, hi, rects, _voxel_image, overlay, 0.0 if overlay else float(rounding[0]),
+			bool(rounding[1]), rows.x + (7 if overlay else 0))
 	return _box_mesh(lo, hi, rects)
 
 
@@ -185,11 +197,20 @@ static func make_part(part: String, texture: Texture2D, slim: bool, layer: int, 
 	pivot.position = Vector3(PARTS[part]["pivot"]) * PIXEL
 	if slim and part.begins_with("arm"):
 		pivot.position.x -= signf(pivot.position.x) * 0.5 * PIXEL
-	var material := make_material(texture, on_top)
+	var material: Material = make_material(texture, on_top)
+	_voxel_image = null
+	if VOXEL:
+		_voxel_image = texture.get_image()
+		if _voxel_image.is_compressed():
+			_voxel_image.decompress()
+		_voxel_image.clear_mipmaps()
+		_voxel_image.convert(Image.FORMAT_RGBA8)
+		material = make_voxel_material(on_top)
 
 	if not is_limb(part):
 		for overlay in [false, true]:
 			pivot.add_child(_mesh_node(part_mesh(part, slim, overlay), material, layer, on_top))
+		_voxel_image = null
 		return pivot
 
 	var size := part_size(part, slim)
@@ -199,15 +220,46 @@ static func make_part(part: String, texture: Texture2D, slim: bool, layer: int, 
 	lower.name = "lower"
 	lower.position = joint * PIXEL
 	pivot.add_child(lower)
+	# Con manos de cubitos, el final del brazo (la mano de la skin) se cambia por la mano.
+	var arm_hand := VOXEL and part.begins_with("arm")
+	var lower_end := size.y - HAND_CUT if arm_hand else size.y
 	for overlay in [false, true]:
 		# Segmento superior: baja un poco dentro del inferior y, en las piernas, sube dentro del
 		# torso; así al doblar codos, rodillas o caderas no se ven rajas entre las piezas.
 		var hip := HIP_OVERLAP if part.begins_with("leg") else 0.0
 		pivot.add_child(_mesh_node(part_mesh(part, slim, overlay, Vector2i(0, JOINT_ROW),
 			Vector3.ZERO, hip, JOINT_INSET if hip > 0.0 else 0.0, JOINT_UNDERLAP), material, layer, on_top))
-		lower.add_child(_mesh_node(part_mesh(part, slim, overlay, Vector2i(JOINT_ROW, size.y),
+		lower.add_child(_mesh_node(part_mesh(part, slim, overlay, Vector2i(JOINT_ROW, lower_end),
 			joint, JOINT_OVERLAP, JOINT_INSET * 2.0), material, layer, on_top))
+	if arm_hand:
+		var hand := VoxelHand.new()
+		hand.name = "hand"
+		hand.position = Vector3(0, -(lower_end - JOINT_ROW), 0) * PIXEL
+		lower.add_child(hand)
+		hand.build(_skin_color(part, slim), part == "arm_right", material, layer, on_top)
+	_voxel_image = null
 	return pivot
+
+
+## Color de la piel de una parte (el antebrazo, en el centro de su cara de delante).
+static func _skin_color(part: String, slim: bool) -> Color:
+	var size := part_size(part, slim)
+	var front: Rect2i = face_rects(PARTS[part]["base"], size)["front"]
+	var k := _voxel_image.get_width() / TEXTURE_SIZE
+	return _voxel_image.get_pixel(int((front.position.x + front.size.x * 0.5) * k), int((front.position.y + 8.5) * k))  # el antebrazo
+
+
+## Material de los cubitos: el color va en cada vértice.
+static func make_voxel_material(on_top := false) -> StandardMaterial3D:
+	var material := StandardMaterial3D.new()
+	material.vertex_color_use_as_albedo = true
+	material.vertex_color_is_srgb = true
+	material.roughness = 0.9
+	if on_top:
+		material.no_depth_test = true
+		material.render_priority = 10
+		material.disable_receive_shadows = true
+	return material
 
 
 static func _mesh_node(mesh: ArrayMesh, material: Material, layer: int, on_top: bool) -> MeshInstance3D:

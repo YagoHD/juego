@@ -25,6 +25,7 @@ var _arm_right: Node3D
 var _leg_left: Node3D
 var _leg_right: Node3D
 var _held: MeshInstance3D
+var _item_id := ""        # lo que lleva en la mano (para el agarre al rehacer el cuerpo)
 var _lids: Node3D          # párpados (visibles un instante al parpadear)
 var _backpack: Node3D      # mochila a la espalda (visible si la lleva puesta)
 var _backpack_kind := ""     # id de la mochila que lleva ("" = ninguna)
@@ -76,6 +77,7 @@ func build(texture: Texture2D, slim: bool) -> void:
 
 	_build_lids(texture)
 	_build_backpack()
+	set_item(_item_id)
 
 
 func _add_part(part: Node3D) -> Node3D:
@@ -156,6 +158,13 @@ func _add_backpack_box(pos_px: Vector3, size_px: Vector3, color: Color) -> void:
 
 
 func set_item(id: String) -> void:
+	_item_id = id
+	var hand := _arm_right.get_node_or_null("lower/hand") as VoxelHand if _arm_right != null else null
+	if hand != null:
+		hand.grip_for(id)  # los dedos se cierran según lo que lleve
+		if _held != null:
+			# Con mango: dentro del puño; si no, delante de la palma.
+			_held.position = (Vector3(0.0, -7.0, -1.4) if id in VoxelHand.HANDLED else Vector3(0.0, -7.2, -2.4)) * SkinModel.PIXEL
 	if _held != null:
 		_held.visible = id != ""  # "" = mano vacía
 		if id == "":

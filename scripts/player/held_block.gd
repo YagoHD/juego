@@ -70,6 +70,11 @@ func _show_item(id: String) -> void:
 	# El objeto (cubo o dibujo con grosor), dibujado siempre por encima del mundo y del brazo.
 	# "" = mano vacía.
 	_block_mesh.visible = id != ""
+	var hand := _forearm.get_node_or_null("hand") as VoxelHand if _forearm != null else null
+	if hand != null:
+		hand.grip_for(id)  # los dedos se cierran según lo que lleve
+		# Con mango: dentro del puño; si no, delante de la palma.
+		_block_mesh.position = (Vector3(0.0, -7.0, -1.4) if id in VoxelHand.HANDLED else Vector3(0.0, -7.2, -2.6)) * SkinModel.PIXEL
 	if id == "":
 		return
 	var held_size := BLOCK_SIZE * (1.6 if ItemDB.block_of(id) < 0 else 1.0)
