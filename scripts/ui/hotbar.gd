@@ -141,10 +141,5 @@ func _refresh() -> void:
 	_name_label.text = "" if selected_stack.is_empty() else ItemDB.display_name(selected_stack["id"])
 
 
-func _slot_style(selected: bool) -> StyleBoxFlat:
-	var style := StyleBoxFlat.new()
-	style.bg_color = Color(0.08, 0.09, 0.11, 0.55)
-	style.set_corner_radius_all(6)
-	style.set_border_width_all(3 if selected else 1)
-	style.border_color = Color(1, 1, 1, 0.95) if selected else Color(1, 1, 1, 0.25)
-	return style
+func _slot_style(selected: bool) -> StyleBox:
+	return UiTheme.slot_light(0.95) if selected else UiTheme.slot(0.9)

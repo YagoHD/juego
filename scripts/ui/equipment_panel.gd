@@ -101,9 +101,10 @@ func _refresh() -> void:
 		var worn: String = _player.equipment[slot]
 		var icon: TextureRect = view.get_node("icon")
 		if worn == "":
-			# Silueta apagada de lo que va en ese hueco.
-			icon.texture = ItemDB.icon(slot)
-			icon.modulate = Color(1, 1, 1, 0.18)
+			# Silueta gris de lo que va en ese hueco (la dibujada; si no, el icono apagado).
+			var outline := UiTheme.icon("slot_" + slot)
+			icon.texture = outline if outline != null else ItemDB.icon(slot)
+			icon.modulate = Color(1, 1, 1, 0.75 if outline != null else 0.18)
 		else:
 			icon.texture = ItemDB.icon(worn)
 			icon.modulate = Color.WHITE

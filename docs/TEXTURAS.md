@@ -140,7 +140,8 @@ Hojas hechas (`docs/concept/`):
 | Grietas al picar (5 fases) | 🟡 | 11 (nº 6) |
 | Trocitos al romper, salpicadura de agua, espuma | 🟡 | 11 (nº 4, 5, 12) |
 | Nubes, sol, luna, estrellas, lluvia | 🟡 | 11 (nº 7-11) |
-| Inventario, fabricación, barra rápida, menús, cofre, HUD, título | ❌ | prompts para ChatGPT web: `docs/PROMPT_UI_CHATGPT.md` (UI-1 a UI-8) |
+| Paneles, huecos, botones, barras e iconos de la interfaz | ✅ | ui1_piezas, ui2_iconos (tools/extract_ui.gd); pantallas de ejemplo ui3, ui5-ui8; falta ui4 (fabricar) |
+| Inventario, fabricación, barra rápida, menús, cofre, HUD, título | 🟡 | prompts para ChatGPT web: `docs/PROMPT_UI_CHATGPT.md` (UI-1 a UI-8) |
 | Páginas del diario, logo | 🟡 | 12 |
 
 ---

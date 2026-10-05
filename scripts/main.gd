@@ -435,8 +435,8 @@ func _build_hud() -> void:
 
 	_hotbar = Hotbar.new()
 	canvas.add_child(_hotbar)
-	_hunger_bar = _make_need_bar(canvas, 0, "Hambre", Color(0.85, 0.55, 0.2))
-	_thirst_bar = _make_need_bar(canvas, 1, "Sed", Color(0.3, 0.6, 0.9))
+	_hunger_bar = _make_need_bar(canvas, 0, "Hambre", Color(0.85, 0.55, 0.2), "hunger", "orange")
+	_thirst_bar = _make_need_bar(canvas, 1, "Sed", Color(0.3, 0.6, 0.9), "thirst", "blue")
 	_objectives = Objectives.new()
 	add_child(_objectives)
 	_objectives.build_ui(canvas)
@@ -923,7 +923,7 @@ func _sleep(at: Vector3) -> void:
 
 
 ## Barrita de hambre o sed, abajo a la izquierda (fila 0 o 1).
-func _make_need_bar(canvas: CanvasLayer, row: int, text: String, color: Color) -> ProgressBar:
+func _make_need_bar(canvas: CanvasLayer, row: int, text: String, color: Color, icon_name: String, fill_name: String) -> ProgressBar:
 	var holder: Control
 	if row == 0:
 		holder = VBoxContainer.new()
@@ -940,13 +940,23 @@ func _make_need_bar(canvas: CanvasLayer, row: int, text: String, color: Color) -
 	var row_box := HBoxContainer.new()
 	row_box.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	holder.add_child(row_box)
-	var label := Label.new()
-	label.text = text
-	label.custom_minimum_size = Vector2(60, 0)
-	label.add_theme_font_size_override("font_size", 13)
-	label.add_theme_color_override("font_outline_color", Color.BLACK)
-	label.add_theme_constant_override("outline_size", 4)
-	row_box.add_child(label)
+	var icon := UiTheme.icon(icon_name)
+	if icon != null:  # el icono dibujado (pan, gota); si no, el nombre
+		var picture := TextureRect.new()
+		picture.texture = icon
+		picture.custom_minimum_size = Vector2(26, 26)
+		picture.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		picture.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		picture.tooltip_text = text
+		row_box.add_child(picture)
+	else:
+		var label := Label.new()
+		label.text = text
+		label.custom_minimum_size = Vector2(60, 0)
+		label.add_theme_font_size_override("font_size", 13)
+		label.add_theme_color_override("font_outline_color", Color.BLACK)
+		label.add_theme_constant_override("outline_size", 4)
+		row_box.add_child(label)
 	var bar := ProgressBar.new()
 	bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	bar.custom_minimum_size = Vector2(150, 12)
@@ -962,6 +972,9 @@ func _make_need_bar(canvas: CanvasLayer, row: int, text: String, color: Color) -
 	fill.set_corner_radius_all(4)
 	bar.add_theme_stylebox_override("background", bg)
 	bar.add_theme_stylebox_override("fill", fill)
+	if icon != null:
+		bar.custom_minimum_size = Vector2(150, 22)
+		UiTheme.style_bar(bar, fill_name)
 	row_box.add_child(bar)
 	return bar
 
