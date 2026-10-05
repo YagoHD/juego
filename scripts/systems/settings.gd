@@ -24,6 +24,7 @@ static var shadows := 2                          # índice de SHADOW_NAMES
 static var antialias := 1                        # índice de AA_NAMES
 static var relief := true                        # relieve de las texturas de cerca
 static var far_trees := true                     # árboles sencillos a lo lejos
+static var realistic := true                     # luz realista (luz rebotada, sombras de contacto, brillo, bruma)
 static var _loaded := false
 
 
@@ -47,6 +48,7 @@ static func load_settings() -> void:
 	antialias = int(cfg.get_value("graficos", "suavizado", antialias))
 	relief = bool(cfg.get_value("graficos", "relieve", relief))
 	far_trees = bool(cfg.get_value("graficos", "arboles_lejanos", far_trees))
+	realistic = bool(cfg.get_value("graficos", "luz_realista", realistic))
 	apply_volume()
 
 
@@ -65,6 +67,7 @@ static func save_settings() -> void:
 	cfg.set_value("graficos", "suavizado", antialias)
 	cfg.set_value("graficos", "relieve", relief)
 	cfg.set_value("graficos", "arboles_lejanos", far_trees)
+	cfg.set_value("graficos", "luz_realista", realistic)
 	cfg.save(PATH)
 	apply_volume()
 

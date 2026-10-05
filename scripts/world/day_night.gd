@@ -95,6 +95,7 @@ func setup(parent: Node3D, fog_begin: float, fog_end: float, fog_max: float) -> 
 	var world_env := WorldEnvironment.new()
 	world_env.environment = _env
 	parent.add_child(world_env)
+	_apply_realistic()
 
 	_clouds = Clouds.new()
 	parent.add_child(_clouds)
@@ -216,3 +217,38 @@ func apply_graphics() -> void:
 			continue
 		l.directional_shadow_max_distance = distance if l == _sun else distance * 0.6
 		l.directional_shadow_mode = mode
+		# Sombras suaves que se difuminan con la distancia al objeto (como las del sol de verdad).
+		l.light_angular_distance = 0.6 if Settings.realistic and l == _sun else 0.0
+	_apply_realistic()
+
+
+## Luz realista (Opciones > Gráficos): luz que rebota en las superficies cercanas, sombras de
+## contacto en las esquinas, brillo alrededor del sol y de lo muy iluminado, tonos de cine y una
+## bruma que deja ver los rayos de sol. Apagada: el aspecto plano de antes.
+func _apply_realistic() -> void:
+	if _env == null:
+		return
+	var on := Settings.realistic and not OS.get_cmdline_user_args().has("--luz=plana")  # (para comparar en capturas)
+	_env.tonemap_mode = Environment.TONE_MAPPER_ACES if on else Environment.TONE_MAPPER_FILMIC
+	_env.tonemap_exposure = 0.95 if on else 1.0
+	_env.ssao_enabled = on
+	_env.ssao_radius = 1.2
+	_env.ssao_intensity = 2.2
+	_env.ssao_power = 1.6
+	_env.ssao_detail = 0.6
+	_env.ssil_enabled = on
+	_env.ssil_radius = 4.0
+	_env.ssil_intensity = 1.2
+	_env.glow_enabled = on
+	_env.glow_intensity = 0.35
+	_env.glow_bloom = 0.04
+	_env.glow_hdr_threshold = 0.9
+	_env.glow_blend_mode = Environment.GLOW_BLEND_MODE_SOFTLIGHT
+	_env.adjustment_enabled = on
+	_env.adjustment_saturation = 1.08
+	_env.adjustment_contrast = 1.1
+	_env.volumetric_fog_enabled = on
+	_env.volumetric_fog_density = 0.0012
+	_env.volumetric_fog_anisotropy = 0.6  # la luz se ve más mirando hacia el sol
+	_env.volumetric_fog_length = 96.0
+	_env.volumetric_fog_sky_affect = 0.0

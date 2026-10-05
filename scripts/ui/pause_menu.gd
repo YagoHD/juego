@@ -175,6 +175,8 @@ func _build_graphics() -> Control:
 		func(i: int) -> void: Settings.shadows = i))
 	box.add_child(_choice("Suavizado de bordes", Settings.AA_NAMES, Settings.antialias,
 		func(i: int) -> void: Settings.antialias = i))
+	box.add_child(_check("Luz realista (luz rebotada, bruma, brillo)", Settings.realistic,
+		func(on: bool) -> void: Settings.realistic = on))
 	box.add_child(_check("Relieve de las texturas de cerca", Settings.relief,
 		func(on: bool) -> void: Settings.relief = on))
 	box.add_child(_check("Árboles sencillos a lo lejos (al volver a entrar)", Settings.far_trees,
