@@ -75,9 +75,17 @@ func update() -> void:
 		var shape := main._arg("--shape=")  # receta dibujada en el suelo delante del jugador
 		if shape != "":
 			_debug_lay_shape(shape)
-		if OS.get_cmdline_user_args().has("--leaves"):  # postura de cruzar hojas (manos delante de la cara)
+		if OS.get_cmdline_user_args().has("--leaves") or OS.get_cmdline_user_args().has("--veil"):  # cruzar hojas (--veil: y el velo verde)
 			main._player.get("_avatar").set_in_leaves(true)
 			main._player.get("_held").set_in_leaves(true)
+			if OS.get_cmdline_user_args().has("--veil"):
+				var leaf_id := -1  # un trozo de hojas de verdad donde está la cámara
+				for piece in PrefabLibrary.pieces(PrefabLibrary.index_of("t_oak_1")):
+					if PrefabLibrary.kind(piece[1]) == "leaves" and PrefabLibrary.box(piece[1]).size.is_equal_approx(Vector3.ONE):
+						leaf_id = piece[1]
+						break
+				var cam: Camera3D = main._player.get_viewport().get_camera_3d()
+				WorldVoxels.tool().set_voxel(main._player.aim.world_to_voxel(cam.global_position), leaf_id)
 		if OS.get_cmdline_user_args().has("--working"):
 			main._player.debug_work_pose()
 		if main._arg("--drop=") != "":  # soltar un objeto delante del jugador para verlo en el suelo

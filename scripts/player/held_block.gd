@@ -25,7 +25,9 @@ var _equip := 0.0   # 1 al cambiar de bloque (el brazo viene desde abajo), baja 
 var _bob_phase := 0.0
 var _bob_amount := 0.0
 var _in_leaves := false
-var _leaves := 0.0  # 0..1: la mano sube delante de la cara apartando hojas
+var _leaves := 0.0  # 0..1: las manos suben delante de la cara apartando hojas
+var _left: Node3D          # hombro izquierdo: solo sale entre hojas (se tapa los ojos)
+var _left_forearm: Node3D
 
 
 func _ready() -> void:
@@ -49,6 +51,17 @@ func set_skin(texture: Texture2D, slim: bool) -> void:
 	_block_mesh.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	_forearm = _arm.get_node("lower") as Node3D
 	_forearm.add_child(_block_mesh)
+	# Brazo izquierdo: va aparte, colgado también de la cámara (este nodo es el hombro derecho).
+	if _left != null:
+		_left.queue_free()
+	_left = Node3D.new()
+	_left.scale = Vector3.ONE * ARM_SCALE
+	_left.visible = false
+	var arm_l := SkinModel.make_part("arm_left", texture, slim, 1, true)
+	arm_l.position = Vector3.ZERO
+	_left.add_child(arm_l)
+	_left_forearm = arm_l.get_node("lower") as Node3D
+	get_parent().add_child.call_deferred(_left)
 	if _item_id != "":
 		_show_item(_item_id)
 
@@ -115,6 +128,24 @@ func _process(delta: float) -> void:
 		var a := sin(Time.get_ticks_msec() * 0.005)
 		position += Vector3(-0.10 + 0.04 * a, 0.07, 0.04) * w
 		rotation += Vector3(0.12, 0.35 + 0.12 * a, 0.0) * w
+		_update_left(w, a)
+	elif _left != null:
+		_left.visible = false
 	# Codo algo doblado sosteniendo el bloque; al golpear se estira hacia él.
 	if _forearm != null:
 		_forearm.rotation.x = ELBOW_REST - 0.3 * s
+
+
+## Mano izquierda entre hojas: sube desde abajo, más alta que la derecha, delante de los ojos
+## (como protegiéndose de las ramas), con un vaivén a contratiempo de la otra.
+func _update_left(w: float, a: float) -> void:
+	if _left == null:
+		return
+	_left.visible = visible and w > 0.01
+	if not _left.visible:
+		return
+	var rest := Vector3(-REST_POSITION.x, REST_POSITION.y, REST_POSITION.z)
+	_left.position = rest + Vector3(0.08 - 0.02 * a, 0.15 - 0.35 * (1.0 - w), -0.04)
+	_left.rotation = Vector3(REST_ROTATION.x + 0.3, -REST_ROTATION.y - 0.2 + 0.08 * a, -REST_ROTATION.z)
+	if _left_forearm != null:
+		_left_forearm.rotation.x = 0.9
