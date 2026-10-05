@@ -105,6 +105,19 @@ static func reach() -> int:
 	return r
 
 
+static var _leaf_material: ShaderMaterial
+
+
+## Material de las hojas: el mismo color, pero se ven también desde dentro de la copa
+## (assets/shaders/prefab_leaves.gdshader).
+static func leaf_material() -> ShaderMaterial:
+	if _leaf_material == null:
+		_leaf_material = ShaderMaterial.new()
+		_leaf_material.shader = load("res://assets/shaders/prefab_leaves.gdshader")
+		_leaf_material.set_shader_parameter("palette", load(DIR + "palette.png"))
+	return _leaf_material
+
+
 static func material() -> StandardMaterial3D:
 	if _material == null:
 		_material = StandardMaterial3D.new()
@@ -120,7 +133,7 @@ static func make_model(id: int) -> VoxelBlockyModelMesh:
 	var model := VoxelBlockyModelMesh.new()
 	var mesh: ArrayMesh = _mesh[id]
 	model.mesh = mesh
-	model.set_material_override(0, material())
+	model.set_material_override(0, leaf_material() if kind(id) == "leaves" else material())
 	# Las piezas que llenan el bloque entero tapan las caras de sus vecinas (las copas de los
 	# árboles son casi todo piezas enteras: así no se dibuja su interior).
 	var box := mesh.get_aabb()

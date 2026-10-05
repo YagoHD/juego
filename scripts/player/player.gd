@@ -103,7 +103,6 @@ var _crouch := 0.0           # 0..1: cuánto baja la vista al agacharse
 var _step_distance := 0.0     # metros andados desde el último paso (para el sonido)
 var _leaf_distance := 0.0     # metros andados entre hojas desde el último roce
 var _in_leaves := false
-var _leaf_veil: MeshInstance3D
 var _was_in_air := false
 var _loot_rng := RandomNumberGenerator.new()
 var _hand_light: OmniLight3D  # luz de la antorcha que se lleva en la mano
@@ -162,18 +161,6 @@ func _ready() -> void:
 
 	_held = HeldBlock.new()
 	_camera.add_child(_held)
-
-	_leaf_veil = MeshInstance3D.new()  # todo verde con la cámara dentro de una copa
-	var veil_quad := QuadMesh.new()
-	veil_quad.size = Vector2(4.0, 4.0)
-	_leaf_veil.mesh = veil_quad
-	_leaf_veil.position = Vector3(0, 0, -0.5)
-	var veil_material := ShaderMaterial.new()
-	veil_material.shader = load("res://assets/shaders/leaf_veil.gdshader")
-	_leaf_veil.material_override = veil_material
-	_leaf_veil.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	_leaf_veil.visible = false
-	_camera.add_child(_leaf_veil)
 
 	# Skin del jugador (formato Minecraft): la usan el cuerpo y el brazo en primera persona.
 	update_appearance()
@@ -1065,7 +1052,6 @@ func _update_leaves(delta: float) -> void:
 	var was := _in_leaves
 	_in_leaves = _leaf_at(global_position + Vector3.UP * BODY_HEIGHT * 0.25) or _leaf_at(global_position + Vector3.UP * BODY_HEIGHT * 0.6) \
 		or _leaf_at(_head.global_position)
-	_leaf_veil.visible = _leaf_at(_camera.global_position)
 	if _in_leaves != was:
 		_avatar.set_in_leaves(_in_leaves)
 		_held.set_in_leaves(_in_leaves)

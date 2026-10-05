@@ -256,4 +256,5 @@ Todo lo de Kenney y OpenGameArt es CC0 (créditos en `assets/third_party/*/` y
 - Las copas ya **no están huecas**: al picar un trozo de hojas se ven las hojas de dentro, no el paisaje de detrás.
 - Se siguen **atravesando**, pero dentro de una copa vas a menos de la mitad de velocidad.
   Suena un roce de ramas, como al pasar por una zarza, y el personaje se pone las manos delante de la cara
-  (la izquierda más alta, tapándose los ojos). Con la cabeza dentro de la copa se ve todo verde.
+  (la izquierda más alta, tapándose los ojos). Desde dentro de la copa se ven las hojas por todos lados,
+  sin ver a través (las caras de dentro solo se dibujan en el árbol que tienes al lado: no cuesta FPS).

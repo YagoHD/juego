@@ -75,10 +75,10 @@ func update() -> void:
 		var shape := main._arg("--shape=")  # receta dibujada en el suelo delante del jugador
 		if shape != "":
 			_debug_lay_shape(shape)
-		if OS.get_cmdline_user_args().has("--leaves") or OS.get_cmdline_user_args().has("--veil"):  # cruzar hojas (--veil: y el velo verde)
+		if OS.get_cmdline_user_args().has("--leaves") or OS.get_cmdline_user_args().has("--in-canopy"):  # cruzar hojas (--in-canopy: con la cámara dentro de un trozo de hojas)
 			main._player.get("_avatar").set_in_leaves(true)
 			main._player.get("_held").set_in_leaves(true)
-			if OS.get_cmdline_user_args().has("--veil"):
+			if OS.get_cmdline_user_args().has("--in-canopy"):
 				var leaf_id := -1  # un trozo de hojas de verdad donde está la cámara
 				for piece in PrefabLibrary.pieces(PrefabLibrary.index_of("t_oak_1")):
 					if PrefabLibrary.kind(piece[1]) == "leaves" and PrefabLibrary.box(piece[1]).size.is_equal_approx(Vector3.ONE):
