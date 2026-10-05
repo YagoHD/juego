@@ -319,7 +319,7 @@ func _prefab_at(wx: int, wz: int) -> int:
 			if h < 0.0035:
 				return PrefabLibrary.index_of("t_bush_1" if pick < 0.5 else "t_bush_2")
 			if h < 0.0045:
-				return PrefabLibrary.index_of("stump_block")  # tocón viejo (no rebrota)
+				return PrefabLibrary.index_of("stump")  # tocón viejo grande, con musgo (no rebrota)
 			if h < 0.0075:
 				return PrefabLibrary.index_of("mushrooms_red" if pick < 0.5 else "mushrooms_tan")
 			if h < 0.0085:

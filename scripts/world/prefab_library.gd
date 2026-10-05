@@ -131,12 +131,17 @@ static func make_model(id: int) -> VoxelBlockyModelMesh:
 		model.collision_aabbs = []
 	else:
 		model.collision_aabbs = [mesh.get_aabb()]
-		if prefab_of(id).begins_with("t_"):
+		if _box_collision(prefab_of(id)):
 			model.mesh = _with_box_collision(mesh)
 			model.set_material_override(1, _invisible())
 			model.set_mesh_collision_enabled(0, false)
 			model.set_mesh_collision_enabled(1, true)
 	return model
+
+
+## ¿Choca con cajas? Los árboles, palmeras, rocas y tocón grandes (muchos cubitos por trozo).
+static func _box_collision(prefab_name: String) -> bool:
+	return prefab_name.begins_with("t_") or prefab_name.begins_with("palm") or prefab_name.begins_with("rock") or prefab_name == "stump"
 
 
 ## La madera de los árboles choca con una caja (la de su trozo), no con su forma de cubitos: crear

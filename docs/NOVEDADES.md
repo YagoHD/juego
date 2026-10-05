@@ -241,3 +241,12 @@ Todo lo de Kenney y OpenGameArt es CC0 (créditos en `assets/third_party/*/` y
   las cuestas), no nacen en cuestas muy empinadas, hay una distancia mínima entre troncos y los
   arbustos y rocas no nacen bajo la copa de un árbol.
 - Arreglo: el guardado automático no guardaba los árboles talados (podían volver al recargar).
+
+## Hoja 4: palmeras, rocas, setas y trigo (5 de octubre)
+
+- Las **palmeras** (alta, curvada y baja), las **tres rocas con musgo**, el **tocón viejo grande**
+  con raíces, las **setas** (rojas con puntos y marrones) y el **trigo** (verde y maduro) se han
+  rehecho en cubitos como en `docs/concept/hoja4_palmeras_rocas.png`. Ya no queda nada de Kenney en la isla.
+- Los árboles talados (si dejas el tocón) **rebrotan a los 2 días de juego**. El tiempo corre
+  aunque te vayas lejos; crece cuando vuelves. Con T (adelantar el reloj) también va más deprisa.
+- Arreglado: al juntarse montones iguales en el suelo a veces se perdían objetos (p. ej. madera al talar).

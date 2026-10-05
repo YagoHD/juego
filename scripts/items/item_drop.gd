@@ -52,6 +52,8 @@ func _ready() -> void:
 
 
 func _physics_process(delta: float) -> void:
+	if is_queued_for_deletion():
+		return  # ya se juntó con otro montón: no debe tragarse más (se perderían)
 	_age += delta
 	if _age > LIFETIME:
 		queue_free()

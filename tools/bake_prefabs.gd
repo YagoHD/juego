@@ -321,6 +321,17 @@ var TREES := [
 ]
 
 
+## Los de la hoja 4 del concepto (NatureBuilder): sustituyen a los de Kenney del mismo nombre.
+var NATURE := {
+	"palm_tall": NatureBuilder.palm_tall.bind(201), "palm_bend": NatureBuilder.palm_bend.bind(202),
+	"palm_short": NatureBuilder.palm_short.bind(203),
+	"rock_a": NatureBuilder.boulder.bind(211), "rock_d": NatureBuilder.rock_pile.bind(212),
+	"rock_tall": NatureBuilder.pillar.bind(213), "stump": NatureBuilder.big_stump.bind(221),
+	"mushrooms_red": NatureBuilder.mushrooms.bind(231, true), "mushrooms_tan": NatureBuilder.mushrooms.bind(232, false),
+	"wheat_a": NatureBuilder.wheat.bind(241, false), "wheat_b": NatureBuilder.wheat.bind(242, true),
+}
+
+
 ## Trocea un árbol de TreeBuilder en bloques. Cada trozo es "leaves", "wood" o "root" según lo
 ## que más tenga. Los cubitos que no se ven (rodeados por los 6 lados) van de un solo color: así
 ## sus caras se juntan y los trozos de dentro de la copa son cubos enteros (tapan a sus vecinos).
@@ -339,7 +350,7 @@ func _cut_tree(prefab_name: String, build: Callable) -> Prefab:
 				hidden = false
 				break
 		if hidden:
-			col = TreeBuilder.LEAF[1] if type == "leaf" else TreeBuilder.BARK[1]
+			col = {"leaf": TreeBuilder.LEAF[1], "rock": NatureBuilder.STONE[1]}.get(type, TreeBuilder.BARK[1])
 		var b := Vector3i(floori(float(c.x) / res), floori(float(c.y) / res), floori(float(c.z) / res))
 		if not blocks.has(b):
 			blocks[b] = {}
@@ -362,7 +373,7 @@ func _cut_tree(prefab_name: String, build: Callable) -> Prefab:
 		# La madera sí: un tronco no debe verse hueco al picarlo.
 		p.meshes.append(_piece_mesh(sub, tree.cells if best == "leaf" else {}, b * res, res))
 		p.outlines.append(_outline(sub, res))
-		p.kinds.append({"leaf": "leaves", "wood": "wood", "root": "root"}[best])
+		p.kinds.append({"leaf": "leaves", "wood": "wood", "root": "root", "rock": "rock", "mushroom": "mushroom", "crop": "crop"}[best])
 		p.fills.append(float(sub.size()) / (res * res * res))
 		var avg := Color(0, 0, 0)
 		for col: Color in sub.values():
@@ -376,6 +387,9 @@ func _init() -> void:
 	DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(OUT))
 	var prefabs: Array[Prefab] = []
 	for entry in LIST:
+		if NATURE.has(entry[0]):
+			prefabs.append(_cut_tree(entry[0], NATURE[entry[0]] as Callable))  # el de la hoja 4, no el de Kenney
+			continue
 		var cells := _voxelize(src_dir.path_join(entry[1] + ".obj"), float(entry[2]))
 		if cells.is_empty():
 			print("FALLO leyendo ", entry[1])
