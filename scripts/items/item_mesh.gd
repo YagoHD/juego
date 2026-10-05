@@ -15,7 +15,8 @@ static func make(id: String, size: float) -> Mesh:
 		return PrefabLibrary.centered_mesh(PrefabLibrary.first_id(BlockAim.SHAPED[block]), size)
 	if block >= 0:
 		return BlockTextures.make_block_mesh(block, size)
-	if VOXEL_MODELS.has(id):
+	# Si ya tiene dibujo del arte conceptual, manda el dibujo (el modelo de Kenney era provisional).
+	if VOXEL_MODELS.has(id) and not ResourceLoader.exists(ItemPainter.OVERRIDE_DIR + id + ".png"):
 		var voxel := _voxel(VOXEL_MODELS[id], size * 1.4)
 		if voxel != null:
 			return voxel

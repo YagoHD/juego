@@ -19,6 +19,9 @@ Hojas hechas (`docs/concept/`):
 | hoja4 | palmeras, rocas y plantas |
 | hoja5 | bloques de árbol y animales |
 | hoja6 | objetos de recolección |
+| hoja7 | herramientas y equipo |
+| hoja8 | comida |
+| hoja9 | objetos que se colocan |
 | hoja10 | decoración, bloques pequeños y objetos sueltos |
 | hoja11 | efectos y cielo |
 | hoja12 | diario y logo |
@@ -97,20 +100,22 @@ Hojas hechas (`docs/concept/`):
 | Concha | ✅ | 6 (nº 10) |
 | Seta | ✅ | 6 (nº 11) |
 | Bayas silvestres | ✅ | 6 (nº 12) |
-| Cuchillo, hacha y pico de piedra | ❌ | prompt **hoja 7** |
-| Lanza | ❌ | prompt **hoja 7** |
-| Antorcha | ❌ | prompt **hoja 7** |
-| Tabla | ❌ | prompt **hoja 7** |
-| Camiseta, pantalón, cinturón | 🟡 | personaje_b (nº 1-3; sirven también de icono) |
-| Mochila improvisada, mochila de marinero | 🟡 | personaje_b (nº 5-6; sirven también de icono) |
-| Diario del capitán | ❌ | prompt **hoja 7** |
-| Pescado crudo y asado | ❌ | prompt **hoja 8** |
-| Cangrejo crudo y asado | ❌ | prompt **hoja 8** |
-| Insecto asado, bayas asadas, semillas tostadas, seta asada | ❌ | prompt **hoja 8** |
-| Torta de pan, manojo de trigo | ❌ | prompt **hoja 8** |
-| Mineral verde (trozo) | ❌ | prompt **hoja 8** |
-| Notas (cinturón, mochila, pico) | ❌ | prompt **hoja 8** |
-| Hoguera, saco de dormir, balsa | ❌ | prompt **hoja 9** |
+| Cuchillo, hacha y pico de piedra | ✅ | 7 (nº 1-3); en la mano, el dibujo con grosor (ya no el modelo de Kenney) |
+| Lanza | ✅ | 7 (nº 4) |
+| Antorcha | ✅ | 7 (nº 5) |
+| Tabla | ✅ | 7 (nº 6) |
+| Camiseta, pantalón, cinturón (icono) | ✅ | 7 (nº 7-9) |
+| Mochila improvisada, mochila de marinero (icono) | ✅ | 7 (nº 10-11) |
+| Diario del capitán (icono) | ✅ | 7 (nº 12) |
+| Pescado crudo y asado | ✅ | 8 (nº 1-2) |
+| Cangrejo crudo y asado | ✅ | 8 (nº 3-4) |
+| Insecto asado, bayas asadas, semillas tostadas, seta asada | ✅ | 8 (nº 5-8) |
+| Torta de pan, manojo de trigo | ✅ | 8 (nº 9-10) |
+| Mineral verde (trozo) | ✅ | 8 (nº 11) |
+| Notas (cinturón, mochila, pico) | ✅ | 8 (nº 12, la misma para las tres) |
+| Hoguera, saco de dormir, balsa (icono) | ✅ | 9 (nº 1, 4, 5) |
+| Hoguera, saco de dormir y balsa colocados en el mundo (modelo 3D) | 🟡 | 9 (nº 1-5); ahora son modelos hechos por código |
+| Antorcha clavada en el suelo | 🟡 | 9 (nº 6) |
 | Hoja, agujas de pino, corteza | 🟡 | 10 (nº 7-9) |
 | Flor roja, flor amarilla (recogidas) | 🟡 | 10 (nº 10-11) |
 | Coco (aún no es un objeto del juego) | 🟡 | 10 (nº 12) |
@@ -144,7 +149,7 @@ Hojas hechas (`docs/concept/`):
 Cómo usarlos (como siempre):
 - Úsalos en la misma conversación de ChatGPT de las hojas anteriores. Si es una conversación nueva, sube antes `docs/concept/hoja2_bloques.png` y pega el prompt 0 de `docs/PROMPT_CONCEPT_ART_2.md`.
 - Una hoja cada vez, y guárdala en `docs/concept/` con su número (hoja7_herramientas.png...).
-- Las **hojas 7, 8 y 9** ya están escritas en `docs/PROMPT_CONCEPT_ART_2.md` (secciones 7, 8 y 9): herramientas y equipo, comida, y objetos que se colocan.
+- Las hojas 7, 8 y 9 ya están hechas.
 
 ## Hoja 10: lo que faltaba (decoración, bloques pequeños y objetos sueltos)
 

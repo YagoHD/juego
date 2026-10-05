@@ -317,12 +317,32 @@ func _sheet5() -> void:
 
 const ITEMS_OUT := "res://assets/textures/items/"
 const ICON := 32
-## Hojas de iconos en cuadrícula 4x3: [hoja, franjas de altura de cada fila (sin el número),
-## objeto de cada casilla ("" = no se usa)].
+## Hojas de iconos: [hoja, columnas de cada fila ([x0, x1] dentro de las líneas de la cuadrícula),
+## filas ([y0, y1]), objetos de cada casilla en orden ("" = no se usa; "a|b" = el mismo dibujo
+## para varios objetos)]. Los números de debajo se quitan solos (_icon).
 const ICON_SHEETS := [
-	["res://docs/concept/hoja6_recoleccion.png", [Vector2i(0, 318), Vector2i(345, 640), Vector2i(680, 955)],
+	["res://docs/concept/hoja6_recoleccion.png",
+		[[[0, 384], [384, 768], [768, 1152], [1152, 1536]]],
+		[[0, 318], [345, 640], [680, 955]],
 		["fiber", "rope", "sticks", "rock", "flint", "sharp_rock", "resin", "seeds",
 		"insect", "shell", "mushroom", "berries"]],
+	["res://docs/concept/hoja7_herramientas.png",
+		[[[8, 302], [318, 606], [622, 915], [932, 1220], [1236, 1528]],
+		[[8, 372], [388, 762], [778, 1142], [1158, 1528]],
+		[[8, 507], [523, 1012], [1028, 1528]]],
+		[[8, 352], [368, 672], [688, 1016]],
+		["stone_knife", "stone_axe", "stone_pick", "spear", "torch", "board", "shirt", "pants",
+		"belt", "rough_backpack", "backpack", "captain_journal"]],
+	["res://docs/concept/hoja8_comida.png",
+		[[[8, 376], [392, 760], [776, 1144], [1160, 1528]]],
+		[[8, 338], [353, 642], [658, 1016]],
+		["raw_fish", "cooked_fish", "raw_crab", "cooked_crab", "roasted_insect", "roasted_berries",
+		"roasted_seeds", "roasted_mushroom", "flatbread", "wheat", "green_ore",
+		"note_belt|note_backpack|note_pick"]],
+	["res://docs/concept/hoja9_colocables.png",
+		[[[8, 504], [520, 1016], [1032, 1528]]],
+		[[8, 504], [520, 1016]],
+		["campfire", "", "", "bedroll", "raft", ""]],
 ]
 
 
@@ -331,15 +351,24 @@ func _icons() -> void:
 	for sheet: Array in ICON_SHEETS:
 		_img = Image.load_from_file(ProjectSettings.globalize_path(sheet[0]))
 		_img.convert(Image.FORMAT_RGBA8)
-		var cell_w := _img.get_width() / 4
-		var names: Array = sheet[2]
-		for i in names.size():
-			if names[i] == "":
-				continue
-			var band: Vector2i = sheet[1][i / 4]
-			var icon := _icon(Rect2i((i % 4) * cell_w, band.x, cell_w, band.y - band.x))
-			icon.save_png(ProjectSettings.globalize_path(ITEMS_OUT + names[i] + ".png"))
-			print("[icono] ", names[i])
+		var col_sets: Array = sheet[1]
+		var rows: Array = sheet[2]
+		var names: Array = sheet[3]
+		var i := 0
+		for row in rows.size():
+			var cols: Array = col_sets[mini(row, col_sets.size() - 1)]
+			for col: Array in cols:
+				if i >= names.size():
+					break
+				var name: String = names[i]
+				i += 1
+				if name == "":
+					continue
+				var ys: Array = rows[row]
+				var icon := _icon(Rect2i(col[0], ys[0], col[1] - col[0], ys[1] - ys[0]))
+				for id in name.split("|"):
+					icon.save_png(ProjectSettings.globalize_path(ITEMS_OUT + id + ".png"))
+					print("[icono] ", id)
 
 
 ## Recorta un objeto de su casilla: el fondo (lo que toca el borde y se parece a él) se vuelve
@@ -378,6 +407,7 @@ func _icon(r: Rect2i) -> Image:
 			var c := cut.get_pixel(x, y)
 			if absf(c.r - bg.r) + absf(c.g - bg.g) + absf(c.b - bg.b) < 0.07:
 				cut.set_pixel(x, y, Color(0, 0, 0, 0))
+	_remove_labels(cut)
 	var lo := Vector2i(w, h)
 	var hi := Vector2i(-1, -1)
 	for y in h:
@@ -412,3 +442,40 @@ func _icon(r: Rect2i) -> Image:
 				col.a = 1.0
 				out.set_pixel(x + 1, y + 1, col)
 	return out
+
+
+## Quita los números de la hoja: trozos sueltos pequeños, grises y oscuros (el objeto es mayor o
+## tiene color; las chispas o semillas sueltas tienen color y se quedan).
+func _remove_labels(img: Image) -> void:
+	var w := img.get_width()
+	var h := img.get_height()
+	var label := PackedInt32Array()
+	label.resize(w * h)
+	label.fill(-1)
+	for start_y in h:
+		for start_x in w:
+			if label[start_y * w + start_x] != -1 or img.get_pixel(start_x, start_y).a < 0.5:
+				continue
+			var part: Array[Vector2i] = []
+			var stack: Array[Vector2i] = [Vector2i(start_x, start_y)]
+			label[start_y * w + start_x] = 1
+			var sat := 0.0
+			var lum := 0.0
+			while not stack.is_empty():
+				var p: Vector2i = stack.pop_back()
+				part.append(p)
+				var c := img.get_pixelv(p)
+				sat += maxf(c.r, maxf(c.g, c.b)) - minf(c.r, minf(c.g, c.b))
+				lum += c.get_luminance()
+				for d in [Vector2i.LEFT, Vector2i.RIGHT, Vector2i.UP, Vector2i.DOWN]:
+					var q: Vector2i = p + d
+					if q.x < 0 or q.y < 0 or q.x >= w or q.y >= h or label[q.y * w + q.x] != -1:
+						continue
+					if img.get_pixelv(q).a < 0.5:
+						continue
+					label[q.y * w + q.x] = 1
+					stack.append(q)
+			var n := part.size()
+			if n < w * h * 0.02 and sat / n < 0.12 and lum / n < 0.5:
+				for p in part:
+					img.set_pixelv(p, Color(0, 0, 0, 0))
