@@ -95,3 +95,17 @@ Guardar como `docs/estilo/biblia.png`. A partir de ahí:
 4. Barco y restos del naufragio.
 5. Lo nuevo (armaduras, animales, enemigos, vecinos) ya sale directamente en el estilo bueno.
 6. La interfaz (marcos de madera, iconos) se revisa al final para que acompañe.
+
+## Más adelante: personas por piezas (tipo puzle)
+
+Idea de Yago (2026-10-07), **aplazada** hasta tener el estilo elegido y personajes base bonitos
+(los actuales no sirven de base). Como en Skyrim, Mount & Blade o Valheim:
+
+- Un **cuerpo base** (hombre y mujer) con huesos, en el estilo elegido, **calvo y con ropa
+  interior neutra**, en pose de T.
+- **Piezas sueltas que encajan en ese cuerpo:** caras, pelos, barbas, cascos, corazas, ropa,
+  botas, guantes, capas. Pedirlas a Meshy **sobre el mismo maniquí** o trocear personajes
+  completos por las articulaciones (`tools/split_character.gd`) y ajustarlos al cuerpo base
+  (colocar y escalar; sin quitar detalle: avisar a Yago antes).
+- Colores por código: tono de piel, pelo, canas, colores de la ropa y de cada facción.
+- Cada vecino o enemigo guarda su **receta** (qué piezas y colores): siempre igual, nunca dos iguales.
