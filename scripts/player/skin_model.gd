@@ -28,6 +28,8 @@ const JOINT_INSET := 0.05     # px de estrechamiento de las piezas que se solapa
 const VOXEL := false
 ## El personaje es el náufrago modelado con cubitos (CastawayModel), no una skin de cajas.
 const CASTAWAY := false
+## El náufrago es el modelo de cajas con esqueleto (BoxModel, tools/modelo_desde_guia.py).
+const BOX_MODEL := true
 ## Pelo de cubos del náufrago de cajas (sale de la guía con tools/skin_desde_guia.py).
 const HAIR_PATH := "res://assets/skins/naufrago/pelo.json"
 ## Cabeza más grande que la de Minecraft (como en Minecraft Dungeons y la guía visual); el pelo
@@ -201,6 +203,9 @@ static func make_material(texture: Texture2D, on_top := false) -> StandardMateri
 ## (hombro, cadera, cuello...). Brazos y piernas llevan además un nodo hijo "lower" en el codo
 ## o la rodilla, con el segmento de abajo: girándolo se dobla la articulación.
 static func make_part(part: String, texture: Texture2D, slim: bool, layer: int, on_top := false) -> Node3D:
+	# El náufrago de cajas con esqueleto (BoxModel, de la guía visual), salvo que haya skin propia.
+	if BOX_MODEL and BoxModel.available() and not FileAccess.file_exists(SkinComposer.USER_SKIN_PATH):
+		return BoxModel.make_part(part, layer, on_top)
 	# El náufrago modelado con cubitos (CastawayModel), salvo que el jugador tenga su propia skin.
 	if CASTAWAY and not FileAccess.file_exists(SkinComposer.USER_SKIN_PATH):
 		return CastawayModel.make_part(part, layer, on_top)

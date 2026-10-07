@@ -324,8 +324,10 @@ func _process(delta: float) -> void:
 			sway * 0.05 - sin(phase) * 0.1 * walk, -sway * 0.02),
 		# Brazo derecho: sostiene el bloque con el codo doblado; al golpear, el brazo sube y el
 		# codo se estira hacia el bloque.
-		"arm_r": Vector3(-arm_swing * 0.6 + 0.15 + s * 1.15, s * 0.3, -s * 0.15 + 0.05 * rest + breath * 0.015 + 0.04 * walk),
-		"elbow_r": 0.75 - s * 0.55,
+		# Con la mano vacía, el brazo cuelga casi recto (como el izquierdo).
+		"arm_r": Vector3(-arm_swing * 0.6 + (0.15 if _item_id != "" else 0.03) + s * 1.15, s * 0.3,
+			-s * 0.15 + 0.05 * rest + breath * 0.015 + 0.04 * walk),
+		"elbow_r": (0.75 if _item_id != "" else 0.15) - s * 0.55,
 		# Brazo izquierdo: balanceo natural; el codo se dobla más cuando va hacia delante.
 		"arm_l": Vector3(arm_swing, 0.0, -0.05 * rest - breath * 0.015 - 0.04 * walk),
 		"elbow_l": 0.15 + 0.2 * walk + 0.55 * maxf(0.0, arm_swing),
@@ -386,6 +388,18 @@ func _apply(pose: Dictionary) -> void:
 	_bend(_arm_left, pose["elbow_l"])
 	_bend(_leg_right, pose["knee_r"])
 	_bend(_leg_left, pose["knee_l"])
+	_flat_foot(_leg_right, pose["leg_r"], pose["knee_r"])
+	_flat_foot(_leg_left, pose["leg_l"], pose["knee_l"])
+
+
+## Tobillo (si el modelo lo tiene): la suela sigue la cadera y no la pierna, así queda plana en el
+## suelo aunque las piernas estén abiertas o las rodillas dobladas; solo se inclina un poco al
+## andar (punta arriba al adelantar la pierna).
+func _flat_foot(limb: Node3D, leg: Vector3, knee: float) -> void:
+	var foot := limb.get_node_or_null("lower/foot") as Node3D
+	if foot == null:
+		return
+	foot.rotation = Vector3(-(leg.x + knee) * 0.85, 0.0, -leg.z)
 
 
 func _bend(limb: Node3D, angle: float) -> void:

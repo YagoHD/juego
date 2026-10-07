@@ -21,6 +21,34 @@ var _pivot: Node3D
 func build(_color: Color, layer: int) -> void:
 	_pivot = Node3D.new()
 	add_child(_pivot)
+	if BoxModel.available() and not FileAccess.file_exists(SkinComposer.USER_SKIN_PATH):
+		_build_box_model(layer)
+	else:
+		_build_skin_arm(layer)
+	_pivot.scale = Vector3.ONE * SCALE
+
+
+## El brazo del modelo de cajas (BoxModel): el mismo que se ve en tercera persona, con mano,
+## pulgar, pulseras y manga. Se coloca con su punto de agarre en el origen y el hombro en +Y.
+func _build_box_model(layer: int) -> void:
+	var arm := BoxModel.make_part("arm_right", layer)
+	var lower := arm.get_node("lower") as Node3D
+	var grip := lower.get_node("grip") as Node3D
+	var grip_pos := lower.position + grip.position  # respecto al hombro
+	var align := Node3D.new()
+	align.basis = Basis(Quaternion((-grip_pos).normalized(), Vector3.UP))
+	_pivot.add_child(align)
+	arm.position = -grip_pos
+	align.add_child(arm)
+	for mesh in arm.find_children("*", "MeshInstance3D", true, false):
+		(mesh as MeshInstance3D).cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		var material := (mesh as MeshInstance3D).material_override as StandardMaterial3D
+		if material != null:
+			material.disable_receive_shadows = true
+
+
+## Brazo de una skin de Minecraft (si el jugador tiene la suya): una caja con su textura.
+func _build_skin_arm(layer: int) -> void:
 	if skin == null:
 		skin = SkinComposer.load_player_skin()
 	var material := SkinModel.make_material(skin)
@@ -36,10 +64,9 @@ func build(_color: Color, layer: int) -> void:
 		mesh_instance.layers = layer
 		mesh_instance.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 		_pivot.add_child(mesh_instance)
-	_pivot.scale = Vector3.ONE * SCALE
 
 
-## Las cajas no tienen dedos: las posturas de la mano no cambian nada.
+## Las cajas no tienen dedos que cerrar: las posturas de la mano no cambian nada.
 func pose(_mode: String, _instant := false) -> void:
 	pass
 
