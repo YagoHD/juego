@@ -1164,6 +1164,10 @@ func get_camera() -> Camera3D:
 ## Clic derecho mirando de cerca una pista del mundo (Clue): se examina y se apunta.
 func _examine_clue() -> bool:
 	var forward := -_head.global_transform.basis.z if _head != null else -global_transform.basis.z
+	var fire := EnemyFire.looked_at(get_tree(), eye_position(), forward)
+	if fire != null:
+		fire.put_out()  # el campamento se despierta (TowerDirector avisa y los manda a buscar)
+		return true
 	var clue := Clue.looked_at(get_tree(), eye_position(), forward)
 	if clue == null:
 		return false

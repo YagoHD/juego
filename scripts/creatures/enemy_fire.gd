@@ -43,11 +43,10 @@ static func looked_at(tree: SceneTree, eye: Vector3, forward: Vector3) -> EnemyF
 	return null
 
 
-func put_out(day: int) -> void:
+func put_out() -> void:
 	if not lit:
 		return
 	lit = false
-	out_day = day
 	_flame.visible = false
 	extinguished.emit(self)
 

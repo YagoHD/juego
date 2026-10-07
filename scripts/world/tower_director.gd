@@ -21,6 +21,9 @@ var _geometry: Node3D
 var _check := 0.0
 var sprouts: Node3D   # grano de alba en el borde de la corrupción
 const SPAWN_DISTANCE := 65.0
+var _fires := {}            # id del campamento -> EnemyFire
+var _fires_out := {}        # id del campamento -> día en que se apagó
+var _vigilant_until := -1.0 # hora absoluta (día*24+hora) hasta la que el campamento está en guardia
 const DESPAWN_DISTANCE := 95.0
 
 func configure(p: Player, time: DayNight, gen: IslandGenerator) -> void:
@@ -193,6 +196,12 @@ func _physics_process(delta: float) -> void:
 			advance_to_day(clock.day)
 		elif sprouts != null and sprouts.day < clock.day:
 			sprouts.grow_until(clock.day)
+	if clock != null:
+		for camp in _fires_out.keys():
+			if clock.day > int(_fires_out[camp]):
+				_fires_out.erase(camp)
+				if _fires.has(camp) and is_instance_valid(_fires[camp]):
+					(_fires[camp] as EnemyFire).relight_if(clock.day)
 	if phase == 4:
 		for road_id in _roads:
 			_add_road_patrol(road_id)
@@ -251,6 +260,7 @@ func _spawn(id: String) -> void:
 		_groups[group_id].add_member(actor)
 	actor.died.connect(func(_actor: CreatureActor) -> void:
 		_records[id]["dead"] = true
+		_check_patrol_lost(str(_records[id]["group"]))
 		if actor.species == "tower_guardian":
 			guardian_defeated = true
 			boss_defeated.emit())
@@ -292,8 +302,15 @@ func _build_post(post: Dictionary) -> void:
 				_box(p + side + Vector3(0, h + 0.3, 0), size, wood)  # barandilla
 			_box(p + Vector3(0, h * 0.5, 1.45), Vector3(0.6, h, 0.1), wood.darkened(0.2))  # escalera
 		"camp":
-			_box(p + Vector3(0, 0.15, 0), Vector3(0.9, 0.3, 0.9), Color(0.25, 0.22, 0.2))  # hoguera
-			_box(p + Vector3(0, 0.45, 0), Vector3(0.45, 0.4, 0.45), Color(1.0, 0.55, 0.15))
+			_box(p + Vector3(0, 0.15, 0), Vector3(0.9, 0.3, 0.9), Color(0.25, 0.22, 0.2))  # leña de la hoguera
+			var fire := EnemyFire.new()
+			fire.camp_id = str(post["id"])
+			fire.lit = not _fires_out.has(fire.camp_id)
+			fire.out_day = int(_fires_out.get(fire.camp_id, -1))
+			_geometry.add_child(fire)
+			fire.global_position = p
+			fire.extinguished.connect(_on_fire_out)
+			_fires[fire.camp_id] = fire
 			var tents := int(post.get("tents", 2))
 			for i in tents:
 				var a := i * TAU / tents + 0.4
@@ -308,6 +325,67 @@ func _build_post(post: Dictionary) -> void:
 			for spot: Vector3 in post["spots"]:
 				_box(spot + Vector3(0.9, 0.4, 0), Vector3(0.8, 0.8, 0.8), wood.lightened(0.15))  # cajas
 				_box(spot + Vector3(0.9, 1.0, 0.1), Vector3(0.6, 0.4, 0.6), wood)
+
+
+# ------------------------------------------------------------------ sinergias de la guarnición
+
+## Han apagado la hoguera de un campamento: todos sus miembros se despiertan y buscan alrededor.
+func _on_fire_out(fire: EnemyFire) -> void:
+	var day := clock.day if clock != null else 1
+	fire.out_day = day
+	_fires_out[fire.camp_id] = day
+	if is_instance_valid(player):
+		player.notice.emit("Apagas la hoguera... ¡el campamento se despierta!")
+	for id in _actors:
+		var actor: CreatureActor = _actors[id]
+		if not is_instance_valid(actor) or actor.dead or actor.post.get("role", "") != "camp":
+			continue
+		var focus: Vector3 = actor.post.get("focus", Vector3.INF)
+		if focus.distance_to(fire.global_position) < 1.0:
+			actor.alert_seconds = 60.0
+			actor._start_search(fire.global_position)
+
+
+## ¿Está 'point' a oscuras para quien mira desde la hoguera de su campamento ('focus')?
+func fire_dark(focus: Vector3, point: Vector3) -> bool:
+	for id in _fires:
+		var fire: EnemyFire = _fires[id]
+		if is_instance_valid(fire) and fire.global_position.distance_to(focus) < 1.0:
+			return fire.in_dark(point)
+	return false
+
+
+## Cadena de mando: una patrulla entera no ha vuelto y el campamento está en guardia (no duermen
+## y los puestos ven más) durante un día.
+func is_vigilant() -> bool:
+	if clock == null:
+		return false
+	return clock.day * 24.0 + clock.hour < _vigilant_until
+
+
+func _check_patrol_lost(group_id: String) -> void:
+	if group_id == "" or not group_id.contains("patrol") and not group_id.contains("scouts"):
+		return
+	for id in _records:
+		if _records[id]["group"] == group_id and not _records[id]["dead"]:
+			return
+	if clock != null:
+		_vigilant_until = clock.day * 24.0 + clock.hour + 24.0
+	if is_instance_valid(player):
+		player.notice.emit("Una patrulla no volverá al campamento. Allí se darán cuenta...")
+
+
+## Fuerza del ritual que protege al jefe: magos del ritual vivos / total (0 si no hay ritual).
+func ritual_strength() -> float:
+	var total := 0
+	var alive := 0
+	for id in _records:
+		var post: Dictionary = _records[id].get("post", {})
+		if post.get("role", "") == "ritual":
+			total += 1
+			if not _records[id]["dead"]:
+				alive += 1
+	return float(alive) / total if total > 0 else 0.0
 
 
 func _box(at: Vector3, size: Vector3, color: Color) -> void:
@@ -340,7 +418,7 @@ func to_data() -> Dictionary:
 	for id in _groups:
 		if is_instance_valid(_groups[id]):
 			_routes[id] = _groups[id].to_data()
-	return {"phase": phase, "first_day": first_day, "center": _vec(center), "records": _records.duplicate(true), "routes": _routes.duplicate(true), "roads": _roads.duplicate(true), "boss_defeated": guardian_defeated, "sprouts": sprouts.to_data() if sprouts != null else {}}
+	return {"phase": phase, "first_day": first_day, "center": _vec(center), "records": _records.duplicate(true), "routes": _routes.duplicate(true), "roads": _roads.duplicate(true), "boss_defeated": guardian_defeated, "fires_out": _fires_out.duplicate(), "vigilant_until": _vigilant_until, "sprouts": sprouts.to_data() if sprouts != null else {}}
 
 func from_data(data: Dictionary) -> void:
 	phase = clampi(int(data.get("phase", 0)), 0, 4)
@@ -351,6 +429,8 @@ func from_data(data: Dictionary) -> void:
 	_routes = data.get("routes", {}).duplicate(true)
 	_roads = data.get("roads", {}).duplicate(true)
 	guardian_defeated = bool(data.get("boss_defeated", false))
+	_fires_out = data.get("fires_out", {}).duplicate()
+	_vigilant_until = float(data.get("vigilant_until", -1.0))
 	if sprouts != null and data.get("sprouts") is Dictionary:
 		sprouts.from_data(data["sprouts"])
 

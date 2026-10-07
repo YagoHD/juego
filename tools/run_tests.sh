@@ -4,7 +4,7 @@
 cd "$(dirname "$0")/.."
 tests=("$@")
 if [ ${#tests[@]} -eq 0 ]; then
-	tests=(step_up edit_blocks chest controls swim idle equipment ground_crafting craft_session sounds tree_fall save_load raft water shapes leaves creatures inventory_interactions stealth squads player_combat mage navigation_tower sleep skills village gold gear story)
+	tests=(step_up edit_blocks chest controls swim idle equipment ground_crafting craft_session sounds tree_fall save_load raft water shapes leaves creatures inventory_interactions stealth squads player_combat mage navigation_tower sleep skills village gold gear story synergies)
 fi
 # Godot con godot_voxel: el de Windows en el PC de Yago, ./godot en la nube (tools/setup_cloud.sh).
 if [ -z "$GODOT" ]; then

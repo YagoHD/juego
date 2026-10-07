@@ -51,6 +51,14 @@ var squad: Node
 ## "worker" (va de un montón de cajas a otro)}. Vacío: patrulla o merodea como siempre.
 var post := {}
 var _post_spot := Vector3.INF
+## Sinergias (docs/PATRULLAS_Y_SINERGIAS.md):
+static var _mark_until := 0      # ms: el jugador está marcado por un rastreador (los arqueros lo ven mejor)
+var fury := 0.0                  # s de furia por ver morir a un compañero: ataca sin esperar turno
+var shield_wall := false         # soldado en muro de escudos: para casi todo lo que le llega de frente
+var vulnerable := 1.0            # daño recibido (la furia tras morir el capitán lo sube)
+var surrendered := false         # rastreador que se ha rendido: no ataca
+var healing: CreatureActor       # mago curando a su capitán
+var _horn_cooldown := 0.0
 var squad_slot := 0
 var team_damage := 1.0
 var team_shield := 0.0
@@ -134,6 +142,8 @@ func _physics_process(delta: float) -> void:
 	_aggro = maxf(0.0, _aggro - delta)
 	_flash = maxf(0.0, _flash - delta)
 	alert_seconds = maxf(0.0, alert_seconds - delta)
+	fury = maxf(0.0, fury - delta)
+	_horn_cooldown = maxf(0.0, _horn_cooldown - delta)
 	_alert_cooldown = maxf(0.0, _alert_cooldown - delta)
 	_timer -= delta
 	_decision -= delta
@@ -183,7 +193,7 @@ func _physics_process(delta: float) -> void:
 			if _target_valid():
 				var offset := target.global_position - global_position
 				var distance := offset.length()
-				if distance <= float(stats["range"]) and can_see(target) and _cooldown <= 0.0 and (not is_instance_valid(squad) or squad.request_attack(self)):
+				if distance <= float(stats["range"]) and can_see(target) and _cooldown <= 0.0 and (fury > 0.0 or not is_instance_valid(squad) or squad.request_attack(self)):
 					_begin_attack()
 				elif bool(post.get("hold", false)):
 					direction = Vector3.ZERO  # el vigía no baja de su torre: dispara desde arriba
@@ -230,6 +240,20 @@ func _physics_process(delta: float) -> void:
 				_set_state("rest" if (hour < 6.0 or hour >= 20.0) else "feed")
 				_timer = 4.0
 		"idle", "feed", "rest":
+			if _timer <= 0.0:
+				_choose_routine()
+		"heal":
+			# Curando al capitán: quieto, mirándole (EnemySquad decide cuándo empieza y acaba).
+			if is_instance_valid(healing) and not healing.dead:
+				_face(healing.global_position - global_position, delta)
+			else:
+				healing = null
+				_set_state("return")
+		"surrender":
+			if _target_valid():
+				_face(target.global_position - global_position, delta)
+		"relief":
+			# Relevo de guardia: el vigía ha bajado de la torre (no está); vuelve al acabar el turno.
 			if _timer <= 0.0:
 				_choose_routine()
 		"watch", "sit", "sleep", "ritual", "work":
@@ -318,9 +342,23 @@ func detects_player() -> bool:
 	offset.y = 0.0
 	var distance := offset.length()
 	var sense := float(stats["sense"]) * (1.35 if alert_seconds > 0.0 else 1.0)
+	if state == "relief":
+		return false
 	if state == "sleep":
 		# Dormido: no mira; solo le despierta el ruido de cerca (agachado, ni eso).
 		return not player.is_sneaking() and distance < sense * 0.35 and can_see(player)
+	var tower := get_parent()
+	if tower != null and tower.has_method("is_vigilant") and tower.is_vigilant() and not post.is_empty():
+		sense *= 1.3  # cadena de mando: una patrulla no volvió y están en guardia
+	if species == "archer" and player_marked():
+		sense *= 1.5  # marcado por un rastreador: el arquero sabe dónde buscar
+	if post.get("role", "") == "camp" and (hour < 6.0 or hour >= 20.0) and tower != null and tower.has_method("fire_dark"):
+		if tower.fire_dark(post.get("focus", global_position), player.global_position):
+			sense *= 0.55  # junto al fuego, deslumbrados: lo que queda a oscuras apenas se ve
+	if species == "mage" and _wears_ancient(player):
+		sense *= 1.6  # las runas de la armadura antigua brillan cerca de la umbrita: el mago las siente
+		if distance < 10.0 and can_see(player):
+			return true
 	if player.is_sneaking():
 		sense *= 0.45 * player.skills.bonus("stealth", -0.04) * (1.0 - player.gear_effect("sneak"))
 	if distance > sense or not can_see(player):
@@ -332,6 +370,8 @@ func detects_player() -> bool:
 	return facing.normalized().dot(offset.normalized()) >= threshold or (not player.is_sneaking() and distance < (6.0 if player._sprinting else 3.0))
 
 func _choose_enemy_target() -> void:
+	if surrendered or state in ["heal", "relief"]:
+		return
 	var anchor: Vector3 = squad.destination(self) if is_instance_valid(squad) else home
 	if global_position.distance_to(anchor) > float(stats["leash"]):
 		if state not in ["windup", "charge", "channel", "recover", "stunned", "stagger"]:
@@ -341,6 +381,10 @@ func _choose_enemy_target() -> void:
 	if detects_player():
 		target = player
 		_last_seen = player.global_position
+		if species == "tracker":
+			_mark_player()
+		if bool(post.get("hold", false)) and _horn_cooldown <= 0.0:
+			_blow_horn()
 		alert_seconds = 60.0
 		_aggro = 10.0
 		if _alert_cooldown <= 0.0:
@@ -443,12 +487,22 @@ func _post_routine() -> void:
 		_timer = 12.0
 		return
 	var night := hour < 6.0 or hour >= 22.0
+	var tower := get_parent()
+	var vigilant: bool = tower != null and tower.has_method("is_vigilant") and tower.is_vigilant()
+	visible = true
 	match role:
 		"sentry":
+			# Relevo de guardia al amanecer y al anochecer: el vigía de la torre baja un rato y la
+			# torre queda vacía (premio para quien observa).
+			if bool(post.get("hold", false)) and ((hour >= 6.0 and hour < 6.5) or (hour >= 20.0 and hour < 20.5)):
+				visible = false
+				_set_state("relief")
+				_timer = 6.0
+				return
 			_set_state("watch")
 			_timer = _rng.randf_range(4.0, 8.0)
 		"camp":
-			if night and _rng.randf() < 0.8:
+			if night and not vigilant and _rng.randf() < 0.8:
 				_set_state("sleep")
 				_timer = _rng.randf_range(20.0, 40.0)
 			else:
@@ -541,6 +595,8 @@ func _execute_attack() -> void:
 	if not _target_valid():
 		_begin_recovery()
 		return
+	if _attack_kind == "arrow" and target is Player and player_marked():
+		_attack_point = target.global_position  # marcado: apunta adonde estás ahora, no adonde estabas
 	match _attack_kind:
 		"lightning":
 			_execute_lightning()
@@ -725,7 +781,20 @@ func _probe(direction: Vector3) -> void:
 func take_damage(amount: float, source: Node3D = null) -> void:
 	if dead or amount <= 0.0:
 		return
-	var actual := amount * (1.0 - float(stats["armor"])) * (1.0 - team_shield)
+	var actual := amount * (1.0 - float(stats["armor"])) * (1.0 - team_shield) * vulnerable
+	if shield_wall and is_instance_valid(source):
+		var from := source.global_position - global_position
+		from.y = 0.0
+		if from.length() > 0.01 and (-global_basis.z).dot(from.normalized()) > 0.3:
+			actual *= 0.3  # muro de escudos: de frente casi no entra; hay que rodearlos
+	if species == "tower_guardian" and get_parent() != null and get_parent().has_method("ritual_strength"):
+		actual *= 1.0 - 0.75 * float(get_parent().ritual_strength())  # el ritual de los magos le protege
+	if state == "heal":
+		healing = null  # interrumpido
+	var was_surrendered := surrendered
+	if surrendered:
+		surrendered = false  # si le atacas rendido, huye (ver más abajo)
+		_aggro = 8.0
 	health = maxf(0.0, health - actual)
 	_flash = 0.15
 	damaged.emit(actual)
@@ -743,7 +812,7 @@ func take_damage(amount: float, source: Node3D = null) -> void:
 	var fights: bool = stats["enemy"] or stats["temper"] in ["defensive", "territorial", "predator", "hunter"]
 	if species != "tower_guardian" and state != "stunned":
 		_clear_marker()
-		_set_state("stagger" if fights else "flee")
+		_set_state("stagger" if fights and not was_surrendered else "flee")
 		_timer = 0.25
 		_combo_left = 0
 	# Aviso al grupo cercano (soldados/capitán o manada de lobos), sin aggro global.
@@ -778,10 +847,87 @@ func _die() -> void:
 		for stack in CreatureDB.roll_loot(species, _rng):
 			ItemDrop.spawn(get_parent(), global_position + Vector3.UP * 0.4, stack["id"], stack["count"])
 	died.emit(self)
+	_witnesses_rage()
 	queue_free()
+
+# ------------------------------------------------------------------ sinergias
+
+## Marca al jugador (lo ha visto un rastreador): unos segundos en los que los arqueros le ven
+## desde más lejos y apuntan adonde está, no adonde estaba. Esconderse deja que se pase.
+func _mark_player() -> void:
+	var was := player_marked()
+	_mark_until = Time.get_ticks_msec() + 8000
+	if not was and is_instance_valid(player):
+		player.notice.emit("¡Un rastreador te ha marcado! Los arqueros te verán mejor un rato.")
+
+
+static func player_marked() -> bool:
+	return Time.get_ticks_msec() < _mark_until
+
+
+static func clear_mark() -> void:
+	_mark_until = 0
+
+
+## Cuerno de alarma del vigía: despierta y manda a buscar a los de alrededor (45 m).
+func _blow_horn() -> void:
+	_horn_cooldown = 60.0
+	if is_instance_valid(player):
+		player.notice.emit("¡Suena un cuerno de alarma!")
+	for node in get_tree().get_nodes_in_group("creatures"):
+		var ally := node as CreatureActor
+		if ally == self or ally.dead or not ally.stats["enemy"] or ally.surrendered:
+			continue
+		if global_position.distance_to(ally.global_position) > 45.0:
+			continue
+		ally.alert_seconds = 60.0
+		if ally.state not in ["chase", "windup", "charge", "channel", "recover", "stunned", "stagger", "search"] \
+				and not bool(ally.post.get("hold", false)):
+			ally._start_search(_last_seen)
+
+
+## Venganza: los compañeros que ven morir a este se enfurecen (atacan sin esperar turno) y buscan
+## al culpable. Si nadie lo ve (sigilo), no pasa nada.
+func _witnesses_rage() -> void:
+	if not stats["enemy"]:
+		return
+	var at := eye_position()
+	for node in get_tree().get_nodes_in_group("creatures"):
+		var ally := node as CreatureActor
+		if ally == self or ally.dead or not ally.stats["enemy"] or ally.state in ["sleep", "relief", "flee", "surrender"] or ally.surrendered:
+			continue
+		if ally.global_position.distance_to(global_position) > 12.0:
+			continue
+		var query := PhysicsRayQueryParameters3D.create(ally.eye_position(), at, 1)
+		query.exclude = [ally.get_rid(), get_rid()]
+		if not get_world_3d().direct_space_state.intersect_ray(query).is_empty():
+			continue
+		ally.fury = 15.0
+		ally.alert_seconds = 60.0
+		if ally.state not in ["chase", "windup", "charge", "channel", "recover"]:
+			ally._start_search(player.global_position if is_instance_valid(player) else global_position)
+
+
+func _wears_ancient(who: Player) -> bool:
+	for slot: String in who.equipment:
+		if str(who.equipment[slot]).begins_with("ancient_"):
+			return true
+	return false
+
+
+## Rendirse (rastreadores, gente corriente, cuando su grupo pierde la mitad): deja de atacar.
+func surrender() -> void:
+	if dead or species != "tracker":
+		return
+	surrendered = true
+	target = null
+	_set_state("surrender")
+	_timer = 9999.0
+
 
 func _update_label() -> void:
 	if _label != null:
 		var names := {"search": "Buscando", "chase": "Persiguiendo", "return": "Regresando", "stunned": "Aturdido", "patrol": "Patrullando", "idle": "Esperando", "windup": "Preparando " + {"lightning": "descarga", "beam": "rayo continuo", "bolt": "bola de rayos"}.get(_attack_kind, "ataque"), "channel": "Canalizando rayo", "recover": "Recuperándose",
-			"watch": "Vigilando", "sit": "Descansando", "sleep": "Durmiendo", "ritual": "Canalizando", "work": "Trabajando"}
+			"watch": "Vigilando", "sit": "Descansando", "sleep": "Durmiendo", "ritual": "Canalizando", "work": "Trabajando",
+			"heal": "Curando", "surrender": "Se rinde", "relief": "Relevo de guardia", "flee": "Huyendo"}
 		_label.text = "%s  %d/%d\n%s%s\n%s" % [stats["name"], ceili(health), int(stats["hp"]), names.get(state, state), " · Alerta" if alert_seconds > 0.0 else "", "Flecha encantada" if enchanted_arrow else team_role]
