@@ -1,13 +1,22 @@
 extends Node3D
-## Aldea de pruebas: 20 vecinos y guardias con horario, ley y delitos, sin tocar la isla.
+## Aldea de pruebas: 31 vecinos y guardias con horario, ley y delitos, sin tocar la isla.
 ## Abrir scenes/village_test.tscn y F6, o "Pruebas de aldea.bat". F2: panel de pruebas.
 const SAVE_PATH := "user://village_test_v1.json"
-const NAMES := ["Aldo", "Berta", "Ciro", "Dalia", "Elio", "Fela", "Gil", "Hilda", "Iván", "Juana",
-	"Lope", "Marta", "Nuño", "Olga", "Pelayo", "Quiteria", "Ramiro", "Sancha", "Tello", "Urraca"]
-## Oficio de cada uno (los 4 últimos, guardias: 2 de día y 2 de noche).
-const JOBS := ["farmer", "farmer", "farmer", "farmer", "farmer", "farmer", "farmer", "farmer",
-	"fisher", "fisher", "fisher", "fisher", "merchant", "merchant", "merchant", "merchant",
-	"guard_day", "guard_day", "guard_night", "guard_night"]
+## Los vecinos: nombre y oficio. Los guardias viven en el cuartel; los refugiados, en su campamento.
+const POPULATION := [
+	["Aldo", "farmer"], ["Berta", "farmer"], ["Ciro", "farmer"], ["Dalia", "farmer"], ["Elio", "farmer"],
+	["Fela", "fisher"], ["Gil", "fisher"], ["Hilda", "fisher"],
+	["Iván", "merchant"], ["Juana", "merchant"],
+	["Lope", "blacksmith"], ["Marta", "baker"], ["Nuño", "innkeeper"], ["Olga", "banker"],
+	["Pelayo", "woodcutter"], ["Quiteria", "woodcutter"], ["Ramiro", "hunter"], ["Sancha", "herbalist"],
+	["Fray Tello", "priest"], ["Abuela Urraca", "elder"], ["Viejo Bermudo", "old_miner"], ["Vela", "carpenter"],
+	["Ximena", "refugee"], ["Yáñez", "refugee"], ["Zoila", "refugee"],
+	["Rodrigo", "guard_day"], ["Gonzalo", "guard_day"], ["Munio", "guard_day"],
+	["Fruela", "guard_night"], ["Ordoño", "guard_night"], ["Sisebuto", "guard_night"],
+]
+const PLACE_NAMES := {"plaza": "Plaza", "field": "Campo", "dock": "Muelle", "market": "Mercado", "barracks": "Cuartel",
+	"forge": "Fragua", "bakery": "Horno", "tavern": "Taberna", "bank": "Banco", "woods": "Bosque", "forest_edge": "Linde del bosque",
+	"herb_garden": "Huerto de hierbas", "chapel": "Capilla", "workshop": "Carpintería", "refugee_camp": "Campamento de refugiados"}
 const HOUR_SECONDS := 30.0    # segundos reales por hora del pueblo (un día en 12 minutos)
 
 var save_path := SAVE_PATH    # las pruebas automáticas usan otro archivo
@@ -74,12 +83,20 @@ func _ready() -> void:
 ## Lugares, casas y ronda de los guardias; y los 20 vecinos.
 func _build_village() -> void:
 	village.center = Vector3.ZERO
-	village.radius = 38.0
+	village.radius = 46.0
 	var places := {"plaza": [Vector3(0, 0.1, 0), 5.0], "field": [Vector3(-24, 0.1, -16), 7.0],
-		"dock": [Vector3(26, 0.1, -18), 4.0], "market": [Vector3(12, 0.1, 12), 4.0], "barracks": [Vector3(-14, 0.1, 20), 3.0]}
+		"dock": [Vector3(26, 0.1, -18), 4.0], "market": [Vector3(12, 0.1, 12), 4.0], "barracks": [Vector3(-14, 0.1, 20), 3.0],
+		"forge": [Vector3(8, 0.1, -8), 2.0], "bakery": [Vector3(-8, 0.1, -8), 2.0], "tavern": [Vector3(-10, 0.1, 6), 3.5],
+		"bank": [Vector3(6, 0.1, 22), 2.0], "woods": [Vector3(-44, 0.1, 10), 6.0], "forest_edge": [Vector3(-40, 0.1, 34), 6.0],
+		"herb_garden": [Vector3(20, 0.1, 30), 3.0], "chapel": [Vector3(0, 0.1, -24), 3.0], "workshop": [Vector3(18, 0.1, 0), 2.5],
+		"refugee_camp": [Vector3(36, 0.1, 12), 5.0]}
 	for place in places:
 		village.places[place] = {"point": places[place][0], "radius": places[place][1]}
-		_sign(places[place][0] + Vector3.UP * 3.2, place.capitalize())
+		_sign(places[place][0] + Vector3.UP * 3.2, PLACE_NAMES[place])
+	for place in ["forge", "bakery", "tavern", "bank", "chapel", "workshop"]:
+		_shelter(places[place][0], Vector3(5, 2.8, 5))
+	for i in 8:  # árboles provisionales del bosque
+		_box(Vector3(-48 + (i % 4) * 4.0, 2.0, 2 + (i / 4) * 14.0), Vector3(0.6, 4, 0.6), Color(0.35, 0.25, 0.15))
 	_box(Vector3(-24, 0.02, -16), Vector3(14, 0.04, 14), Color(0.5, 0.42, 0.25))   # campo
 	_box(Vector3(26, 0.15, -18), Vector3(6, 0.3, 10), Color(0.45, 0.32, 0.2))     # muelle
 	_box(Vector3(12, 0.5, 15), Vector3(5, 1, 1), Color(0.6, 0.45, 0.3))           # puestos del mercado
@@ -92,12 +109,12 @@ func _build_village() -> void:
 	_build_village_records()
 
 
-## Las 10 casas, en corro alrededor de la plaza.
+## Las 13 casas, en corro alrededor de la plaza (dos vecinos en cada una).
 func _homes() -> Array[Vector3]:
 	var homes: Array[Vector3] = []
-	for i in 10:
-		var angle := 0.35 + i * TAU / 10.0
-		homes.append(Vector3(cos(angle) * 32.0, 0.1, sin(angle) * 32.0))
+	for i in 13:
+		var angle := 0.2 + i * TAU / 13.0
+		homes.append(Vector3(cos(angle) * 30.0, 0.1, sin(angle) * 30.0))
 	return homes
 
 
@@ -196,14 +213,22 @@ func _build_ui() -> void:
 	_panel.hide()
 
 
-## Las fichas de los 20 vecinos (los guardias viven en el cuartel).
+## Las fichas de los vecinos (los guardias viven en el cuartel; los refugiados, en su campamento).
 func _build_village_records() -> void:
 	var homes := _homes()
-	for i in NAMES.size():
-		var job: String = JOBS[i]
-		var home: Vector3 = Vector3(-14, 0.1, 20) if job.begins_with("guard") else homes[i % homes.size()]
+	var next_home := 0
+	for i in POPULATION.size():
+		var job: String = POPULATION[i][1]
+		var home: Vector3
+		if job.begins_with("guard"):
+			home = village.places["barracks"]["point"]
+		elif job == "refugee":
+			home = village.places["refugee_camp"]["point"]
+		else:
+			home = homes[(next_home / 2) % homes.size()]
+			next_home += 1
 		# Cada uno en su sitio dentro de la casa (dos cuerpos en el mismo punto se empujan hacia arriba).
-		village.add_record("v%02d" % i, NAMES[i], job, home + Vector3(cos(i * 2.4), 0, sin(i * 2.4)) * 1.1)
+		village.add_record("v%02d" % i, POPULATION[i][0], job, home + Vector3(cos(i * 2.4), 0, sin(i * 2.4)) * 1.1)
 
 
 func _button(parent: Node, text: String, callback: Callable) -> void:

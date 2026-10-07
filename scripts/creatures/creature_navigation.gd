@@ -12,6 +12,8 @@ var _last := Vector3.INF
 var _stuck := 0.0
 var _edge_shape: CapsuleShape3D   # formas de la criatura, creadas una vez (A* hace cientos de consultas)
 var _room_shape: CapsuleShape3D
+var _check_left := 0.0      # el camino recto se comprueba 5 veces por segundo, no en cada paso
+var _direct_clear := false
 
 func steer(actor: CharacterBody3D, goal: Vector3, delta: float) -> Vector3:
 	_retry -= delta
@@ -24,7 +26,11 @@ func steer(actor: CharacterBody3D, goal: Vector3, delta: float) -> Vector3:
 	offset.y = 0.0
 	if offset.length() < 0.65:
 		return Vector3.ZERO
-	if not _blocked(actor, offset.normalized() * 1.0) and path.is_empty():
+	_check_left -= delta
+	if _check_left <= 0.0:
+		_check_left = 0.2
+		_direct_clear = not _blocked(actor, offset.normalized() * 1.0)
+	if _direct_clear and path.is_empty():
 		return offset
 	if _retry <= 0.0 and (_goal.distance_to(goal) > 2.0 or path.is_empty() or _stuck > 0.8):
 		var frame := Engine.get_physics_frames()

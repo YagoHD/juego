@@ -7,7 +7,7 @@ class_name Village
 
 signal notice(text: String)
 
-const NEAR := 45.0            # metros: IA completa
+const NEAR := 30.0            # metros: IA completa con física
 const FAR := 90.0             # metros: más allá, solo la ficha
 const WITNESS_RANGE := 18.0   # a qué distancia alguien ve un delito
 const WALK := 1.2             # m/s de los vecinos simulados sin física
@@ -15,20 +15,48 @@ const PANIC_RANGE := 20.0
 const CHASE_MARGIN := 25.0    # los guardias persiguen hasta este margen fuera del pueblo
 const CLOSE_CHASE := 6.0      # ... y más lejos si le tienen así de cerca
 const CHASE_LIMIT := 60.0     # pero nunca más allá de este margen
-## Horarios por oficio: [hora de inicio, lugar, actividad]. "home" es la casa de cada uno;
+## Horarios por oficio: [hora de inicio, lugar, actividad], ordenados por hora (antes de la primera,
+## sigue con la última del día anterior). "home" es la casa de cada uno;
 ## "patrol", la ronda de los guardias. Las actividades que empiezan por "Durmiendo" son dormir.
 const SCHEDULES := {
 	"farmer": [[6, "home", "Desayunando"], [7, "field", "Trabajando en el campo"], [12, "plaza", "Comiendo en la plaza"],
-		[13, "field", "Trabajando en el campo"], [19, "plaza", "Charlando en la plaza"], [21, "home", "Durmiendo"]],
+		[13, "field", "Trabajando en el campo"], [19, "tavern", "Tomando algo en la taberna"], [21, "home", "Durmiendo"]],
 	"fisher": [[5, "home", "Desayunando"], [6, "dock", "Pescando en el muelle"], [12, "plaza", "Comiendo en la plaza"],
 		[13, "dock", "Remendando redes"], [18, "plaza", "Charlando en la plaza"], [21, "home", "Durmiendo"]],
 	"merchant": [[7, "home", "Desayunando"], [8, "market", "Vendiendo en el mercado"], [13, "plaza", "Comiendo en la plaza"],
 		[14, "market", "Vendiendo en el mercado"], [19, "plaza", "Charlando en la plaza"], [22, "home", "Durmiendo"]],
+	"blacksmith": [[6, "home", "Desayunando"], [7, "forge", "Trabajando en la fragua"], [13, "tavern", "Comiendo en la taberna"],
+		[14, "forge", "Trabajando en la fragua"], [20, "tavern", "Bebiendo en la taberna"], [22, "home", "Durmiendo"]],
+	"baker": [[4, "bakery", "Amasando el pan"], [9, "market", "Vendiendo pan"], [13, "home", "Comiendo en casa"],
+		[14, "bakery", "Horneando"], [18, "plaza", "Charlando en la plaza"], [20, "home", "Durmiendo"]],
+	"innkeeper": [[1, "home", "Durmiendo"], [8, "home", "Desayunando"], [9, "tavern", "Atendiendo la taberna"],
+		[15, "market", "Comprando provisiones"], [17, "tavern", "Atendiendo la taberna"]],
+	"banker": [[7, "home", "Desayunando"], [8, "bank", "Atendiendo el banco"], [13, "tavern", "Comiendo en la taberna"],
+		[14, "bank", "Atendiendo el banco"], [18, "plaza", "Paseando"], [21, "home", "Durmiendo"]],
+	"woodcutter": [[5, "home", "Desayunando"], [6, "woods", "Cortando leña"], [12, "woods", "Comiendo junto al bosque"],
+		[13, "woods", "Cortando leña"], [18, "tavern", "Tomando algo en la taberna"], [21, "home", "Durmiendo"]],
+	"hunter": [[4, "forest_edge", "Revisando las trampas"], [10, "market", "Vendiendo pieles"], [13, "home", "Comiendo en casa"],
+		[15, "forest_edge", "Cazando"], [19, "tavern", "Contando historias en la taberna"], [22, "home", "Durmiendo"]],
+	"herbalist": [[6, "herb_garden", "Recogiendo hierbas"], [11, "home", "Preparando remedios"], [14, "forest_edge", "Buscando plantas"],
+		[18, "plaza", "Charlando en la plaza"], [21, "home", "Durmiendo"]],
+	"priest": [[6, "chapel", "Tocando la campana"], [7, "chapel", "Rezando"], [12, "plaza", "Comiendo en la plaza"],
+		[13, "refugee_camp", "Ayudando a los refugiados"], [18, "chapel", "Rezando"], [21, "home", "Durmiendo"]],
+	"elder": [[8, "home", "Desayunando"], [9, "plaza", "Sentado en la plaza"], [13, "home", "Comiendo en casa"],
+		[16, "plaza", "Sentado en la plaza"], [19, "tavern", "Recordando viejos tiempos"], [21, "home", "Durmiendo"]],
+	"old_miner": [[9, "home", "Desayunando"], [10, "plaza", "Mirando la montaña"], [13, "tavern", "Bebiendo en la taberna"],
+		[18, "chapel", "Rezando"], [19, "tavern", "Bebiendo en la taberna"], [23, "home", "Durmiendo"]],
+	"carpenter": [[6, "home", "Desayunando"], [7, "workshop", "Serrando tablas"], [13, "plaza", "Comiendo en la plaza"],
+		[14, "workshop", "Arreglando una carreta"], [19, "tavern", "Tomando algo en la taberna"], [21, "home", "Durmiendo"]],
+	"refugee": [[7, "refugee_camp", "Desayunando en el campamento"], [9, "field", "Ayudando en el campo"], [13, "refugee_camp", "Comiendo en el campamento"],
+		[15, "dock", "Mirando el mar"], [18, "refugee_camp", "Junto al fuego del campamento"], [21, "refugee_camp", "Durmiendo"]],
 	"guard_day": [[6, "barracks", "Preparándose"], [7, "patrol", "Patrullando"], [19, "barracks", "Descansando"],
 		[22, "barracks", "Durmiendo"]],
 	"guard_night": [[6, "barracks", "Durmiendo"], [14, "barracks", "Descansando"], [19, "patrol", "Patrullando de noche"]],
 }
-const JOB_NAMES := {"farmer": "granjero", "fisher": "pescador", "merchant": "mercader", "guard_day": "guardia", "guard_night": "guardia de noche"}
+const JOB_NAMES := {"farmer": "granjero", "fisher": "pescador", "merchant": "mercader", "blacksmith": "herrero",
+	"baker": "panadero", "innkeeper": "tabernero", "banker": "banquero", "woodcutter": "leñador", "hunter": "cazador",
+	"herbalist": "herbolaria", "priest": "sacerdote", "elder": "anciano", "old_miner": "viejo minero",
+	"carpenter": "carpintero", "refugee": "refugiado", "guard_day": "guardia", "guard_night": "guardia de noche"}
 
 var player: Player
 var hour := 12.0
@@ -148,10 +176,17 @@ func _physics_process(delta: float) -> void:
 				break
 
 
-## Vecino sin física: avanza hacia el sitio que le toca a paso de persona.
+## Vecino sin física: avanza hacia el sitio que le toca a paso de persona, pegado al suelo.
 func _walk(record: Dictionary, from: Vector3, seconds: float) -> Vector3:
 	var goal: Vector3 = _plan(record)["point"]
-	return from.move_toward(goal, WALK * seconds)
+	var flat := Vector3(goal.x, from.y, goal.z)
+	var at := from.move_toward(flat, WALK * seconds)
+	# Desde la rodilla: desde más arriba el rayo daría en los tejados y los subiría a ellos.
+	var ray := PhysicsRayQueryParameters3D.create(at + Vector3.UP * 0.8, at + Vector3.DOWN * 4.0, 1)
+	var ground := get_world_3d().direct_space_state.intersect_ray(ray)
+	if not ground.is_empty():
+		at.y = ground["position"].y
+	return at
 
 
 func _spawn(record: Dictionary) -> Villager:

@@ -19,11 +19,13 @@
 
 ## Cómo lo hacemos nosotros
 
-- **Horario por oficio** (granjero, pescador, mercader, guardia de día, guardia de noche): a cada
-  hora le toca un lugar (casa, campo, muelle, mercado, plaza, cuartel) y una actividad. Dentro del
+- **Horario por oficio**: granjero, pescador, mercader, herrero, panadero, tabernero, banquero,
+  leñador, cazador, herbolaria, sacerdote, anciana, viejo minero, carpintero, refugiado, guardia de
+  día y de noche (31 en la aldea de pruebas). A cada hora le toca un lugar (casa, campo, muelle,
+  mercado, fragua, horno, taberna, banco, bosque, capilla, campamento de refugiados...) y una actividad. Dentro del
   lugar pasean entre puntos al azar, como el "sandbox" de Skyrim.
-- **Niveles de detalle:** cerca del jugador (menos de 45 m), IA completa con física; más lejos,
-  sin física: van al sitio que les toca a paso de persona; muy lejos (más de 90 m) desaparecen y
+- **Niveles de detalle:** cerca del jugador (menos de 30 m), IA completa con física; más lejos,
+  sin física: van al sitio que les toca a paso de persona, pegados al suelo; muy lejos (más de 90 m) desaparecen y
   solo queda su ficha (dónde deberían estar). Objetivo: 20-30 vecinos sin que se note.
 - **Cada vecino tiene ficha persistente:** identificador, nombre, oficio, casa, vida y si está vivo.
   **La muerte es permanente** y se guarda: cargar no resucita a nadie.

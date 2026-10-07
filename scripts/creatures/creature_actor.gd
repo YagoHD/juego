@@ -54,6 +54,12 @@ var _beam_visual: MeshInstance3D
 var _beam_direction := Vector3.FORWARD
 var _beam_link_seconds := 0.0
 var _beam_tick := 0.65
+## Sondeos del suelo y las paredes de delante: se repiten unas 8 veces por segundo, no en cada paso
+## de física (con muchos personajes era lo que más gastaba). Entre sondeo y sondeo se usa el último.
+const PROBE_SECONDS := 0.12
+var _probe_left := 0.0
+var _probe_stop := false   # el último sondeo vio un precipicio (o suelo sin cargar) delante
+var _probe_turn := 0.0     # giro para rodear la pared que vio el último sondeo (0 = recto)
 
 func _ready() -> void:
 	stats = CreatureDB.profile(species)
@@ -599,20 +605,15 @@ func _move(direction: Vector3, speed: float, delta: float) -> void:
 		direction = navigator.steer(self, global_position + direction, delta)
 	if direction.length_squared() > 0.01:
 		direction = direction.normalized()
-		# Evita precipicios; un suelo aún sin cargar también detiene a la criatura.
 		if not stats["flying"]:
-			var ahead := global_position + direction * (float(stats["radius"]) + 0.6)
-			var floor_query := PhysicsRayQueryParameters3D.create(ahead + Vector3.UP * 1.0, ahead + Vector3.DOWN * 1.8, 1)
-			floor_query.exclude = [get_rid()]
-			if get_world_3d().direct_space_state.intersect_ray(floor_query).is_empty():
+			_probe_left -= delta
+			if _probe_left <= 0.0 or state == "charge":
+				_probe_left = PROBE_SECONDS
+				_probe(direction)
+			if _probe_stop:
 				direction = Vector3.ZERO
-			# Rodeo local de paredes; no sustituye a un navegador de caminos largos.
-			elif state != "charge" and test_move(global_transform, direction * 0.35):
-				for turn in [0.7, -0.7, 1.4, -1.4]:
-					var alternative := direction.rotated(Vector3.UP, turn)
-					if not test_move(global_transform, alternative * 0.35):
-						direction = alternative
-						break
+			elif _probe_turn != 0.0:
+				direction = direction.rotated(Vector3.UP, _probe_turn)
 		_face(direction, delta)
 	velocity.x = direction.x * speed + _knockback.x
 	velocity.z = direction.z * speed + _knockback.z
@@ -634,6 +635,22 @@ func _move(direction: Vector3, speed: float, delta: float) -> void:
 		velocity = Vector3.ZERO
 	if before.distance_to(global_position) < 0.001 and state in ["roam", "patrol"]:
 		_timer = minf(_timer, 0.4)
+
+## Mira delante: precipicio (o suelo aún sin cargar) que obliga a parar, o pared que rodear girando.
+## Rodeo local; no sustituye a un navegador de caminos largos.
+func _probe(direction: Vector3) -> void:
+	_probe_turn = 0.0
+	var ahead := global_position + direction * (float(stats["radius"]) + 0.6)
+	var floor_query := PhysicsRayQueryParameters3D.create(ahead + Vector3.UP * 1.0, ahead + Vector3.DOWN * 1.8, 1)
+	floor_query.exclude = [get_rid()]
+	_probe_stop = get_world_3d().direct_space_state.intersect_ray(floor_query).is_empty()
+	if _probe_stop or state == "charge" or not test_move(global_transform, direction * 0.35):
+		return
+	for turn in [0.7, -0.7, 1.4, -1.4]:
+		if not test_move(global_transform, direction.rotated(Vector3.UP, turn) * 0.35):
+			_probe_turn = turn
+			return
+
 
 func take_damage(amount: float, source: Node3D = null) -> void:
 	if dead or amount <= 0.0:
