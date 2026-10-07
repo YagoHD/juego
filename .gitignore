@@ -22,3 +22,6 @@ Thumbs.db
 assets/third_party_raw/*
 !assets/third_party_raw/LEEME.md
 !assets/third_party_raw/.gdignore
+
+# Godot de Linux de la nube (tools/setup_cloud.sh)
+/godot
