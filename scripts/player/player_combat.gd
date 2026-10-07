@@ -117,7 +117,8 @@ func _process(delta: float) -> void:
 	knockback = knockback.move_toward(Vector3.ZERO, delta * 10.0)
 	if not player.ui_open and not _dying:
 		if _regen_delay <= 0.0 and not blocking and not drawing_bow and _dodge_time <= 0.0:
-			stamina = minf(MAX_STAMINA, stamina + delta * 18.0)
+			var tired := player.needs != null and player.needs.fatigue >= Needs.EXHAUSTED
+			stamina = minf(MAX_STAMINA, stamina + delta * (9.0 if tired else 18.0))  # agotado, la mitad
 		if health > 0.0 and player.needs != null and player.needs.hunger > 50.0 and player.needs.thirst > 40.0 and _poison <= 0.0:
 			health = minf(MAX_HEALTH, health + delta * 0.5)
 	if _poison > 0.0 and not player.creative and not _dying:
@@ -206,7 +207,7 @@ func try_attack(heavy := false, prepared := false) -> bool:
 	player.breaker.reset()
 	if _cooldown > 0.0 or blocking or drawing_bow or _dodge_time > 0.0 or _guard_broken > 0.0:
 		return true
-	var cost := float(weapon["cost"]) * (1.8 if heavy else 1.0)
+	var cost := float(weapon["cost"]) * (1.8 if heavy else 1.0) * player.skills.bonus("melee", -0.02)
 	if not _spend(cost):
 		player.notice.emit("Te falta energía para golpear.")
 		return true
@@ -220,7 +221,7 @@ func try_attack(heavy := false, prepared := false) -> bool:
 	var finisher: Dictionary = COMBOS.get(_combo, {})
 	var airborne := not player.is_on_floor() and not player._flying and player.raft == null
 	var attack := {"id": id, "slot": player._hotbar_index, "reach": weapon["reach"],
-		"damage": float(weapon["damage"]) * (2.0 if heavy else 1.0) * (1.25 if airborne else 1.0) * float(finisher.get("damage", 1.0)),
+		"damage": float(weapon["damage"]) * (2.0 if heavy else 1.0) * (1.25 if airborne else 1.0) * float(finisher.get("damage", 1.0)) * player.skills.bonus("melee", 0.04),
 		"stun": float(finisher.get("stun", 0.0)), "heavy": heavy}
 	player._held.swing()
 	player._avatar.swing()
@@ -243,13 +244,16 @@ func _resolve_attack(attack: Dictionary, delayed := false) -> void:
 		return
 	var victim := hit["collider"] as CreatureActor
 	var id := str(attack["id"])
+	var before := victim.health
 	if id != "" and WEAPONS.has(id) and victim.can_backstab(player):
 		victim.backstab(float(attack["damage"]), player)
 		player.notice.emit("Ataque por la espalda: golpe crítico.")
+		player.skills.gain("stealth", 10.0)
 	else:
 		victim.take_damage(float(attack["damage"]), player)
 		if float(attack["stun"]) > 0.0:
 			victim.stun(float(attack["stun"]))
+	PlayerCombat.reward_hit(player, "melee", victim, before)
 	if WEAPONS.has(id) and id != "":
 		player.survival.wear_tool()
 
@@ -377,12 +381,12 @@ func release_bow() -> bool:
 	var hit := player.get_world_3d().direct_space_state.intersect_ray(query)
 	var aim: Vector3 = hit["position"] if not hit.is_empty() else camera.global_position - camera.global_basis.z * 65.0
 	var direction := (aim - from).normalized()
-	var spread := bow_spread(charge)
+	var spread := bow_spread(charge) * player.skills.bonus("archery", -0.05)
 	direction = direction.rotated(camera.global_basis.y, _rng.randf_range(-spread, spread)).rotated(camera.global_basis.x, _rng.randf_range(-spread, spread))
 	var arrow = ArrowScript.new()
 	arrow.source = player
 	arrow.launch_origin = from
-	arrow.base_damage = 22.0 * lerpf(0.25, 1.0, minf(charge / BOW_FULL_DRAW, 1.0))
+	arrow.base_damage = 22.0 * lerpf(0.25, 1.0, minf(charge / BOW_FULL_DRAW, 1.0)) * player.skills.bonus("archery", 0.04)
 	arrow.stealth = player.is_sneaking()
 	arrow.velocity = direction * lerpf(14.0, 30.0, minf(charge / BOW_FULL_DRAW, 1.0))
 	player.get_parent().add_child(arrow)
@@ -391,6 +395,17 @@ func release_bow() -> bool:
 	player.survival.wear_tool()
 	player._held.swing()
 	return true
+
+## Experiencia por golpear: según el daño hecho, y un extra por derribar a la criatura.
+static func reward_hit(attacker: Player, skill: String, victim: CreatureActor, health_before: float) -> void:
+	if attacker == null or attacker.creative:
+		return
+	var dealt := health_before - (0.0 if victim.dead else victim.health)
+	var points := dealt / 5.0
+	if victim.dead:
+		points += float(victim.stats["hp"]) / 5.0
+	attacker.skills.gain(skill, points)
+
 
 static func bow_spread(seconds: float) -> float:
 	return minf(0.18, 0.004 + maxf(0.0, seconds - BOW_FATIGUE) * 0.025)

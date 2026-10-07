@@ -71,6 +71,7 @@ const DROPS := {
 ## Objetos que no son bloques. "wear": hueco de equipo donde se lleva; "pockets": huecos de
 ## barra que añade; "storage": huecos de inventario que añade.
 const OTHER_ITEMS := {
+	"dawn_bean": {"name": "Grano de alba", "stack": 16},
 	"raw_meat": {"name": "Carne cruda", "stack": 16},
 	"cooked_meat": {"name": "Carne asada", "stack": 16},
 	"raw_poultry": {"name": "Carne de ave cruda", "stack": 16},

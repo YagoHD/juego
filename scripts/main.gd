@@ -56,10 +56,12 @@ var _capture: CaptureMode          # modo captura (solo con "--capture="; si no,
 var _session: CraftSession     # inventario de rodillas y vista de fabricar
 var _crosshair: Label
 var _needs: Needs
+var _sleeping := false  # fundido de dormir en marcha
 var _hunger_bar: ProgressBar
 var _micro_ship: Node3D  # el barco de cubitos
 var _salvage: Salvage    # restos de la playa que se desmontan
 var _thirst_bar: ProgressBar
+var _rest_bar: ProgressBar
 var _hotbar: Hotbar
 var _underwater: ColorRect
 var _day_night: DayNight
@@ -322,6 +324,7 @@ func _build_player() -> void:
 	_needs.player = _player
 	_player.needs = _needs
 	_needs.warned.connect(_show_notice)
+	_needs.collapsed.connect(func() -> void: _sleep(_player.global_position, false))
 	_session = CraftSession.new()
 	add_child(_session)
 	_session.player = _player
@@ -468,6 +471,7 @@ func _build_hud() -> void:
 	canvas.add_child(_hotbar)
 	_hunger_bar = _make_need_bar(canvas, 0, "Hambre", Color(0.85, 0.55, 0.2), "hunger", "orange")
 	_thirst_bar = _make_need_bar(canvas, 1, "Sed", Color(0.3, 0.6, 0.9), "thirst", "blue")
+	_rest_bar = _make_need_bar(canvas, 2, "Sueño", Color(0.6, 0.5, 0.85), "rest", "purple")  # llena = descansado
 	_objectives = Objectives.new()
 	add_child(_objectives)
 	_objectives.build_ui(canvas)
@@ -543,6 +547,7 @@ func _process(delta: float) -> void:
 	if _needs != null:
 		_hunger_bar.value = _needs.hunger
 		_thirst_bar.value = _needs.thirst
+		_rest_bar.value = 100.0 - _needs.fatigue
 	_crosshair.visible = not kneeling
 	_hud.visible = not reading
 	_prompt.visible = not reading
@@ -598,6 +603,7 @@ func _save_player() -> void:
 		"drift_day": _last_drift_day,
 		"needs": _needs.to_data(),
 		"combat": _player.combat.to_data(),
+		"skills": _player.skills.to_data(),
 		"death_backpacks": get_tree().get_nodes_in_group("death_backpacks").filter(func(b: Node) -> bool: return not b.is_queued_for_deletion()).map(func(b: Node) -> Dictionary: return (b as DeathBackpack).to_data()),
 		"explored": (get_node("Exploration") as Exploration).to_data(),
 		"farm": _player.farm.to_data() if _player.farm != null else {},
@@ -632,6 +638,8 @@ func _load_player() -> void:
 		_needs.from_data(d["needs"])
 	if d.get("combat") is Dictionary:
 		_player.combat.from_data(d["combat"])
+	if d.get("skills") is Dictionary:
+		_player.skills.from_data(d["skills"])
 	for bag in d.get("death_backpacks", []):
 		if bag is Dictionary:
 			DeathBackpack.restore(self, bag)
@@ -937,32 +945,61 @@ func _drift_ashore() -> void:
 
 ## Clic derecho en un saco de dormir: de noche, se duerme hasta la mañana (fundido a negro); de
 ## día no. En los dos casos el saco queda como el sitio donde reaparecer.
-func _sleep(at: Vector3) -> void:
-	_player.set_spawn_point(at + Vector3.UP * 0.3)
-	var h := _day_night.hour
-	if h >= 6.0 and h < 19.0:
-		_show_notice("Aún es de día: solo se puede dormir al anochecer. (Este saco será tu sitio para reaparecer.)")
+## Dormir en el saco (bed) o caer desmayado de cansancio (sin cama). De noche se duerme hasta el
+## amanecer; de día solo si se está cansado, y es una siesta de unas horas. Lo bien que se
+## descanse depende del sitio (SleepSpot).
+func _sleep(at: Vector3, bed := true) -> void:
+	if _sleeping:
 		return
+	if bed:
+		_player.set_spawn_point(at + Vector3.UP * 0.3)
+	var h := _day_night.hour
+	var night := h >= 19.0 or h < 6.0
+	if bed and not night and _needs.fatigue < Needs.TIRED:
+		_show_notice("Aún es de día y no tienes sueño. (Este saco será tu sitio para reaparecer.)")
+		return
+	if not bed:  # desmayo: se cierra lo que hubiera abierto (fabricación, inventario)
+		if _session.active():
+			_session.end()
+		_inventory_screen.close()
+	var spot := SleepSpot.evaluate(get_world_3d().direct_space_state, at, [_player.get_rid()], bed)
+	var rest: Dictionary = SleepSpot.REST[spot]
+	_sleeping = true
 	_player.ui_open = true
+	if _player.combat != null:
+		_player.combat.cancel_actions()
 	var black := ColorRect.new()
 	black.color = Color(0, 0, 0, 0)
 	black.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	black.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_ui_layer.add_child(black)
 	var tween := create_tween()
-	tween.tween_property(black, "color:a", 1.0, 1.2)
+	tween.tween_property(black, "color:a", 1.0, 0.6 if not bed else 1.2)
 	tween.tween_callback(func() -> void:
-		if h >= 19.0:
-			_day_night.day += 1
-		_day_night.set_hour(6.5)
-		_objectives.mark("dormido")
+		if night:
+			if h >= 19.0:
+				_day_night.day += 1
+			_day_night.set_hour(6.5)
+		else:
+			var wake := h + 4.0  # siesta
+			if wake >= 24.0:
+				_day_night.day += 1
+			_day_night.set_hour(fmod(wake, 24.0))
+		_needs.wake(rest)
+		if _player.combat != null:
+			var combat := _player.combat
+			combat.health = minf(minf(combat.health + float(rest["heal"]), float(rest["cap"])), PlayerCombat.MAX_HEALTH)
+			combat.health = maxf(combat.health, 1.0)
+		if bed:
+			_objectives.mark("dormido")
 		_save_world())
 	tween.tween_interval(0.8)
 	tween.tween_property(black, "color:a", 0.0, 1.5)
 	tween.tween_callback(func() -> void:
 		black.queue_free()
 		_player.ui_open = false
-		_show_notice("Has dormido hasta el amanecer."))
+		_sleeping = false
+		_show_notice(str(rest["text"])))
 
 
 ## Barrita de hambre o sed, abajo a la izquierda (fila 0 o 1).

@@ -454,7 +454,7 @@ func _update_buttons() -> void:
 	# Pista: qué falta (o cómo se usa).
 	if not _working.is_empty():
 		var recipe: Dictionary = GroundRecipes.RECIPES[_working["recipe"]]
-		_hint.text = "%s...  %d%%" % [GroundCrafting.label_of(_working), int(_work_time / float(recipe["time"]) * 100.0)]
+		_hint.text = "%s...  %d%%" % [GroundCrafting.label_of(_working), int(_work_time / _recipe_time(recipe) * 100.0)]
 	elif not matches.is_empty():
 		_hint.text = "¡Listo! Pulsa el botón para hacerlo."
 	else:
@@ -484,10 +484,17 @@ func _update_work(delta: float) -> void:
 	if _work_tick <= 0.0:
 		_work_tick = 0.4
 		Sfx.play("golpe", _working["center"], -6.0, 0.2)
-	if _work_time >= float(GroundRecipes.RECIPES[_working["recipe"]]["time"]):
+	var recipe: Dictionary = GroundRecipes.RECIPES[_working["recipe"]]
+	if _work_time >= _recipe_time(recipe):
 		var m := _working
 		_stop_working()
 		ground.craft(m)
+		player.skills.gain("crafting", float(recipe["time"]) * 2.0)
+
+
+## Lo que tarda una receta: menos con práctica de artesanía.
+func _recipe_time(recipe: Dictionary) -> float:
+	return float(recipe["time"]) * player.skills.bonus("crafting", -0.04)
 
 
 func _stop_working() -> void:

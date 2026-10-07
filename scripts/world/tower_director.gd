@@ -3,6 +3,7 @@ extends Node3D
 signal phase_changed(phase: int)
 signal boss_defeated
 const SquadScript = preload("res://scripts/creatures/enemy_squad.gd")
+const SproutsScript = preload("res://scripts/world/dawn_sprouts.gd")
 const REINFORCEMENTS := {
 	1: ["tracker", "tracker", "tracker", "tracker"],
 	2: ["archer", "archer"],
@@ -24,12 +25,18 @@ var _routes: Dictionary = {}
 var _roads: Dictionary = {}
 var _geometry: Node3D
 var _check := 0.0
+var sprouts: Node3D   # grano de alba en el borde de la corrupción
 
 func configure(p: Player, time: DayNight, gen: IslandGenerator) -> void:
 	player = p
 	clock = time
 	generator = gen
 	center = _find_center()
+	sprouts = SproutsScript.new()
+	sprouts.name = "DawnSprouts"
+	sprouts.tower = self
+	sprouts.player = p
+	add_child(sprouts)
 
 func _find_center() -> Vector3:
 	var samples: Array[Vector2i] = []
@@ -76,6 +83,8 @@ func advance_to_day(day: int) -> void:
 		_add_phase(phase)
 		phase_changed.emit(phase)
 	_build_geometry()
+	if sprouts != null:
+		sprouts.grow_until(day)
 
 func _add_phase(stage: int) -> void:
 	var roster: Array = REINFORCEMENTS[stage]
@@ -134,6 +143,8 @@ func _physics_process(delta: float) -> void:
 		var desired := clampi(clock.day - first_day + 1, 1, 4)
 		if desired > phase:
 			advance_to_day(clock.day)
+		elif sprouts != null and sprouts.day < clock.day:
+			sprouts.grow_until(clock.day)
 	if phase == 4:
 		for road_id in _roads:
 			_add_road_patrol(road_id)
@@ -238,7 +249,7 @@ func to_data() -> Dictionary:
 	for id in _groups:
 		if is_instance_valid(_groups[id]):
 			_routes[id] = _groups[id].to_data()
-	return {"phase": phase, "first_day": first_day, "center": _vec(center), "records": _records.duplicate(true), "routes": _routes.duplicate(true), "roads": _roads.duplicate(true), "boss_defeated": guardian_defeated}
+	return {"phase": phase, "first_day": first_day, "center": _vec(center), "records": _records.duplicate(true), "routes": _routes.duplicate(true), "roads": _roads.duplicate(true), "boss_defeated": guardian_defeated, "sprouts": sprouts.to_data() if sprouts != null else {}}
 
 func from_data(data: Dictionary) -> void:
 	phase = clampi(int(data.get("phase", 0)), 0, 4)
@@ -249,6 +260,8 @@ func from_data(data: Dictionary) -> void:
 	_routes = data.get("routes", {}).duplicate(true)
 	_roads = data.get("roads", {}).duplicate(true)
 	guardian_defeated = bool(data.get("boss_defeated", false))
+	if sprouts != null and data.get("sprouts") is Dictionary:
+		sprouts.from_data(data["sprouts"])
 
 static func _vec(point: Vector3) -> Array:
 	return [point.x, point.y, point.z]

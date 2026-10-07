@@ -62,6 +62,9 @@ func break_time(block_id: int) -> float:
 	var held := player.active_inventory().get_slot(player._hotbar_index)
 	if not held.is_empty():
 		t /= ItemDB.tool_speed(held["id"], block_id)
+	var skill := Skills.block_skill(block_id)
+	if skill != "":
+		t /= player.skills.bonus(skill, 0.06)  # la práctica: minería o tala
 	return t
 
 

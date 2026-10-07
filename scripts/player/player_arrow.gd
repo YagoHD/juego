@@ -37,7 +37,9 @@ func _physics_process(delta: float) -> void:
 		if victim != null:
 			var unaware := victim.alert_seconds <= 0.0 and victim.state not in ["chase", "windup", "charge", "recover"]
 			var multiplier := damage_multiplier(launch_origin.distance_to(hit["position"]), launch_origin.y - victim.eye_position().y, stealth, unaware)
+			var before := victim.health
 			victim.take_damage(base_damage * multiplier, source)
+			PlayerCombat.reward_hit(source, "archery", victim, before)
 		queue_free()
 		return
 	global_position = next

@@ -83,6 +83,16 @@ Hojas hechas (`docs/concept/`):
 | Pez tropical pequeño | 🟡 | 5 (nº 10); en el juego, modelo de Kenney |
 | Pez grande azul | 🟡 | 5 (nº 11) |
 | Escarabajo (insecto) | 🟡 | 5 (nº 12) |
+| Cerdo, vaca, jabalí, serpiente, lobo, gato, ciervo, conejo, gallina, cuervo, águila | ❌ | modelos 3D en `PROMPTS_MESHY.md` (animales); ahora son bolas de color |
+
+## Enemigos y personas
+
+| Quién | Estado | Hoja / prompt |
+|---|---|---|
+| Rastreador, arquero, soldado, capitán, mago (invasores; algunos enmascarados) | ❌ | `PROMPTS_MESHY.md` (enemigos); ahora son bolas de color |
+| Guardián de la torre (jefe de piedra) | ❌ | `PROMPTS_MESHY.md` (enemigos) |
+| Vecinos y guardias del pueblo | ❌ | se apuntarán al hacerlos |
+| Brazo en primera persona | ✅ | modelo de Meshy (`docs/mano/brazo final hombre`) |
 
 ## Objetos (iconos del inventario)
 
@@ -120,6 +130,13 @@ Hojas hechas (`docs/concept/`):
 | Flor roja, flor amarilla (recogidas) | 🟡 | 10 (nº 10-11) |
 | Coco (aún no es un objeto del juego) | 🟡 | 10 (nº 12) |
 | Bloques en la mano (tierra, piedra, tablones...) | ✅ | se dibujan con la textura del bloque |
+| Carne cruda y asada, carne de ave cruda y asada | ❌ | hoja 13 (nº 1-4) |
+| Piel, hueso, colmillo, pluma, glándula de veneno | ❌ | hoja 13 (nº 5-9) |
+| Fragmentos de hierro, polvo arcano, órdenes del capitán, fragmento del ancla | ❌ | hoja 13 (nº 10-12) y hoja 14 (nº 1) |
+| Arco, flecha, escudo de madera | ❌ (icono) | hoja 14 (nº 2-4); arco y flecha ya tienen modelo de Meshy |
+| Grano de alba (cafeína) | ❌ | hoja 14 (nº 5); la planta en el mundo, modelo en `PROMPTS_MESHY.md` |
+| Mochila perdida al morir (en el suelo) | ❌ | modelo en `PROMPTS_MESHY.md`; ahora es una caja marrón |
+| Barra de sueño (icono de la luna) | ❌ | hoja 14 (nº 6); ahora sale la palabra "Sueño" |
 
 ## Personaje
 
@@ -172,6 +189,39 @@ of the cell):
 10 picked red flower with a short stem
 11 picked yellow flower with a short stem
 12 coconut, half brown husk
+```
+
+## Hoja 13: caza y botín de enemigos (iconos)
+
+```
+Same style as the item sheets. A clean 4x3 grid of 12 INVENTORY ICONS, one per cell, numbered
+1-12 under each, plain beige background, front view slightly tilted, centered, filling most of
+the cell, no ground shadows:
+1 a raw red piece of meat with a bit of fat
+2 the same piece of meat roasted, golden brown with grill marks
+3 a raw bird leg (pale pink)
+4 the same bird leg roasted, golden brown
+5 a folded brown animal hide
+6 a white animal bone
+7 a curved ivory boar tusk
+8 a single grey-white bird feather
+9 a small green venom gland, slightly glossy
+10 a handful of rusty iron scraps
+11 a small pile of glowing violet arcane dust
+12 a rolled parchment with a red wax seal (enemy orders)
+```
+
+## Hoja 14: combate y sueño (iconos)
+
+```
+Same style as the item sheets. A clean 3x2 grid of 6 INVENTORY ICONS, one per cell, numbered
+1-6 under each, plain beige background, front view slightly tilted, centered, no ground shadows:
+1 a jagged shard of dark stone with glowing violet veins (anchor shard)
+2 a simple wooden bow with a fiber string
+3 a wooden arrow with a flint tip and grey feathers
+4 a round wooden shield made of planks with a rope-wrapped rim
+5 a small cluster of amber glowing coffee-like beans on a green sprig (dawn grain)
+6 a small crescent moon icon for a sleep bar, soft violet
 ```
 
 ## Hoja 11: efectos y cielo

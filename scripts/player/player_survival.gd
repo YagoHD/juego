@@ -53,9 +53,13 @@ func spear_fish() -> bool:
 	Sfx.play("tirar", null, -4.0)
 	if player.fish.try_spear(player._camera.global_position, -player._camera.global_transform.basis.z):
 		Sfx.play("paso_agua", null, 0.0, 0.2)
-		if player.pick_up("raw_fish", 1) > 0:
-			ItemDrop.spawn(player.get_parent(), player.global_position + Vector3.UP, "raw_fish", 1)
-		player.notice.emit("¡Has pescado un pez!")
+		# Con práctica, a veces salen dos de una vez.
+		var caught := 2 if randf() < player.skills.bonus("fishing", 0.06) - 1.0 else 1
+		var left := player.pick_up("raw_fish", caught)
+		if left > 0:
+			ItemDrop.spawn(player.get_parent(), player.global_position + Vector3.UP, "raw_fish", left)
+		player.skills.gain("fishing", 8.0)
+		player.notice.emit("¡Has pescado dos peces!" if caught == 2 else "¡Has pescado un pez!")
 		return true
 	return false
 

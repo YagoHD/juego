@@ -127,6 +127,7 @@ var aim: BlockAim                 # qué se apunta y su recuadro (componente)
 var rafts: RaftRider              # la balsa: echarla, subir, remar, bajar (componente)
 var survival: PlayerSurvival      # comer, beber, pescar, plantar, desgaste (componente)
 var combat: PlayerCombat         # vida, golpes y mochila al morir (sin crear enemigos)
+var skills := Skills.new()        # habilidades que suben con el uso
 var breaker: BlockBreaker         # romper manteniendo el clic, grietas (componente)
 var builder: PlayerBuilder        # colocar objetos, losas, velas y cuerdas (componente)
 var _terrain: VoxelTerrain
@@ -200,6 +201,9 @@ func _ready() -> void:
 	survival.name = "Survival"
 	survival.player = self
 	add_child(survival)
+	skills.leveled_up.connect(func(skill: String, level: int) -> void:
+		Sfx.play("aprender")
+		notice.emit("%s sube a nivel %d." % [Skills.INFO[skill]["name"], level]))
 	combat = PlayerCombat.new()
 	combat.name = "Combat"
 	combat.player = self
@@ -521,6 +525,10 @@ func _physics_process(delta: float) -> void:
 
 
 func _process(delta: float) -> void:
+	# Mareo (al despertar mal) o agotamiento: la vista se balancea despacio.
+	var sway := needs.sway() if needs != null else 0.0
+	var now := Time.get_ticks_msec() * 0.001
+	_head.rotation = Vector3(_pitch + sin(now * 1.3) * 0.025 * sway, 0.0, sin(now * 0.8) * 0.07 * sway)
 	# Suavizado de la cámara tras subir un escalón: el desfase se reduce exponencialmente.
 	if _camera_lag.length_squared() < 0.000001:
 		_camera_lag = Vector3.ZERO
@@ -708,6 +716,10 @@ func _edit_block(place: bool) -> void:
 				for d in ItemDB.drops_for(above_id, _loot_rng):
 					ItemDrop.spawn(get_parent(), center + Vector3.UP * size * 0.6, d[0], d[1])
 		TreeFelling.try_fell(get_parent(), _terrain, cell, broken, global_position)  # ¿se cae el árbol?
+		if not creative:
+			var practiced := Skills.block_skill(broken)
+			if practiced != "":
+				skills.gain(practiced, 1.0 + Blocks.hardness(broken))
 		# La herramienta que sirve para este bloque se gasta un poco.
 		var held_tool := active_inventory().get_slot(_hotbar_index)
 		if not held_tool.is_empty() and ItemDB.tool_speed(held_tool["id"], broken) > 1.0:
@@ -978,6 +990,7 @@ func _read_note() -> bool:
 		var result: String = GroundRecipes.RECIPES[recipe_id]["result"]
 		Sfx.play("aprender")
 		notice.emit("Has aprendido a hacer: %s. Está en el diario (J)." % ItemDB.display_name(result))
+		skills.gain("reading", 15.0)
 		if not creative:
 			inventory.take(_hotbar_index, 1)
 	else:

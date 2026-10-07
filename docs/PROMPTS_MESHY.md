@@ -87,6 +87,58 @@ Reply "OK" and wait.
 | `crate.glb` | A wooden cargo crate made of planks with darker corner boards. |
 | `lantern.glb` | An old ship lantern made of iron and glass (unlit). |
 
+## Combate, caza y sueño (añadidos con el combate)
+
+| Archivo | Prompt para ChatGPT |
+|---|---|
+| `wooden_shield.glb` | A round wooden shield made of rough planks, a rope-wrapped rim and a leather strap on the back. |
+| `raw_meat.glb` | A raw red piece of meat with a bit of white fat. |
+| `cooked_meat.glb` | A roasted piece of meat, golden brown with dark grill marks. |
+| `raw_poultry.glb` | A raw bird leg, pale pink. |
+| `cooked_poultry.glb` | A roasted bird leg, golden brown. |
+| `hide.glb` | A folded brown animal hide with fur on one side. |
+| `bone.glb` | A white animal bone. |
+| `tusk.glb` | A curved ivory boar tusk. |
+| `feather.glb` | A single grey-white bird feather. |
+| `iron_scrap.glb` | A handful of rusty iron scraps and bent nails. |
+| `anchor_shard.glb` | A jagged shard of dark stone with glowing violet veins. |
+| `dawn_bean_plant.glb` | A small wild plant: a thin green stem with narrow leaves and a cluster of amber glowing beans at the top. |
+| `death_backpack.glb` | A dropped makeshift backpack made of sail cloth and rope, lying on the ground, slightly open. |
+
+## Animales (modelos con huesos para animarlos)
+
+En Meshy, después del modelo, usar **Rigging/animación** si lo ofrece para cuadrúpedos. Mismo
+prompt de estilo; pedir el animal **de perfil, de pie, con las patas separadas**.
+
+| Archivo | Prompt para ChatGPT |
+|---|---|
+| `pig.glb` | A pink farm pig standing, side view. |
+| `cow.glb` | A cream and brown cow standing, side view. |
+| `boar.glb` | A dark brown wild boar with small tusks, standing, side view. |
+| `snake.glb` | A green snake lying in a loose S shape, seen from slightly above. |
+| `wolf.glb` | A grey wolf standing, side view. |
+| `cat.glb` | An orange cat standing, side view. |
+| `deer.glb` | A brown deer with small antlers, standing, side view. |
+| `rabbit.glb` | A grey-brown rabbit sitting, side view. |
+| `hen.glb` | A light brown hen standing, side view. |
+| `gull.glb` | A white seagull with open wings, as if flying. |
+| `crow.glb` | A black crow with open wings, as if flying. |
+| `eagle.glb` | A brown eagle with open wings, as if flying. |
+
+## Enemigos (personas con huesos, en pose de T)
+
+Pedir el personaje **entero, de frente, en pose de T (brazos en cruz)**, para que Meshy le ponga
+huesos. Los enmascarados sirven al ancla; los de cara descubierta son soldados corrientes.
+
+| Archivo | Prompt para ChatGPT |
+|---|---|
+| `tracker.glb` | A light scout in worn leather and a hood, face uncovered, T-pose, full body, front view. |
+| `archer.glb` | An archer in a green padded tunic with a quiver on the back, face uncovered, T-pose, full body, front view. |
+| `soldier.glb` | A soldier in dented iron armor with a simple helmet, face uncovered, T-pose, full body, front view. |
+| `captain.glb` | A captain in red and dark iron armor with a short cape, T-pose, full body, front view. |
+| `mage.glb` | A masked mage in a violet robe with glowing violet runes, face hidden by a smooth mask, T-pose, full body, front view. |
+| `tower_guardian.glb` | A huge mute stone golem with a glowing violet crystal core in the chest, T-pose, full body, front view. |
+
 ## Consejos para Meshy
 
 - Si sale el objeto con suelo o con una base que no tiene, vuelve a generar la imagen sin sombra.

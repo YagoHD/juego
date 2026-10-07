@@ -57,8 +57,26 @@ func _init(player: Player, screen: InventoryScreen) -> void:
 	_message.custom_minimum_size = Vector2(150, 0)
 	add_child(_message)
 
+	_add_skills()
 	_player.inventory_layout_changed.connect(_refresh)
 	_refresh()
+
+
+## Habilidades y su nivel (suben con el uso); al pasar el ratón, qué mejoran y cuánto falta.
+func _add_skills() -> void:
+	var title := Label.new()
+	title.text = "Habilidades"
+	title.add_theme_font_size_override("font_size", 16)
+	add_child(title)
+	for skill in Skills.INFO:
+		var line := Label.new()
+		var level := _player.skills.level(skill)
+		line.text = "%s  %d" % [Skills.INFO[skill]["name"], level]
+		line.tooltip_text = "%s\nSiguiente nivel: %d%%" % [Skills.INFO[skill]["perk"], int(_player.skills.progress(skill) * 100.0)]
+		line.mouse_filter = Control.MOUSE_FILTER_PASS
+		line.add_theme_font_size_override("font_size", 12)
+		line.add_theme_color_override("font_color", Color(0.85, 0.8, 0.72) if level > 0 else Color(0.6, 0.57, 0.52))
+		add_child(line)
 
 
 func _exit_tree() -> void:

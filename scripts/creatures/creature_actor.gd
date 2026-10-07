@@ -299,7 +299,7 @@ func detects_player() -> bool:
 	var distance := offset.length()
 	var sense := float(stats["sense"]) * (1.35 if alert_seconds > 0.0 else 1.0)
 	if player.is_sneaking():
-		sense *= 0.45
+		sense *= 0.45 * player.skills.bonus("stealth", -0.04)
 	if distance > sense or not can_see(player):
 		return false
 	var facing := -global_basis.z
