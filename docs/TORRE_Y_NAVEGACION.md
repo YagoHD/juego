@@ -30,3 +30,27 @@ Torre/refugios son geometría básica con colisión, reemplazable por los modelo
 `tools/test_navigation_tower.gd`: rodeo físico de pared larga, cambio de ruta al construir, suelo ausente, fases 1–4, no duplicación, persistencia de bajas, jefe y registro de caminos. Incluye comprobación sobre los mapas reales de la isla. `tools/run_tests.sh` incluye esta prueba.
 
 `tools/test_tower_island.gd`: carga la isla completa, adelanta su reloj y comprueba las fases, los refuerzos y el guardado real de las bajas. Ejecutar con APPDATA y LOCALAPPDATA apuntando a una carpeta de pruebas independiente. Ambas pruebas terminaron con 0 fallos.
+
+## Guarnición por puestos (2026-10-07, pedido de Yago)
+
+Los invasores ya no aparecen amontonados: `scripts/world/garrison.gd` reparte cada día en
+**puestos con sentido** y `CreatureActor.post` les da su rutina:
+
+| Puesto | Qué hace | Desde |
+|---|---|---|
+| Exploradores | patrullan el borde de la corrupción en parejas | día 1 |
+| Torre de vigía | un arquero arriba, quieto, barriendo con la vista hacia fuera; no baja (dispara desde arriba) | día 2 |
+| Campamento | tiendas y hoguera; de día descansan mirando al fuego y se mueven entre asientos; de noche **duermen** (casi no ven: solo les despierta el ruido de cerca) | día 2 |
+| Ritual | magos junto a piedras moradas alrededor de la torre, canalizando mirando a ella | día 3 |
+| Puerta | dos guardias a los lados de la entrada sur de la torre | día 3 |
+| Patrullas | grupos de 3-4 que recorren la zona | día 3 |
+| Trabajadores | rastreadores entre montones de cajas junto a la torre | día 4 |
+| Jefe | el guardián, dentro de la torre | día 4 |
+
+Cantidades: día 1, 4; día 2, +4; día 3, +18; día 4, +~130 (unos **155 en total**). Solo existen en
+la escena los que están a menos de 65 m; a más de 95 m (y tranquilos) se guardan en su ficha y se
+quitan, así cientos de enemigos no pesan. Pensado para jugar con sigilo: rodear las torres de vigía
+por su espalda, entrar al campamento de noche, evitar las patrullas.
+
+Las partidas guardadas de antes conservan sus enemigos antiguos (sin puesto); los días nuevos ya
+llegan por puestos.

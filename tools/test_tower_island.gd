@@ -24,7 +24,7 @@ func _run() -> void:
 	main._day_night.advance(48.0)
 	for i in 30:
 		await physics_frame
-	check(main._tower.phase == 3 and main._tower._records.size() == 18, "reloj de la isla activa tercera fase")
+	check(main._tower.phase == 3 and main._tower._records.size() == 26, "reloj de la isla activa tercera fase")
 	main._tower._records["1_0"]["dead"] = true
 	main._save_player()
 	var data: Dictionary = JSON.parse_string(FileAccess.get_file_as_string(main._player_save_path()))
@@ -32,7 +32,7 @@ func _run() -> void:
 	main._day_night.advance(24.0)
 	for i in 30:
 		await physics_frame
-	check(main._tower.phase == 4 and main._tower._records.size() == 34, "cuarto día de isla añade jefe y mega campamento")
+	check(main._tower.phase == 4 and main._tower._records.size() >= 120, "cuarto día de isla añade jefe y mega campamento")
 	main._save_player()
 	print("TOTAL: %d fallos" % failures)
 	quit(1 if failures else 0)

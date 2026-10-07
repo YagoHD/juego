@@ -70,7 +70,9 @@ func _run() -> void:
 	tower.clock = null
 	time.free()
 	tower.advance_to_day(2)
-	check(tower._records.size() == 6 and tower._records["2_0"]["species"] == "archer", "día dos añade arqueros y mini campamento")
+	check(tower._records.size() == 8 and tower._records["2_0"]["species"] == "archer", "día dos añade arqueros y mini campamento")
+	check(tower._records["2_0"]["post"]["role"] == "sentry" and tower._records["2_0"]["post"]["hold"], "el arquero vigila desde su torre")
+	check(tower._records["2_1"]["post"]["role"] == "camp", "el campamento pequeño descansa junto a su hoguera")
 	check(tower._records["1_0"]["dead"], "avanzar día no resucita enemigos muertos")
 	tower.advance_to_day(3)
 	var species: Array = []
@@ -78,8 +80,17 @@ func _run() -> void:
 		if not species.has(record["species"]):
 			species.append(record["species"])
 	check(species.has("captain") and species.has("mage") and species.has("soldier") and not species.has("tower_guardian"), "día tres incluye todos los normales sin jefe")
+	var roles := {}
+	for record in tower._records.values():
+		if not record["post"].is_empty():
+			roles[record["post"]["role"]] = true
+	check(roles.has("ritual") and roles.has("camp") and roles.has("sentry") and tower._routes.size() >= 3, "día tres: magos en ritual, campamento, guardias y patrullas")
 	tower.advance_to_day(4)
-	check(tower.phase == 4 and tower._records.size() == 34 and tower._records["4_15"]["species"] == "tower_guardian", "día cuatro mega campamento y jefe dentro de torre")
+	var boss_id := ""
+	for id in tower._records:
+		if tower._records[id]["species"] == "tower_guardian":
+			boss_id = id
+	check(tower.phase == 4 and tower._records.size() >= 120 and boss_id != "", "día cuatro: ejército de %d y jefe" % tower._records.size())
 	var count: int = tower._records.size()
 	tower.advance_to_day(20)
 	check(tower._records.size() == count, "días posteriores no duplican refuerzos")
@@ -95,15 +106,35 @@ func _run() -> void:
 		if str(group).begins_with("road_"):
 			road_groups += 1
 	check(road_groups > 0 and road_groups < 10, "solo algunos caminos registrados reciben patrulla aleatoria estable")
-	tower._spawn("4_15")
-	var boss: CreatureActor = tower._actors["4_15"]
+	# Puestos: el vigía se queda arriba mirando hacia fuera; dormido no ve lo que despierto vería.
+	tower._spawn("2_0")
+	var sentry: CreatureActor = tower._actors["2_0"]
+	var post_point: Vector3 = sentry.post["point"]
+	sentry.set_physics_process(true)
+	for i in 120:
+		await physics_frame
+	check(sentry.global_position.distance_to(post_point) < 1.2 and sentry.state in ["watch", "patrol", "idle"], "el vigía se queda en su torre (%s, a %.1f m)" % [sentry.state, sentry.global_position.distance_to(post_point)])
+	tower._spawn("2_1")
+	var camper: CreatureActor = tower._actors["2_1"]
+	var saved_position: Vector3 = arena.player.global_position
+	arena.player.set_creative(false)
+	arena.player.global_position = camper.global_position - camper.global_basis.z * 8.0
+	camper.state = "sit"
+	var awake: bool = camper.detects_player()
+	camper.state = "sleep"
+	var asleep: bool = camper.detects_player()
+	arena.player.global_position = saved_position
+	arena.player.set_creative(true)
+	check(awake and not asleep, "dormido no ve a quien despierto vería a 8 m (despierto %s, dormido %s)" % [awake, asleep])
+	tower._spawn(boss_id)
+	var boss: CreatureActor = tower._actors[boss_id]
 	check(boss.global_position.distance_to(tower.center) < 1.0, "guardián nace en interior de torre")
 	boss.drop_loot = false
 	boss.take_damage(10000.0, arena.player)
-	check(tower.guardian_defeated and tower._records["4_15"]["dead"], "muerte del jefe permanece registrada")
+	check(tower.guardian_defeated and tower._records[boss_id]["dead"], "muerte del jefe permanece registrada")
 	await frames(2)
 	data = tower.to_data()
-	check(data["records"]["4_15"]["dead"], "guardar después de eliminar cuerpo del jefe conserva baja")
+	check(data["records"][boss_id]["dead"], "guardar después de eliminar cuerpo del jefe conserva baja")
 	var gen := IslandGenerator.new()
 	var mapped = Director.new()
 	mapped.configure(arena.player, null, gen)

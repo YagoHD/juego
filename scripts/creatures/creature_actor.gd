@@ -45,6 +45,12 @@ var _alert_cooldown := 0.0
 var _search_seconds := 0.0
 var _search_step := 0.0
 var squad: Node
+## Puesto en la guarnición de la torre (Garrison/TowerDirector): {"role": "sentry" (vigía quieto
+## mirando hacia "facing"; con "hold" no baja de su torre), "camp" (descansa en los "spots" mirando
+## a la hoguera "focus"; de noche duerme), "ritual" (canaliza junto a su piedra mirando a la torre),
+## "worker" (va de un montón de cajas a otro)}. Vacío: patrulla o merodea como siempre.
+var post := {}
+var _post_spot := Vector3.INF
 var squad_slot := 0
 var team_damage := 1.0
 var team_shield := 0.0
@@ -179,6 +185,8 @@ func _physics_process(delta: float) -> void:
 				var distance := offset.length()
 				if distance <= float(stats["range"]) and can_see(target) and _cooldown <= 0.0 and (not is_instance_valid(squad) or squad.request_attack(self)):
 					_begin_attack()
+				elif bool(post.get("hold", false)):
+					direction = Vector3.ZERO  # el vigía no baja de su torre: dispara desde arriba
 				elif stats["attack"] in ["bolt", "arrow"] and distance < 5.0:
 					direction = -offset
 				elif stats["attack"] in ["bolt", "arrow"] and distance <= (12.0 if species == "archer" else 9.0):
@@ -222,6 +230,12 @@ func _physics_process(delta: float) -> void:
 				_set_state("rest" if (hour < 6.0 or hour >= 20.0) else "feed")
 				_timer = 4.0
 		"idle", "feed", "rest":
+			if _timer <= 0.0:
+				_choose_routine()
+		"watch", "sit", "sleep", "ritual", "work":
+			var look := _post_facing()
+			if look != Vector3.ZERO and state != "sleep":
+				_face(look, delta)
 			if _timer <= 0.0:
 				_choose_routine()
 	if not stats["flying"]:
@@ -304,6 +318,9 @@ func detects_player() -> bool:
 	offset.y = 0.0
 	var distance := offset.length()
 	var sense := float(stats["sense"]) * (1.35 if alert_seconds > 0.0 else 1.0)
+	if state == "sleep":
+		# Dormido: no mira; solo le despierta el ruido de cerca (agachado, ni eso).
+		return not player.is_sneaking() and distance < sense * 0.35 and can_see(player)
 	if player.is_sneaking():
 		sense *= 0.45 * player.skills.bonus("stealth", -0.04) * (1.0 - player.gear_effect("sneak"))
 	if distance > sense or not can_see(player):
@@ -378,6 +395,9 @@ func backstab(amount: float, attacker: Player) -> void:
 			_timer = 1.5 if species == "tower_guardian" else 2.5
 
 func _choose_routine() -> void:
+	if not post.is_empty() and not is_instance_valid(squad):
+		_post_routine()
+		return
 	if is_instance_valid(squad):
 		_destination = squad.destination(self)
 		_set_state("patrol")
@@ -405,6 +425,56 @@ func _choose_routine() -> void:
 		_destination.y = home.y + _rng.randf_range(0.0, 3.0)
 	_set_state("patrol" if stats["enemy"] else "roam")
 	_timer = 8.0
+
+## Qué hace en su puesto: ir a su sitio y quedarse vigilando, descansando, durmiendo, canalizando
+## o trabajando un rato (luego vuelve a decidir).
+func _post_routine() -> void:
+	var role := str(post["role"])
+	var spots: Array = post.get("spots", [])
+	if not _post_spot.is_finite():
+		_post_spot = post["point"]
+	if role in ["camp", "worker", "ritual"] and not spots.is_empty():
+		var move_chance: float = {"camp": 0.25, "worker": 0.6, "ritual": 0.12}[role]
+		if _rng.randf() < move_chance:
+			_post_spot = spots[_rng.randi() % spots.size()]
+	if global_position.distance_to(_post_spot) > 1.0:
+		_destination = _post_spot
+		_set_state("patrol")
+		_timer = 12.0
+		return
+	var night := hour < 6.0 or hour >= 22.0
+	match role:
+		"sentry":
+			_set_state("watch")
+			_timer = _rng.randf_range(4.0, 8.0)
+		"camp":
+			if night and _rng.randf() < 0.8:
+				_set_state("sleep")
+				_timer = _rng.randf_range(20.0, 40.0)
+			else:
+				_set_state("sit")
+				_timer = _rng.randf_range(6.0, 14.0)
+		"ritual":
+			_set_state("ritual")
+			_timer = _rng.randf_range(8.0, 16.0)
+		_:
+			_set_state("work")
+			_timer = _rng.randf_range(3.0, 7.0)
+
+
+## Hacia dónde mira en su puesto: el vigía barre a un lado y a otro de su dirección; los demás, a
+## la hoguera o a la torre.
+func _post_facing() -> Vector3:
+	if state == "watch":
+		var a := float(post.get("facing", 0.0)) + sin(Time.get_ticks_msec() * 0.0004 + float(get_instance_id() % 7)) * 0.8
+		return Vector3(cos(a), 0, sin(a))
+	if post.has("focus"):
+		var to: Vector3 = post["focus"] - global_position
+		to.y = 0.0
+		if to.length() > 0.3:
+			return to
+	return Vector3.ZERO
+
 
 func _begin_attack(combo := false) -> void:
 	if not _target_valid():
@@ -712,5 +782,6 @@ func _die() -> void:
 
 func _update_label() -> void:
 	if _label != null:
-		var names := {"search": "Buscando", "chase": "Persiguiendo", "return": "Regresando", "stunned": "Aturdido", "patrol": "Patrullando", "idle": "Esperando", "windup": "Preparando " + {"lightning": "descarga", "beam": "rayo continuo", "bolt": "bola de rayos"}.get(_attack_kind, "ataque"), "channel": "Canalizando rayo", "recover": "Recuperándose"}
+		var names := {"search": "Buscando", "chase": "Persiguiendo", "return": "Regresando", "stunned": "Aturdido", "patrol": "Patrullando", "idle": "Esperando", "windup": "Preparando " + {"lightning": "descarga", "beam": "rayo continuo", "bolt": "bola de rayos"}.get(_attack_kind, "ataque"), "channel": "Canalizando rayo", "recover": "Recuperándose",
+			"watch": "Vigilando", "sit": "Descansando", "sleep": "Durmiendo", "ritual": "Canalizando", "work": "Trabajando"}
 		_label.text = "%s  %d/%d\n%s%s\n%s" % [stats["name"], ceili(health), int(stats["hp"]), names.get(state, state), " · Alerta" if alert_seconds > 0.0 else "", "Flecha encantada" if enchanted_arrow else team_role]

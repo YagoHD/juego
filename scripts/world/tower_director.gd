@@ -4,12 +4,6 @@ signal phase_changed(phase: int)
 signal boss_defeated
 const SquadScript = preload("res://scripts/creatures/enemy_squad.gd")
 const SproutsScript = preload("res://scripts/world/dawn_sprouts.gd")
-const REINFORCEMENTS := {
-	1: ["tracker", "tracker", "tracker", "tracker"],
-	2: ["archer", "archer"],
-	3: ["captain", "soldier", "mage", "archer", "soldier", "tracker", "soldier", "archer", "captain", "mage", "soldier", "tracker"],
-	4: ["captain", "soldier", "mage", "archer", "tracker", "soldier", "archer", "tracker", "captain", "soldier", "mage", "archer", "tracker", "soldier", "tracker", "tower_guardian"],
-}
 var player: Player
 var clock: DayNight
 var generator: IslandGenerator
@@ -26,6 +20,8 @@ var _roads: Dictionary = {}
 var _geometry: Node3D
 var _check := 0.0
 var sprouts: Node3D   # grano de alba en el borde de la corrupción
+const SPAWN_DISTANCE := 65.0
+const DESPAWN_DISTANCE := 95.0
 
 func configure(p: Player, time: DayNight, gen: IslandGenerator) -> void:
 	player = p
@@ -87,25 +83,77 @@ func advance_to_day(day: int) -> void:
 		sprouts.grow_until(day)
 
 func _add_phase(stage: int) -> void:
-	var roster: Array = REINFORCEMENTS[stage]
-	var radius: float = [12.0, 20.0, 32.0, 55.0][stage - 1]
-	for index in roster.size():
-		var id := "%d_%d" % [stage, index]
-		var species := str(roster[index])
-		var angle := (index / 4) * TAU / ceilf(roster.size() / 4.0) + stage * 0.7
-		var point := affected_point(angle, radius)
-		point = ground_point(point.x + ((index % 4) % 2) * 1.2, point.z + ((index % 4) / 2) * 1.2)
-		var group_id := "stage_%d_%d" % [stage, index / 4]
-		if species == "tower_guardian":
-			point = center + Vector3.UP * 0.25
-			group_id = ""
-		_records[id] = {"species": species, "position": _vec(point), "home": _vec(point), "health": CreatureDB.profile(species)["hp"], "dead": false, "group": group_id}
-		if group_id != "" and not _routes.has(group_id):
+	# Puestos con sentido (Garrison): torres de vigía, campamentos, ritual, puerta, patrullas.
+	var index := 0
+	for post: Dictionary in Garrison.posts_for(stage, self):
+		var roster: Array = post["roster"]
+		var group_id := ""
+		if post["kind"] == "patrol":
+			group_id = str(post["id"])
 			var route: Array = []
-			for step in (4 if stage >= 3 else 2):
-				var a := angle + step * 0.35
-				route.append(_vec(affected_point(a, radius)))
+			for point: Vector3 in post["route"]:
+				route.append(_vec(point))
 			_routes[group_id] = {"points": route, "rest_duration": 5.0, "waypoint": 0, "direction": 1}
+		for member in roster.size():
+			var species := str(roster[member])
+			var role := _role(post, member)
+			var point: Vector3 = role.get("point", post["point"])
+			if post["kind"] == "patrol":
+				point = ground_point(point.x + (member % 2) * 1.2, point.z + (member / 2) * 1.2)
+			var id := "%d_%d" % [stage, index]
+			index += 1
+			_records[id] = {"species": species, "position": _vec(point), "home": _vec(point),
+				"health": CreatureDB.profile(species)["hp"], "dead": false, "group": group_id,
+				"post": _post_data(role)}
+
+
+## Qué hace en su puesto el miembro 'member' (CreatureActor.post): vigía quieto mirando hacia fuera,
+## descanso en el campamento, ritual junto a la torre o trabajo entre las cajas.
+func _role(post: Dictionary, member: int) -> Dictionary:
+	var spots: Array = post["spots"]
+	var spot: Vector3 = spots[member % spots.size()] if not spots.is_empty() else post["point"]
+	match str(post["kind"]):
+		"watchtower":
+			return {"role": "sentry", "point": spot, "facing": post["facing"], "hold": true}
+		"gate":
+			return {"role": "sentry", "point": spot, "facing": post["facing"]}
+		"camp":
+			return {"role": "camp", "point": spot, "focus": post["point"], "spots": spots}
+		"ritual":
+			return {"role": "ritual", "point": spot, "focus": post["point"], "spots": spots}
+		"workers":
+			return {"role": "worker", "point": spot, "spots": spots}
+		"boss":
+			return {"point": post["point"]}
+	return {}
+
+
+static func _post_data(role: Dictionary) -> Dictionary:
+	if not role.has("role"):
+		return {}
+	var data := {"role": role["role"], "point": _vec(role["point"]), "facing": float(role.get("facing", 0.0)),
+		"hold": bool(role.get("hold", false))}
+	if role.has("focus"):
+		data["focus"] = _vec(role["focus"])
+	var spots: Array = []
+	for spot: Vector3 in role.get("spots", []):
+		spots.append(_vec(spot))
+	data["spots"] = spots
+	return data
+
+
+static func _post_from(data: Dictionary) -> Dictionary:
+	if data.is_empty():
+		return {}
+	var post := {"role": str(data["role"]), "point": _point(data["point"]), "facing": float(data.get("facing", 0.0)),
+		"hold": bool(data.get("hold", false))}
+	if data.has("focus"):
+		post["focus"] = _point(data["focus"])
+	var spots: Array[Vector3] = []
+	for spot in data.get("spots", []):
+		spots.append(_point(spot))
+	post["spots"] = spots
+	return post
 
 func register_road(id: String, points: Array[Vector3]) -> void:
 	# El editor del mapa puede registrar A/B/C/D cuando se construyan caminos reales.
@@ -153,11 +201,21 @@ func _physics_process(delta: float) -> void:
 		if record["dead"]:
 			continue
 		var point := _point(record["position"])
-		if not _actors.has(id) and player.global_position.distance_to(point) < 65.0:
+		if not _actors.has(id) and player.global_position.distance_to(point) < SPAWN_DISTANCE:
 			_spawn(id)
 		if not _actors.has(id) or not is_instance_valid(_actors[id]):
 			continue
 		var actor: CreatureActor = _actors[id]
+		# Muy lejos y tranquilo: se guarda su ficha y se quita de la escena (cientos de enemigos sin
+		# que pese: solo existen los cercanos).
+		if player.global_position.distance_to(actor.global_position) > DESPAWN_DISTANCE \
+				and actor.state not in ["chase", "search", "windup", "charge", "channel", "flee"]:
+			record["position"] = _vec(actor.global_position)
+			record["health"] = actor.health
+			record["alert"] = actor.alert_seconds
+			actor.queue_free()
+			_actors.erase(id)
+			continue
 		actor.hour = clock.hour if clock != null else 12.0
 		var near := player.global_position.distance_to(actor.global_position) < 22.0
 		var ray := PhysicsRayQueryParameters3D.create(actor.global_position + Vector3.UP, actor.global_position + Vector3.DOWN * 2.0, 1)
@@ -166,12 +224,15 @@ func _physics_process(delta: float) -> void:
 		actor.set_physics_process(ready)
 
 func _spawn(id: String) -> void:
+	if _actors.has(id) and is_instance_valid(_actors[id]):
+		return  # ya está en la escena
 	var record: Dictionary = _records[id]
 	var actor := CreatureActor.new()
 	actor.species = record["species"]
 	actor.player = player
 	# Antes de add_child: _ready toma la posición como casa y destino (si no, irían al origen).
 	actor.position = _point(record["position"])
+	actor.post = _post_from(record.get("post", {}))
 	add_child(actor)
 	actor.home = _point(record["home"])
 	actor.health = clampf(float(record["health"]), 1.0, float(actor.stats["hp"]))
@@ -209,15 +270,45 @@ func _build_geometry() -> void:
 	_box(center + Vector3(0, height * 0.5, -5), Vector3(10, height, 0.6), color)
 	for x in [-3.5, 3.5]:
 		_box(center + Vector3(x, height * 0.5, 5), Vector3(3, height, 0.6), color)
-	if phase >= 2:
-		var tents := 2 if phase == 2 else (6 if phase == 3 else 12)
-		for i in tents:
-			var angle := i * TAU / tents
-			var point := ground_point(center.x + cos(angle) * 18, center.z + sin(angle) * 18)
-			_box(point + Vector3(0, 1, 0), Vector3(2.4, 2, 0.3), Color(0.48, 0.3, 0.2))
-			_box(point + Vector3(0, 2, 0.8), Vector3(2.6, 0.25, 2), Color(0.55, 0.35, 0.24))
+	for stage in range(1, phase + 1):
+		for post: Dictionary in Garrison.posts_for(stage, self):
+			_build_post(post)
 	if phase == 4:
 		_box(center + Vector3(0, height, 0), Vector3(10.6, 0.6, 10.6), color)
+
+## Lo que se ve de cada puesto (provisional, de cajas): torre de vigía, tiendas y hoguera, piedras
+## del ritual, cajas de los trabajadores.
+func _build_post(post: Dictionary) -> void:
+	var p: Vector3 = post["point"]
+	var wood := Color(0.42, 0.28, 0.16)
+	match str(post["kind"]):
+		"watchtower":
+			var h := Garrison.WATCH_HEIGHT
+			for corner in [Vector2(-1, -1), Vector2(1, -1), Vector2(-1, 1), Vector2(1, 1)]:
+				_box(p + Vector3(corner.x * 1.1, h * 0.5 - 0.15, corner.y * 1.1), Vector3(0.3, h - 0.3, 0.3), wood)
+			_box(p + Vector3(0, h - 0.15, 0), Vector3(2.8, 0.3, 2.8), wood.lightened(0.1))  # suelo del puesto
+			for side in [Vector3(1.35, 0, 0), Vector3(-1.35, 0, 0), Vector3(0, 0, 1.35), Vector3(0, 0, -1.35)]:
+				var size := Vector3(0.15, 0.6, 2.8) if side.x != 0.0 else Vector3(2.8, 0.6, 0.15)
+				_box(p + side + Vector3(0, h + 0.3, 0), size, wood)  # barandilla
+			_box(p + Vector3(0, h * 0.5, 1.45), Vector3(0.6, h, 0.1), wood.darkened(0.2))  # escalera
+		"camp":
+			_box(p + Vector3(0, 0.15, 0), Vector3(0.9, 0.3, 0.9), Color(0.25, 0.22, 0.2))  # hoguera
+			_box(p + Vector3(0, 0.45, 0), Vector3(0.45, 0.4, 0.45), Color(1.0, 0.55, 0.15))
+			var tents := int(post.get("tents", 2))
+			for i in tents:
+				var a := i * TAU / tents + 0.4
+				var at := ground_point(p.x + cos(a) * 6.0, p.z + sin(a) * 6.0)
+				_box(at + Vector3(0, 1, 0), Vector3(2.4, 2, 0.3), Color(0.48, 0.3, 0.2))
+				_box(at + Vector3(0, 2, 0.8), Vector3(2.6, 0.25, 2), Color(0.55, 0.35, 0.24))
+		"ritual":
+			for spot: Vector3 in post["spots"]:
+				var stone: Vector3 = spot + (p - spot).normalized() * 1.2
+				_box(stone + Vector3(0, 1.0, 0), Vector3(0.7, 2.0, 0.7), Color(0.45, 0.2, 0.6))
+		"workers":
+			for spot: Vector3 in post["spots"]:
+				_box(spot + Vector3(0.9, 0.4, 0), Vector3(0.8, 0.8, 0.8), wood.lightened(0.15))  # cajas
+				_box(spot + Vector3(0.9, 1.0, 0.1), Vector3(0.6, 0.4, 0.6), wood)
+
 
 func _box(at: Vector3, size: Vector3, color: Color) -> void:
 	var body := StaticBody3D.new()
