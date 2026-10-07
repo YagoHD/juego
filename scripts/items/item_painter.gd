@@ -20,6 +20,32 @@ static func paint(id: String) -> Image:
 	var img := Image.create(S, S, false, Image.FORMAT_RGBA8)
 	img.fill(Color(0, 0, 0, 0))
 	match id:
+		"bow":
+			_line(img, Vector2i(5, 2), Vector2i(11, 7), Color(0.6, 0.36, 0.15))
+			_line(img, Vector2i(11, 7), Vector2i(5, 13), Color(0.6, 0.36, 0.15))
+			_line(img, Vector2i(5, 2), Vector2i(5, 13), Color(0.85, 0.82, 0.68))
+		"arrow":
+			_line(img, Vector2i(3, 13), Vector2i(12, 3), Color(0.64, 0.4, 0.2))
+			_rect(img, 10, 2, 13, 4, Color(0.65, 0.7, 0.72))
+			_line(img, Vector2i(2, 10), Vector2i(5, 13), Color(0.85, 0.84, 0.7))
+		"wooden_shield":
+			_rect(img, 3, 2, 12, 10, Color(0.57, 0.33, 0.13))
+			_rect(img, 5, 11, 10, 13, Color(0.57, 0.33, 0.13))
+			_line(img, Vector2i(7, 3), Vector2i(7, 12), Color(0.8, 0.64, 0.35))
+		"raw_meat", "raw_poultry":
+			_rect(img, 3, 4, 12, 11, Color(0.75, 0.25, 0.23))
+			_rect(img, 5, 5, 10, 6, Color(0.95, 0.6, 0.5))
+		"cooked_meat", "cooked_poultry":
+			_rect(img, 3, 4, 12, 11, Color(0.5, 0.25, 0.12))
+			_rect(img, 5, 5, 10, 6, Color(0.85, 0.5, 0.2))
+		"hide": _rect(img, 3, 3, 12, 12, Color(0.63, 0.42, 0.24))
+		"bone", "tusk", "feather":
+			_line(img, Vector2i(4, 12), Vector2i(11, 3), Color(0.9, 0.88, 0.75))
+			_line(img, Vector2i(5, 12), Vector2i(12, 3), Color(0.9, 0.88, 0.75))
+		"venom_gland": _rect(img, 5, 4, 11, 12, Color(0.42, 0.68, 0.24))
+		"iron_scrap": _rock(img, Color(0.55, 0.6, 0.65))
+		"arcane_dust", "anchor_shard": _rock(img, Color(0.65, 0.3, 0.85))
+		"enemy_orders": _note(img)
 		"rope": _rope(img)
 		"wheat": _wheat_bundle(img)
 		"sticks": _sticks(img)

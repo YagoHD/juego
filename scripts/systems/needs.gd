@@ -10,6 +10,7 @@ const HUNGER_MINUTES := 40.0   # de lleno a vacío, en minutos reales
 const THIRST_MINUTES := 25.0
 ## Lo que alimenta cada comida (sobre 100). Lo asado, más.
 const FOOD := {
+	"raw_meat": 7.0, "cooked_meat": 34.0, "raw_poultry": 6.0, "cooked_poultry": 28.0,
 	"berries": 10.0, "roasted_berries": 20.0, "insect": 5.0, "roasted_insect": 16.0,
 	"mushroom": 7.0, "roasted_mushroom": 18.0, "seeds": 2.0, "roasted_seeds": 8.0,
 	"wheat": 3.0, "raw_fish": 6.0, "cooked_fish": 32.0, "flatbread": 24.0, "raw_crab": 4.0, "cooked_crab": 22.0,

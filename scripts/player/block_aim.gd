@@ -24,7 +24,7 @@ func target() -> Dictionary:
 	var from := player._camera.global_position
 	var forward := -player._camera.global_transform.basis.z
 	var to := from + forward * (Player.REACH + player._spring.spring_length)
-	var query := PhysicsRayQueryParameters3D.create(from, to)
+	var query := PhysicsRayQueryParameters3D.create(from, to, 1)  # criaturas/bolsas no son voxels
 	query.exclude = [player.get_rid()]  # en tercera persona el rayo pasa junto al propio jugador
 	var result := player.get_world_3d().direct_space_state.intersect_ray(query)
 	if result.is_empty():

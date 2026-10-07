@@ -3,6 +3,16 @@
 > Qué está hecho, cómo funciona por dentro y qué toca ahora. Se actualiza cada sesión.
 > Última actualización: 2026-10-02.
 
+## Actualización de combate: 2026-10-06
+
+El estado histórico de abajo contiene propuestas que ya se han completado (agua, sueño básico, cocina, fabricación). Para el combate actual consultar `COMBATE_DEL_JUGADOR.md`, `SIGILO_Y_ALERTAS.md`, `PATRULLAS_Y_SINERGIAS.md` y `ATAQUES_DEL_MAGO.md`.
+
+Hay seis enemigos y doce especies de fauna con lógica provisional en la arena; patrullas, alertas, búsqueda, sigilo, crítico, golpes/combo, guardia/parry/escudo, esquivas/voltereta y arco. La muerte deja una mochila recuperable. El mago añade bola, descarga anunciada y rayo canalizado progresivo con ralentización.
+
+Pendiente para la Beta: integrar fauna/encuentros y patrullas en la isla, navegación alrededor de obstáculos grandes, modelos y animaciones definitivos, progresión del personaje, contenido de pueblo/campamento/torre, crecimiento de la torre por días y corrupción, objetivos/pistas/idioma/cuaderno narrativo, caminos para desactivar el ancla, Kaelen y portal. Revisar equilibrio y rendimiento antes de activar población en la isla. El jefe actual es una base de combate, no la torre narrativa completa.
+
+Actualización posterior de esta sesión: ya hay navegación A* local para rodear obstáculos editables y un director de torre integrado a días 1–4, con refuerzos persistentes, campamentos provisionales, jefe interior y rutas de patrulla en la región corrupta. La API para registrar futuros caminos está preparada; no crea caminos que aún no existen. Ver `TORRE_Y_NAVEGACION.md`. Siguen pendientes arte definitivo, navegación global/multiplanta y los objetivos/idioma/portal narrativos.
+
 ## Entorno
 - PC del usuario: Windows 11, **RTX 4070**, CPU de 16 hilos.
 - Motor: **Godot 4.7.2 de Zylann con godot_voxel 1.7 integrado**

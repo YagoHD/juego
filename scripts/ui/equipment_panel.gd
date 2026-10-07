@@ -10,6 +10,7 @@ const EQUIP_SLOTS := [
 	["pants", "Pantalón", "+2 huecos en la barra"],
 	["belt", "Cinturón", "+2 huecos en la barra"],
 	["backpack", "Mochila", "+18 huecos de inventario"],
+	["offhand", "Escudo", "Bloquea con clic derecho; consume resistencia"],
 ]
 
 var _player: Player

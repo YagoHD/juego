@@ -4,7 +4,7 @@
 cd "$(dirname "$0")/.."
 tests=("$@")
 if [ ${#tests[@]} -eq 0 ]; then
-	tests=(step_up edit_blocks chest controls swim idle equipment ground_crafting craft_session sounds tree_fall save_load raft water shapes leaves)
+	tests=(step_up edit_blocks chest controls swim idle equipment ground_crafting craft_session sounds tree_fall save_load raft water shapes leaves creatures inventory_interactions stealth squads player_combat mage navigation_tower)
 fi
 total=0
 for t in "${tests[@]}"; do

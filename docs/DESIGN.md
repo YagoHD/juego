@@ -3,6 +3,18 @@
 > Memoria viva del proyecto. Se actualiza cuando cambia el diseño.
 > El `.docx` original está en la raíz del repo. Si algo difiere, **prevalece este archivo**.
 
+## Ampliación narrativa acordada el 6 de octubre de 2026
+
+Ver [HISTORIA_INICIO_BETA.md](HISTORIA_INICIO_BETA.md) para el inicio vigente y las instrucciones de desarrollo para Claude. Yago confirma: naufragio y mini tutorial de comida/fabricación → humo de un pueblo pesquero destruido y abandonado → campos → elección entre montaña y un segundo pueblo habitado, señalado por su campanario. Sus vecinos temen a los atacantes y ayudan al náufrago; tendrán rutinas sencillas. Se propone comercio con un par de vendedores. Desde el pueblo se puede explorar la montaña por sus minerales o las ruinas por equipo antiguo único/legendario y lore.
+
+Los invasores buscaban un material morado y brillante para reconstruir la torre. La familia más rica del pueblo pesquero lo tenía en forma de joyas; al negarse a entregarlas, los invasores acabaron con el pueblo y la familia murió. Los pocos habitantes supervivientes están en un campamento de refugiados del segundo pueblo, donde podemos obtener información del ataque. La activación de la regeneración provocó el naufragio. El jugador lo deduce mediante pistas, no lo sabe al llegar. Nombre y origen del material, mecanismo de reconstrucción, testimonios individuales y detalles de las recompensas siguen abiertos.
+
+El calendario vigente sustituye el de abajo: día 1 exploradores; día 2 exploradores/arqueros y mini campamento; día 3 campamento completo con todos los enemigos normales; día 4 torre completa, mega campamento y jefe. El ataque previo y las futuras patrullas por caminos amplían la antigua restricción de enemigos solo junto a la torre. Ver [TORRE_Y_NAVEGACION.md](TORRE_Y_NAVEGACION.md).
+
+Esta sesión solo documenta historia e ideas. Yago reserva los cambios del mapa a Claude para más adelante. Las secciones antiguas se conservan como contexto; en caso de contradicción prevalecen estas decisiones y el documento de inicio.
+
+Libertad confirmada: el jugador puede matar habitantes del pueblo; estos responden y los guardias lo persiguen. Las muertes son permanentes y se guardan: desaparecen los diálogos, comercios y posibilidades de amistad de los fallecidos. Si mata a todos, el pueblo queda vacío. Mantener una resolución de la beta independiente de esos NPC. Pueblo y guardias recuerdan crímenes: colocar/romper bloques tiene cinco avisos antes de delito leve; golpear es delito medio, perdonable mediante pago voluntario con objetos del inventario; matar es delito máximo y provoca búsqueda para matar al jugador en el pueblo. Perdón leve, costes, testigos y detalles de persecución siguen pendientes. Ver el documento de inicio para las instrucciones de desarrollo.
+
 ## Reparto de roles
 El usuario (Yago) aporta las ideas y la visión; **no programa**. Claude escribe todo el código
 y ayuda a generar ideas y a definir el diseño. Se trabaja en **español**.

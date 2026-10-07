@@ -70,7 +70,7 @@ func begin() -> bool:
 	screen.set_layout("kneel")
 	_camera = Camera3D.new()
 	_camera.fov = Settings.fov
-	_camera.cull_mask = 0xFFFFF
+	_camera.cull_mask = 0xFFFFF & ~HeldBlock.VIEW_LAYER
 	get_parent().add_child(_camera)
 	_camera.global_transform = player.get_camera().global_transform
 	_camera.make_current()

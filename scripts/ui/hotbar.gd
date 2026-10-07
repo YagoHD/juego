@@ -113,6 +113,16 @@ func select(index: int) -> void:
 	_refresh()
 
 
+## Destino al mover desde el inventario abierto a la barra visible abajo.
+func slot_target_at(pos: Vector2) -> Dictionary:
+	if not is_visible_in_tree() or _inventory == null:
+		return {}
+	for i in _unlocked:
+		if _slots[i].get_global_rect().has_point(pos):
+			return {"inventory": _inventory, "index": i}
+	return {}
+
+
 ## Coloca los huecos disponibles centrados (y oculta el resto).
 func _layout() -> void:
 	var used := _unlocked * SLOT_SIZE + (_unlocked - 1) * SLOT_GAP

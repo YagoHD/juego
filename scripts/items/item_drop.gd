@@ -18,6 +18,7 @@ const DRIFT := 0.7          # m/s con la corriente más fuerte de un río
 
 var item_id := ""
 var count := 1
+var metadata: Dictionary = {}  # desgaste/datos del montón tirado desde el inventario
 
 var _velocity := Vector3.ZERO
 var _age := 0.0
@@ -60,7 +61,7 @@ func _physics_process(delta: float) -> void:
 		return
 
 	var player := get_tree().get_first_node_in_group("player") as Player
-	if player != null and _age > pickup_delay:
+	if player != null and not player.ui_open and _age > pickup_delay:
 		var target := player.global_position + Vector3.UP * 0.6
 		var to_player := target - global_position
 		if to_player.length() < PICKUP_RADIUS:
@@ -110,7 +111,14 @@ func _ray(from: Vector3, motion: Vector3) -> Dictionary:
 
 
 func _give_to(player: Player) -> void:
-	var left := player.pick_up(item_id, count)
+	var left: int
+	if metadata.is_empty():
+		left = player.pick_up(item_id, count)
+	else:
+		var stack := metadata.duplicate(true)
+		stack["id"] = item_id
+		stack["count"] = count
+		left = player.inventory.add_stack(stack, player.unlocked_slots())
 	if left < count:
 		Sfx.play("recoger", null, -8.0, 0.15)
 	if left <= 0:
@@ -122,7 +130,7 @@ func _give_to(player: Player) -> void:
 func _merge_nearby() -> void:
 	for other in get_tree().get_nodes_in_group("item_drops"):
 		var drop := other as ItemDrop
-		if drop == self or drop == null or drop.is_queued_for_deletion() or drop.item_id != item_id:
+		if drop == self or drop == null or drop.is_queued_for_deletion() or drop.item_id != item_id or drop.metadata != metadata:
 			continue
 		if drop.global_position.distance_to(global_position) < MERGE_RADIUS \
 				and count + drop.count <= ItemDB.max_stack(item_id):
@@ -135,6 +143,14 @@ static func throw(parent: Node, pos: Vector3, direction: Vector3, id: String, am
 	var drop := spawn(parent, pos, id, amount)
 	drop._velocity = direction * 4.5 + Vector3.UP * 1.5
 	drop.pickup_delay = 2.0
+	return drop
+
+
+static func throw_stack(parent: Node, pos: Vector3, direction: Vector3, stack: Dictionary) -> ItemDrop:
+	var drop := throw(parent, pos, direction, str(stack["id"]), int(stack["count"]))
+	drop.metadata = stack.duplicate(true)
+	drop.metadata.erase("id")
+	drop.metadata.erase("count")
 	return drop
 
 

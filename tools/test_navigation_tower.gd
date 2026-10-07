@@ -1,0 +1,117 @@
+extends SceneTree
+const Director = preload("res://scripts/world/tower_director.gd")
+var failures := 0
+func _init() -> void:
+	Engine.max_fps = 120
+	_run.call_deferred()
+func check(ok: bool, message: String) -> void:
+	print(("OK: " if ok else "FALLO: ") + message)
+	if not ok:
+		failures += 1
+func frames(count: int) -> void:
+	for i in count:
+		await physics_frame
+	await process_frame
+func _run() -> void:
+	var arena = load("res://scenes/combat_arena.tscn").instantiate()
+	arena.save_path = "user://nav_tower_test.json"
+	root.add_child(arena)
+	await frames(20)
+	for node in get_nodes_in_group("creatures") + get_nodes_in_group("enemy_squads"):
+		node.free()
+	arena.player.set_creative(true)
+	# Pared larga entre actor y destino: A* debe buscar una esquina lateral.
+	arena._box(Vector3(0, 1.5, -30), Vector3(10, 3, 1), Color.GRAY)
+	var actor: CreatureActor = arena.spawn_creature("soldier", Vector3(0, 0.05, -26))
+	actor.drop_loot = false
+	actor.set_physics_process(false)
+	await frames(3)
+	var goal := Vector3(0, 0.05, -35)
+	var path: Array[Vector3] = actor.navigator.find_path(actor, goal)
+	check(not path.is_empty() and path[-1].distance_to(goal) < 1.5, "navegación encuentra ruta tras pared larga")
+	var bends := false
+	for point in path:
+		if absf(point.x) > 5.0:
+			bends = true
+	check(bends, "ruta rodea esquina en vez de atravesar pared")
+	actor._destination = goal
+	actor._timer = 100.0
+	actor._set_state("patrol")
+	actor.set_physics_process(true)
+	await frames(550)
+	check(actor.global_position.z < -31.0, "actor recorre físicamente el rodeo")
+	actor.set_physics_process(false)
+	var blocked_point: Vector3 = path[path.size() / 2]
+	arena._box(blocked_point + Vector3.UP * 1.5, Vector3(2, 3, 2), Color.GRAY)
+	await frames(2)
+	actor.global_position = Vector3(0, 0.05, -26)
+	var changed: Array[Vector3] = actor.navigator.find_path(actor, goal)
+	check(changed != path, "construcción nueva cambia ruta sobre colisiones actuales")
+	var cliff: Vector3 = actor.navigator._walkable(actor, Vector3(70, 0, -26))
+	check(not cliff.is_finite(), "suelo inexistente o precipicio no se considera transitable")
+	actor.free()
+	var tower = Director.new()
+	tower.player = arena.player
+	tower.center = Vector3(30, 0.1, -35)
+	tower.set_physics_process(false)
+	arena.add_child(tower)
+	tower.advance_to_day(1)
+	check(tower.phase == 1 and tower._records.size() == 4, "día uno genera solo cuatro exploradores")
+	var allowed := true
+	for record in tower._records.values():
+		allowed = allowed and record["species"] == "tracker"
+	check(allowed, "día uno no incluye arqueros ni enemigos fuertes")
+	tower._records["1_0"]["dead"] = true
+	var time := DayNight.new()
+	time.day = 2
+	tower.clock = time
+	tower._physics_process(0.31)
+	check(tower.phase == 2, "cambio de día del reloj activa fase automáticamente")
+	tower.clock = null
+	time.free()
+	tower.advance_to_day(2)
+	check(tower._records.size() == 6 and tower._records["2_0"]["species"] == "archer", "día dos añade arqueros y mini campamento")
+	check(tower._records["1_0"]["dead"], "avanzar día no resucita enemigos muertos")
+	tower.advance_to_day(3)
+	var species: Array = []
+	for record in tower._records.values():
+		if not species.has(record["species"]):
+			species.append(record["species"])
+	check(species.has("captain") and species.has("mage") and species.has("soldier") and not species.has("tower_guardian"), "día tres incluye todos los normales sin jefe")
+	tower.advance_to_day(4)
+	check(tower.phase == 4 and tower._records.size() == 34 and tower._records["4_15"]["species"] == "tower_guardian", "día cuatro mega campamento y jefe dentro de torre")
+	var count: int = tower._records.size()
+	tower.advance_to_day(20)
+	check(tower._records.size() == count, "días posteriores no duplican refuerzos")
+	var data: Dictionary = tower.to_data()
+	var restored = Director.new()
+	restored.from_data(data)
+	check(restored.phase == 4 and restored._records["1_0"]["dead"] and restored._routes == tower._routes, "guardado conserva fases bajas y rutas")
+	var road: Array[Vector3] = [Vector3(20, 0.1, -35), Vector3(30, 0.1, -35)]
+	for i in 10:
+		tower.register_road("future_" + str(i), road)
+	var road_groups := 0
+	for group in tower._routes:
+		if str(group).begins_with("road_"):
+			road_groups += 1
+	check(road_groups > 0 and road_groups < 10, "solo algunos caminos registrados reciben patrulla aleatoria estable")
+	tower._spawn("4_15")
+	var boss: CreatureActor = tower._actors["4_15"]
+	check(boss.global_position.distance_to(tower.center) < 1.0, "guardián nace en interior de torre")
+	boss.drop_loot = false
+	boss.take_damage(10000.0, arena.player)
+	check(tower.guardian_defeated and tower._records["4_15"]["dead"], "muerte del jefe permanece registrada")
+	await frames(2)
+	data = tower.to_data()
+	check(data["records"]["4_15"]["dead"], "guardar después de eliminar cuerpo del jefe conserva baja")
+	var gen := IslandGenerator.new()
+	var mapped = Director.new()
+	mapped.configure(arena.player, null, gen)
+	var center: Vector3 = mapped.center
+	var map_index := gen._index(roundi(center.x / 0.5), roundi(center.z / 0.5))
+	check(center != Vector3.ZERO and gen.get_surface_map()[map_index * 3] == IslandGenerator.CORRUPT_SOIL, "torre se ubica realmente en región corrupta de la isla")
+	print("Centro de torre: ", center)
+	mapped.free()
+	restored.free()
+	print("TOTAL: %d fallos" % failures)
+	quit(1 if failures else 0)

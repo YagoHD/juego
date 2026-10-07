@@ -71,6 +71,19 @@ const DROPS := {
 ## Objetos que no son bloques. "wear": hueco de equipo donde se lleva; "pockets": huecos de
 ## barra que añade; "storage": huecos de inventario que añade.
 const OTHER_ITEMS := {
+	"raw_meat": {"name": "Carne cruda", "stack": 16},
+	"cooked_meat": {"name": "Carne asada", "stack": 16},
+	"raw_poultry": {"name": "Carne de ave cruda", "stack": 16},
+	"cooked_poultry": {"name": "Carne de ave asada", "stack": 16},
+	"hide": {"name": "Piel", "stack": 32},
+	"bone": {"name": "Hueso", "stack": 32},
+	"tusk": {"name": "Colmillo", "stack": 32},
+	"feather": {"name": "Pluma", "stack": 64},
+	"venom_gland": {"name": "Glándula de veneno", "stack": 16},
+	"iron_scrap": {"name": "Fragmentos de hierro", "stack": 32},
+	"arcane_dust": {"name": "Polvo arcano", "stack": 32},
+	"enemy_orders": {"name": "Órdenes del capitán", "stack": 1},
+	"anchor_shard": {"name": "Fragmento del ancla", "stack": 1},
 	"rope": {"name": "Cuerda", "stack": 64},
 	"fiber": {"name": "Fibra", "stack": 64},
 	"seeds": {"name": "Semillas", "stack": 64},
@@ -96,6 +109,9 @@ const OTHER_ITEMS := {
 	"bedroll": {"name": "Saco de dormir", "stack": 1},
 	"raft": {"name": "Balsa", "stack": 1},
 	"spear": {"name": "Lanza", "stack": 1},
+	"bow": {"name": "Arco de madera", "stack": 1},
+	"arrow": {"name": "Flecha", "stack": 32},
+	"wooden_shield": {"name": "Escudo de madera", "stack": 1, "wear": "offhand"},
 	"raw_fish": {"name": "Pescado crudo", "stack": 16},
 	"cooked_fish": {"name": "Pescado asado", "stack": 16},
 	"flatbread": {"name": "Torta de pan", "stack": 16},
@@ -196,7 +212,7 @@ static func tool_speed(item_id: String, block_id: int) -> float:
 
 
 ## Usos de cada herramienta antes de romperse (las que no están aquí no se gastan).
-const DURABILITY := {"stone_axe": 80, "stone_pick": 80, "stone_knife": 60, "spear": 40}
+const DURABILITY := {"stone_axe": 80, "stone_pick": 80, "stone_knife": 60, "spear": 40, "bow": 100}
 
 
 static func max_durability(id: String) -> int:

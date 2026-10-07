@@ -71,6 +71,7 @@ var _last_w_press := -10.0
 var _orbit := Vector2.ZERO       # giro libre de la cámara (x = alrededor, y = arriba/abajo)
 var _debug_camera_yaw := 0.0     # solo capturas de prueba (vista de perfil)
 var _spawn_point := Vector3.ZERO
+var _spawn_point_is_custom := false  # cargar/dormir: esperar suelo no debe borrar este punto
 var _waiting_for_ground := true  # no aplicar gravedad hasta que exista suelo con colisión
 var _camera_lag := Vector3.ZERO  # desfase de la cámara (en el mundo) que se va suavizando
 var _step_debt := 0.0            # metros adelantados al subir escalones, pendientes de descontar
@@ -84,7 +85,7 @@ var inventory := Inventory.new(36)
 var creative_inventory := Inventory.new(36)
 var creative := false
 ## Ropa y mochila puestas: id del objeto o "" (dan bolsillos e inventario, ver hotbar_size).
-var equipment := {"shirt": "", "pants": "", "belt": "", "backpack": ""}
+var equipment := {"shirt": "", "pants": "", "belt": "", "backpack": "", "offhand": ""}
 const BASE_HOTBAR := 3    # huecos de la barra sin ropa con bolsillos
 const BASE_STORAGE := 9   # huecos de inventario sin mochila
 ## Recetas de fabricar en el suelo que conoce (se dibujan en el diario del capitán).
@@ -101,6 +102,11 @@ var raft: Raft               # la balsa en la que va montado (o null)
 var _working := false        # agachado fabricando
 var _work_swing := 0.0
 var _crouch := 0.0           # 0..1: cuánto baja la vista al agacharse
+var _sneaking := false
+var _body_shape: CollisionShape3D
+
+func is_sneaking() -> bool:
+	return _sneaking and not _flying and raft == null
 var _step_distance := 0.0     # metros andados desde el último paso (para el sonido)
 var _leaf_distance := 0.0     # metros andados entre hojas desde el último roce
 var _in_leaves := false
@@ -120,6 +126,7 @@ var _avatar: PlayerAvatar
 var aim: BlockAim                 # qué se apunta y su recuadro (componente)
 var rafts: RaftRider              # la balsa: echarla, subir, remar, bajar (componente)
 var survival: PlayerSurvival      # comer, beber, pescar, plantar, desgaste (componente)
+var combat: PlayerCombat         # vida, golpes y mochila al morir (sin crear enemigos)
 var breaker: BlockBreaker         # romper manteniendo el clic, grietas (componente)
 var builder: PlayerBuilder        # colocar objetos, losas, velas y cuerdas (componente)
 var _terrain: VoxelTerrain
@@ -130,8 +137,10 @@ var _head_underwater := false
 
 
 func _ready() -> void:
+	collision_mask |= CreatureActor.LAYER
 	# Colisión (cápsula).
 	var shape := CollisionShape3D.new()
+	_body_shape = shape
 	var capsule := CapsuleShape3D.new()
 	capsule.height = BODY_HEIGHT
 	capsule.radius = BODY_RADIUS
@@ -191,6 +200,10 @@ func _ready() -> void:
 	survival.name = "Survival"
 	survival.player = self
 	add_child(survival)
+	combat = PlayerCombat.new()
+	combat.name = "Combat"
+	combat.player = self
+	add_child(combat)
 	breaker = BlockBreaker.new()
 	breaker.name = "Breaker"
 	breaker.player = self
@@ -250,6 +263,10 @@ func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventMouseButton:
 		var button := event as InputEventMouseButton
 		if not button.pressed:
+			if button.button_index == MOUSE_BUTTON_LEFT:
+				combat.release_primary()
+			elif button.button_index == MOUSE_BUTTON_RIGHT:
+				combat.set_blocking(false)
 			return
 		if not _captured:
 			_set_captured(true)  # un clic con el ratón suelto lo vuelve a capturar
@@ -257,7 +274,7 @@ func _unhandled_input(event: InputEvent) -> void:
 		var zooming := Input.is_key_pressed(KEY_V)
 		match button.button_index:
 			MOUSE_BUTTON_LEFT:
-				if survival.spear_fish() or survival.grab_crab():
+				if survival.spear_fish() or survival.grab_crab() or combat.press_primary():
 					pass
 				elif salvage != null and salvage.hit(_camera.global_position, -_camera.global_transform.basis.z):
 					_held.swing()  # golpe a un resto del naufragio
@@ -267,7 +284,15 @@ func _unhandled_input(event: InputEvent) -> void:
 				else:
 					breaker.start()
 			MOUSE_BUTTON_RIGHT:
-				_edit_block(true)
+				if combat.try_recover_backpack():
+					pass
+				elif Input.is_key_pressed(KEY_SHIFT):
+					_edit_block(true)
+				elif combat.WEAPONS.has(combat.selected_id()) or combat.selected_id() in ["bow", "wooden_shield"] or combat.has_shield():
+					combat.cancel_bow()
+					combat.set_blocking(true)
+				else:
+					_edit_block(true)
 			MOUSE_BUTTON_WHEEL_UP:
 				if zooming:
 					_zoom_camera(-ZOOM_WHEEL_STEP)
@@ -289,6 +314,14 @@ func _unhandled_input(event: InputEvent) -> void:
 				_cycle_camera_mode()  # solo si se soltó V sin haber hecho zoom
 			return
 		if not key.pressed:
+			return
+		if key.keycode == KEY_ALT:
+			var direction := global_basis.z
+			if _key(KEY_A):
+				direction = -global_basis.x
+			elif _key(KEY_D):
+				direction = global_basis.x
+			combat.dodge(direction)
 			return
 		if key.keycode == KEY_SPACE and raft != null:
 			rafts.dismount()
@@ -347,7 +380,7 @@ func _zoom_camera(amount: float) -> void:
 
 
 func _is_orbiting() -> bool:
-	return _third_person and (Input.is_key_pressed(KEY_ALT) or Input.is_mouse_button_pressed(MOUSE_BUTTON_MIDDLE))
+	return _third_person and Input.is_mouse_button_pressed(MOUSE_BUTTON_MIDDLE)
 
 
 func _set_captured(captured: bool) -> void:
@@ -356,6 +389,8 @@ func _set_captured(captured: bool) -> void:
 
 
 func _select_slot(index: int) -> void:
+	if combat != null and posmod(index, hotbar_size()) != _hotbar_index:
+		combat.weapon_changed()
 	_hotbar_index = posmod(index, hotbar_size())
 	_refresh_held()
 
@@ -374,9 +409,9 @@ func _apply_camera_mode() -> void:
 	# En primera persona la cámara no dibuja el muñeco (capa 2), pero su sombra sí se ve.
 	_held.visible = not _third_person
 	if _third_person:
-		_camera.cull_mask = 0xFFFFF
+		_camera.cull_mask = 0xFFFFF & ~HeldBlock.VIEW_LAYER
 	else:
-		_camera.cull_mask = 0xFFFFF & ~PlayerAvatar.LAYER
+		_camera.cull_mask = 0xFFFFF & ~PlayerAvatar.LAYER & ~HeldBlock.VIEW_LAYER
 
 
 # ------------------------------------------------------------------ movimiento
@@ -395,6 +430,20 @@ func _physics_process(delta: float) -> void:
 		return
 
 	var feet_wet := _in_water(global_position + Vector3.UP * BODY_HEIGHT * 0.28)
+	_sneaking = _key(KEY_CTRL) and not feet_wet and is_on_floor()
+	if not _sneaking and (_body_shape.shape as CapsuleShape3D).height < BODY_HEIGHT:
+		var standing := CapsuleShape3D.new()
+		standing.radius = BODY_RADIUS
+		standing.height = BODY_HEIGHT
+		var query := PhysicsShapeQueryParameters3D.new()
+		query.shape = standing
+		query.transform = global_transform.translated(Vector3.UP * (BODY_HEIGHT * 0.5 + 0.02))
+		query.collision_mask = collision_mask
+		query.exclude = [get_rid()]
+		_sneaking = not get_world_3d().direct_space_state.intersect_shape(query, 1).is_empty()
+	var body_height := maxf(BODY_RADIUS * 2.0, BODY_HEIGHT * 0.65) if _sneaking else BODY_HEIGHT
+	(_body_shape.shape as CapsuleShape3D).height = body_height
+	_body_shape.position.y = body_height * 0.5
 	_update_leaves(delta)
 	_head_underwater = _in_water(_head.global_position)
 
@@ -414,20 +463,35 @@ func _physics_process(delta: float) -> void:
 	dir.y = 0.0
 	dir = dir.normalized()
 	# Correr dura mientras se mantenga W (y no en el agua ni yendo hacia atrás).
-	if not _key(KEY_W) or feet_wet:
+	if not _key(KEY_W) or feet_wet or _sneaking:
+		_sprinting = false
+	if combat.blocking or combat.drawing_bow or combat.charging_melee or combat._dodge_time > 0.0 or not combat._pending.is_empty():
 		_sprinting = false
 	if needs != null and not needs.can_sprint():
 		_sprinting = false  # con hambre o sed no se corre
 	var speed := SWIM_SPEED if feet_wet else (SPRINT_SPEED if _sprinting else SPEED)
+	if _sneaking:
+		speed *= 0.45
 	if needs != null:
 		speed *= needs.speed_factor()
+	speed *= combat.movement_factor()
 	if _in_leaves:
 		speed *= LEAVES_SPEED  # las ramas frenan
 	velocity.x = dir.x * speed
 	velocity.z = dir.z * speed
+	if combat != null:
+		velocity.x += combat.knockback.x
+		velocity.z += combat.knockback.z
 	var push := _water_push()  # la corriente del río o del agua que corre arrastra
 	velocity.x += push.x
 	velocity.z += push.y
+	if combat._dodge_time > 0.0:
+		var dodge_velocity := combat.movement_velocity()
+		velocity.x = dodge_velocity.x
+		velocity.z = dodge_velocity.z
+	elif combat.blocking or combat.drawing_bow or combat.charging_melee or not combat._pending.is_empty():
+		velocity.x *= 0.45
+		velocity.z *= 0.45
 	_pay_step_debt(delta)
 
 	if _key(KEY_SPACE) and is_on_floor() and not feet_wet:
@@ -461,7 +525,7 @@ func _process(delta: float) -> void:
 		_camera_lag = _camera_lag.lerp(Vector3.ZERO, 1.0 - exp(-CAMERA_CATCH_UP * delta))
 	# El desfase está en coordenadas del mundo; la cabeza es hija del jugador (que gira).
 	# Al trabajar en el suelo se agacha: la vista baja y la mano trabaja a golpecitos.
-	_crouch = move_toward(_crouch, 1.0 if _working else 0.0, delta * 4.0)
+	_crouch = move_toward(_crouch, 1.0 if _working or is_sneaking() else 0.0, delta * 4.0)
 	if _working:
 		_work_swing -= delta
 		if _work_swing <= 0.0:
@@ -478,7 +542,7 @@ func _process(delta: float) -> void:
 	_spring.spring_length = lerpf(_spring.spring_length, target_length, t)
 	_spring.position.x = lerpf(_spring.position.x, target_shoulder, t)
 
-	# Giro libre de la cámara: al soltar Alt / botón central vuelve sola a su sitio.
+	# Giro libre de la cámara: al soltar el botón central vuelve sola a su sitio.
 	if not _is_orbiting():
 		_orbit = _orbit.lerp(Vector2.ZERO, 1.0 - exp(-6.0 * delta))
 	var base_yaw := (PI if _front_view else 0.0) + _debug_camera_yaw
@@ -506,14 +570,15 @@ func _wait_for_ground() -> void:
 	# Mientras la colisión del terreno se termina de crear, el jugador flota quieto.
 	# En cuanto un rayo hacia abajo encuentra suelo, se coloca encima y empieza la física.
 	var from := global_position + Vector3.UP * 20.0
-	var query := PhysicsRayQueryParameters3D.create(from, global_position + Vector3.DOWN * 60.0)
+	var query := PhysicsRayQueryParameters3D.create(from, global_position + Vector3.DOWN * 60.0, 1)
 	query.exclude = [get_rid()]  # que el rayo no choque con el propio jugador
 	var hit := get_world_3d().direct_space_state.intersect_ray(query)
 	if hit.is_empty():
 		return
 	var ground: Vector3 = hit.position
 	global_position = ground + Vector3.UP * 0.1
-	_spawn_point = global_position
+	if not _spawn_point_is_custom:
+		_spawn_point = global_position
 	velocity = Vector3.ZERO
 	_waiting_for_ground = false
 
@@ -798,6 +863,7 @@ func update_appearance() -> void:
 		"belt": equipment["belt"] != "", "straps": equipment["backpack"] != ""}
 	apply_skin(SkinComposer.load_player_skin(options), options["slim"])
 	_avatar.set_backpack(equipment["backpack"])
+	_avatar.set_shield(equipment.get("offhand", "") == "wooden_shield")
 
 
 ## Cambia la skin del jugador (cuerpo y brazo). El futuro editor de personaje la usará.
@@ -937,10 +1003,12 @@ func _throw_held(whole_stack: bool) -> void:
 	if stack.is_empty():
 		return
 	var amount := int(stack["count"]) if whole_stack else 1
+	var dropped_stack := stack.duplicate(true)
+	dropped_stack["count"] = amount
 	if not creative:
 		inventory.take(_hotbar_index, amount)
 	var look := -_camera.global_basis.z
-	ItemDrop.throw(get_parent(), _head.global_position + look * 0.4 - Vector3.UP * 0.25, look, stack["id"], amount)
+	ItemDrop.throw_stack(get_parent(), _head.global_position + look * 0.4 - Vector3.UP * 0.25, look, dropped_stack)
 	Sfx.play("tirar", null, -4.0)
 	_held.swing()
 	_avatar.swing()
@@ -969,7 +1037,7 @@ func _footsteps(delta: float, feet_wet: bool) -> void:
 	_step_distance += Vector2(velocity.x, velocity.z).length() * delta
 	if _step_distance >= 0.8:
 		_step_distance = 0.0
-		_play_step(feet_wet, -10.0 if not _sprinting else -7.0)
+		_play_step(feet_wet, -22.0 if is_sneaking() else (-10.0 if not _sprinting else -7.0))
 
 
 func _play_step(feet_wet: bool, volume_db: float) -> void:
@@ -1010,7 +1078,7 @@ func get_camera() -> Camera3D:
 
 ## Altura (mundo) de los ojos, para colocar cámaras de escena.
 func eye_position() -> Vector3:
-	return global_position + Vector3.UP * EYE_HEIGHT
+	return global_position + Vector3.UP * (EYE_HEIGHT - _crouch * BODY_HEIGHT * 0.35)
 
 
 ## ¿Puede arrodillarse ahora? (no en el agua, ni en el aire, ni volando)
@@ -1021,6 +1089,7 @@ func can_kneel() -> bool:
 ## Punto donde reaparece (al caer del mundo): lo cambia dormir en un saco.
 func set_spawn_point(p: Vector3) -> void:
 	_spawn_point = p
+	_spawn_point_is_custom = true
 
 
 func get_spawn_point() -> Vector3:

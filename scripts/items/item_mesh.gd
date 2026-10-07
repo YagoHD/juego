@@ -8,6 +8,57 @@ const VOXEL_MODELS := {"stone_axe": "tool_axe", "stone_pick": "tool_pickaxe", "r
 
 static var _voxel_cache := {}
 
+## Objetos con modelo 3D hecho con Meshy (tools/import_items.gd): assets/models/items/<id>.res y
+## su textura. Tamaño respecto al de un objeto normal (un cuchillo es pequeño, una lanza larga).
+const MODELS_DIR := "res://assets/models/items/"
+const MODEL_SCALE := {"stone_knife": 0.75, "stone_axe": 0.75, "stone_pick": 1.25, "spear": 2.6, "torch": 1.1,
+	"rock": 0.45, "flint": 0.4, "hammer": 1.0, "battle_axe": 1.4, "bow": 1.8, "arrow": 1.6}
+static var _model_cache := {}
+
+
+static func has_model(id: String) -> bool:
+	return ResourceLoader.exists(MODELS_DIR + id + ".res")
+
+
+## El modelo con su medida mayor igual a "size" (las mallas vienen de medida 1).
+static func _model(id: String, size: float, grip_fraction := -1.0) -> Mesh:
+	var key := "%s:%.3f:%.3f" % [id, size, grip_fraction]
+	if not _model_cache.has(key):
+		var src: ArrayMesh = load(MODELS_DIR + id + ".res")
+		var arrays := src.surface_get_arrays(0)
+		var verts: PackedVector3Array = arrays[Mesh.ARRAY_VERTEX]
+		var normals: PackedVector3Array = arrays[Mesh.ARRAY_NORMAL]
+		# De pie: si es más largo a lo ancho que a lo alto (el hacha), se gira para que el mango
+		# quede vertical, que es como se coge.
+		var box := src.get_aabb()
+		var turn := Basis(Vector3.BACK, PI * 0.5) if box.size.x > box.size.y * 1.2 else Basis.IDENTITY
+		# Las herramientas con mango se cogen por abajo: el punto de agarre (el origen) queda a un
+		# cuarto del extremo de abajo y la cabeza, arriba.
+		var lift := size * (0.32 if id == "stone_axe" else 0.25) if id in VoxelHand.HANDLED else 0.0
+		if grip_fraction >= 0.0:
+			lift = size * (0.5 - grip_fraction)
+		for i in verts.size():
+			verts[i] = turn * verts[i] * size + Vector3(0, lift, 0)
+			normals[i] = turn * normals[i]
+		arrays[Mesh.ARRAY_VERTEX] = verts
+		arrays[Mesh.ARRAY_NORMAL] = normals
+		if arrays[Mesh.ARRAY_TANGENT] != null:
+			var tangents: PackedFloat32Array = arrays[Mesh.ARRAY_TANGENT]
+			for i in verts.size():
+				var tangent := turn * Vector3(tangents[i * 4], tangents[i * 4 + 1], tangents[i * 4 + 2])
+				tangents[i * 4] = tangent.x
+				tangents[i * 4 + 1] = tangent.y
+				tangents[i * 4 + 2] = tangent.z
+			arrays[Mesh.ARRAY_TANGENT] = tangents
+		var out := ArrayMesh.new()
+		out.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
+		_model_cache[key] = out
+	return _model_cache[key]
+
+
+static func make_held(id: String, length: float, grip_fraction: float) -> Mesh:
+	return _model(id, length, grip_fraction) if has_model(id) else make(id, length)
+
 
 static func make(id: String, size: float) -> Mesh:
 	var block := ItemDB.block_of(id)
@@ -15,6 +66,8 @@ static func make(id: String, size: float) -> Mesh:
 		return PrefabLibrary.centered_mesh(PrefabLibrary.first_id(BlockAim.SHAPED[block]), size)
 	if block >= 0:
 		return BlockTextures.make_block_mesh(block, size)
+	if has_model(id):  # modelo 3D de Meshy (assets/models/items)
+		return _model(id, size * float(MODEL_SCALE.get(id, 1.0)))
 	# Si ya tiene dibujo del arte conceptual, manda el dibujo (el modelo de Kenney era provisional).
 	if VOXEL_MODELS.has(id) and not ResourceLoader.exists(ItemPainter.OVERRIDE_DIR + id + ".png"):
 		var voxel := _voxel(VOXEL_MODELS[id], size * 1.4)
@@ -52,6 +105,16 @@ static func make_material(id: String) -> StandardMaterial3D:
 		if BlockAim.SHAPED.has(block):
 			return PrefabLibrary.material()
 		return BlockTextures.make_material(block == IslandGenerator.WATER)
+	if has_model(id):
+		var mesh: ArrayMesh = load(MODELS_DIR + id + ".res")
+		if mesh.surface_get_material(0) is StandardMaterial3D:
+			return mesh.surface_get_material(0).duplicate() as StandardMaterial3D
+		var textured := StandardMaterial3D.new()
+		var tex_path := MODELS_DIR + str(mesh.get_meta("texture", id)) + ".webp"
+		if ResourceLoader.exists(tex_path):
+			textured.albedo_texture = load(tex_path)
+		textured.roughness = 0.9
+		return textured
 	var material := StandardMaterial3D.new()
 	material.vertex_color_use_as_albedo = true
 	material.vertex_color_is_srgb = true  # los colores del dibujo son sRGB (si no, salen desvaídos)

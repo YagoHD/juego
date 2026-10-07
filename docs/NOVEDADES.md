@@ -1,5 +1,19 @@
 # Novedades (sesión del 2-3 de octubre de 2026)
 
+## Combate y fauna de pruebas (6 de octubre)
+
+Inventario corregido: almacenamiento y barra rápida separados en la arena; clic o arrastre
+entre huecos y hacia la barra inferior. Fuera del panel, clic izquierdo tira el montón y
+derecho tira uno; también se puede arrastrar fuera. Las herramientas conservan su desgaste
+al moverlas, tirarlas y recogerlas. El modo Fabricar mantiene la colocación de materiales.
+
+Nueva arena independiente: `Pruebas de combate.bat` o `scenes/combat_arena.tscn` + F6.
+Cinco enemigos y doce especies con IA, ataques, vida y botín; modelos provisionales de colores.
+F2 abre el panel para elegir criaturas y probar muerte. Al morir se pierde inventario y equipo,
+que permanecen en una mochila recuperable con clic derecho. Las mochilas se guardan también en
+la isla; las criaturas nuevas aparecen solo en la arena. Detalles y límites para revisión:
+[`COMBATE_Y_FAUNA.md`](COMBATE_Y_FAUNA.md).
+
 Todo está guardado en git, un commit por mejora. Pasan todas las pruebas automáticas.
 Para probar: abre Godot (el .exe del Escritorio), el proyecto `juego` y pulsa **F5**.
 La isla se vuelve a crear (cambiaron las estructuras); tu mundo anterior no se borra.

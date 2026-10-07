@@ -25,6 +25,8 @@ var _arm_right: Node3D
 var _leg_left: Node3D
 var _leg_right: Node3D
 var _held: MeshInstance3D
+var _shield: MeshInstance3D
+var _shield_equipped := false
 var _item_id := ""        # lo que lleva en la mano (para el agarre al rehacer el cuerpo)
 var _lids: Node3D          # párpados (visibles un instante al parpadear)
 var _backpack: Node3D      # mochila a la espalda (visible si la lleva puesta)
@@ -49,6 +51,19 @@ var _frozen := false       # solo para capturas: congela la acción en un instan
 var _blink_timer := 3.0
 var _rng := RandomNumberGenerator.new()
 var _smoothed := {}        # pose actual (persigue a la pose objetivo con inercia)
+var _combat_roll_time := 0.0
+var _combat_roll_duration := 0.65
+var _combat_pose := ""
+
+func combat_roll(duration: float) -> void:
+	_combat_roll_duration = duration
+	_combat_roll_time = duration
+	_cancel_idle()
+
+func set_combat_pose(kind: String) -> void:
+	_combat_pose = kind
+	if kind != "":
+		_cancel_idle()
 
 
 ## Construye el cuerpo con una skin (textura de 64x64). Se puede volver a llamar para cambiarla.
@@ -74,6 +89,20 @@ func build(texture: Texture2D, slim: bool) -> void:
 	_held.position = Vector3(0, -5.0, -1.5) * SkinModel.PIXEL  # en el antebrazo, junto a la mano
 	_held.layers = LAYER
 	_arm_right.get_node("lower").add_child(_held)
+	_shield = MeshInstance3D.new()
+	var shield_mesh := CylinderMesh.new()
+	shield_mesh.top_radius = 0.22 * K
+	shield_mesh.bottom_radius = 0.22 * K
+	shield_mesh.height = 0.05 * K
+	_shield.mesh = shield_mesh
+	_shield.rotation.x = PI / 2.0
+	_shield.position = Vector3(0, -4.0, -2.0) * SkinModel.PIXEL
+	_shield.layers = LAYER
+	var shield_material := StandardMaterial3D.new()
+	shield_material.albedo_color = Color(0.5, 0.3, 0.14)
+	_shield.material_override = shield_material
+	_arm_left.get_node("lower").add_child(_shield)
+	_shield.visible = _shield_equipped
 
 	# Párpados: los del modelo del náufrago si los trae; si no, sacados de la skin.
 	_lids = _head.get_node_or_null("lids")
@@ -174,7 +203,7 @@ func set_item(id: String) -> void:
 		_held.visible = id != ""  # "" = mano vacía
 		if id == "":
 			return
-		_held.mesh = ItemMesh.make(id, 0.15 * K)
+		_held.mesh = ItemMesh.make(id, 0.36 if ItemMesh.has_model(id) else 0.15 * K)  # los modelos, a su tamaño real
 		_held.material_override = ItemMesh.make_material(id)
 
 
@@ -186,6 +215,11 @@ func set_look_pitch(pitch: float) -> void:
 func swing() -> void:
 	_swing = 1.0
 	_cancel_idle()
+
+func set_shield(on: bool) -> void:
+	_shield_equipped = on
+	if is_instance_valid(_shield):
+		_shield.visible = on
 
 
 ## speed01 = 0 quieto, 1 andando, >1 corriendo. on_floor = false en el aire.
@@ -303,6 +337,22 @@ func _process(delta: float) -> void:
 	_work = move_toward(_work, 1.0 if _working else 0.0, delta * 4.0)
 	if _work > 0.0:
 		_work_pose(pose, _work)
+	if _combat_pose == "block":
+		pose["arm_l"] = Vector3(1.5, 0.0, -0.35)
+		pose["elbow_l"] = 1.4
+		pose["arm_r"] = Vector3(1.1, 0.0, 0.25)
+		pose["elbow_r"] = 1.2
+	elif _combat_pose == "bow":
+		pose["arm_l"] = Vector3(1.65, 0.0, -0.2)
+		pose["elbow_l"] = 0.15
+		pose["arm_r"] = Vector3(1.6, 0.35, 0.2)
+		pose["elbow_r"] = 1.8
+	elif _combat_pose == "heavy":
+		pose["arm_r"] = Vector3(2.6, 0.0, 0.3)
+		pose["elbow_r"] = 0.9
+	if _combat_roll_time > 0.0:
+		_combat_roll_time = maxf(0.0, _combat_roll_time - delta)
+		_jump_pose(pose, 1.0 - _combat_roll_time / _combat_roll_duration, 0.1 * K, TAU)
 
 	# Inercia: cada articulación persigue su pose objetivo en vez de saltar a ella; quita la
 	# sensación "robótica" de las fórmulas puras.

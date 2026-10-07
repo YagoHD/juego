@@ -15,6 +15,18 @@ const CELL := 0.25      # metros (medio bloque)
 const MAX_LEVELS := 4   # objetos apilados como mucho en una columna
 
 const RECIPES := {
+	"bow": {
+		"result": "bow", "count": 1, "action": "Atar", "time": 3.0,
+		"layers": [["SR", "S.", "SR"]], "key": {"S": "sticks", "R": "rope"}, "dismantle": true,
+	},
+	"arrow": {
+		"result": "arrow", "count": 4, "action": "Atar", "time": 1.5,
+		"layers": [["PF", "SS"]], "key": {"P": "sharp_rock", "F": "feather", "S": "sticks"},
+	},
+	"wooden_shield": {
+		"result": "wooden_shield", "count": 1, "action": "Montar", "time": 3.0,
+		"layers": [["PPP", "PRP"]], "key": {"P": "planks", "R": "rope"}, "dismantle": true,
+	},
 	"rope": {
 		"result": "rope", "count": 1, "action": "Retorcer", "time": 1.5,
 		"layers": [["FFF"]], "key": {"F": "fiber"},
@@ -98,7 +110,7 @@ const RECIPES := {
 ## Lo que el personaje sabe hacer desde el principio (nada: lo básico viene en el diario).
 const KNOWN_AT_START := []
 ## Lo que se puede leer en el diario del capitán (está empapado: solo se salva lo básico).
-const JOURNAL_RECIPES := ["rope", "sharp_rock", "stone_knife", "stone_axe", "board", "workbench", "torch", "campfire", "bedroll", "spear", "raft", "plank_slab", "chest"]
+const JOURNAL_RECIPES := ["rope", "sharp_rock", "stone_knife", "stone_axe", "board", "workbench", "torch", "campfire", "bedroll", "spear", "raft", "plank_slab", "chest", "bow", "arrow", "wooden_shield"]
 
 
 ## Celdas de la forma: {Vector3i(columna, capa, fila): id del objeto}.

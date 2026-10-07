@@ -24,6 +24,27 @@ static func center() -> Vector2i:
 	return Structures.spawn_voxel()
 
 
+## Catálogo completo, dividido en cofres sin exceder sus 27 huecos.
+static func item_chests() -> Array[Dictionary]:
+	var out: Array[Dictionary] = []
+	for catalog: Dictionary in [ItemDB.BLOCK_ITEMS, ItemDB.OTHER_ITEMS]:
+		var ids := catalog.keys()
+		ids.sort()
+		for start in range(0, ids.size(), ChestStorage.SIZE):
+			var c := center()
+			var cell := Vector3i(c.x + 6 - out.size() * 3, FLOOR, c.y + 2)
+			out.append({"cell": cell, "ids": ids.slice(start, start + ChestStorage.SIZE)})
+	return out
+
+
+static func stock_item_chests(storage: ChestStorage) -> void:
+	for chest in item_chests():
+		var inventory := storage.get_or_create(chest["cell"])
+		inventory.clear()
+		for id: String in chest["ids"]:
+			inventory.add(id, ItemDB.max_stack(id))
+
+
 func get_ground_height(_wx: int, _wz: int) -> int:
 	return FLOOR
 
@@ -31,6 +52,9 @@ func get_ground_height(_wx: int, _wz: int) -> int:
 func _generate_block(out_buffer: VoxelBuffer, origin: Vector3i, _lod: int) -> void:
 	var size := out_buffer.get_size()
 	var c := center()
+	for chest in item_chests():
+		var cell: Vector3i = chest["cell"]
+		_put_at(out_buffer, origin, size, cell.x, cell.y, cell.z, CHEST)
 	# Suelo: piedra y, encima, una capa de arena clara (fondo neutro, como el de las hojas).
 	for x in size.x:
 		for z in size.z:

@@ -32,6 +32,7 @@ const TEST_WORLD_DIR := "user://world_test"
 ## Modo prueba (pruebas automáticas y capturas): usa un mundo aparte que se crea limpio cada vez,
 ## para no tocar nunca el mundo guardado del jugador.
 static var test_mode := false
+static var test_tower_mode := false  # integración explícita, aislada de la partida del usuario
 static var keep_test_world := false  # pruebas de guardar y cargar: no borrar el mundo de pruebas
 const AUTOSAVE_SECONDS := 60.0
 
@@ -62,6 +63,8 @@ var _thirst_bar: ProgressBar
 var _hotbar: Hotbar
 var _underwater: ColorRect
 var _day_night: DayNight
+const TowerScript = preload("res://scripts/world/tower_director.gd")
+var _tower: Node3D
 var _inventory_screen: InventoryScreen
 var _screen_sections := Callable()  # rehace las secciones de la pantalla abierta
 var _chests := ChestStorage.new()
@@ -99,6 +102,18 @@ func _ready() -> void:
 	_build_environment()
 	_build_hud()
 	_build_player()
+	if (not _is_test() or test_tower_mode) and not _showroom():
+		_tower = TowerScript.new()
+		add_child(_tower)
+		_tower.configure(_player, _day_night, _generator)
+		if FileAccess.file_exists(_player_save_path()):
+			var stored: Variant = JSON.parse_string(FileAccess.get_file_as_string(_player_save_path()))
+			if stored is Dictionary:
+				_tower.from_data(stored.get("tower", {}))
+		_tower.advance_to_day(_day_night.day)
+		_tower.set_physics_process(false)
+		_tower.phase_changed.connect(func(stage: int) -> void: _show_notice("La torre avanza a la fase %d." % stage))
+		_tower.boss_defeated.connect(func() -> void: _save_world.call_deferred())
 	_build_loading_overlay()
 	print("[main] %s" % _loading_title())
 
@@ -263,6 +278,8 @@ func _build_player() -> void:
 		_player.rotation.y = PI  # mirando a la fila de muestras
 		_build_micro_showcase()
 	_chests.load_from(_chests_save_path())
+	if _showroom():
+		ShowroomGenerator.stock_item_chests(_chests)
 	_ground = GroundCrafting.new()
 	add_child(_ground)
 	_ground.player = _player
@@ -317,6 +334,11 @@ func _build_player() -> void:
 	_load_player()  # después de crear hambre, cultivos... (la partida guardada los rellena)
 	_ground.load_from(_ground_save_path())
 	_player.notice.connect(_show_notice)
+	_player.combat.before_death.connect(func() -> void:
+		if _session.active():
+			_session.end()
+		_inventory_screen.close())
+	_player.combat.persistence_requested.connect(_save_world)
 	_player.sleep_requested.connect(_sleep)
 	_player.block_used.connect(_on_block_used)
 	_player.block_broken.connect(_on_block_broken)
@@ -389,6 +411,8 @@ func _finish_loading() -> void:
 	stutters.name = "StutterLog"
 	add_child(stutters)
 	_loading = false
+	if _tower != null:
+		_tower.set_physics_process(true)
 	if _title != null:
 		_title.queue_free()
 		_title = null
@@ -461,9 +485,13 @@ func _build_hud() -> void:
 	add_child(ui_layer)
 	_ui_layer = ui_layer
 	_inventory_screen = InventoryScreen.new()
+	_inventory_screen.hotbar = _hotbar
 	ui_layer.add_child(_inventory_screen)
 	_inventory_screen.closed.connect(_on_screen_closed)
 	_inventory_screen.overflow.connect(_drop_in_front)
+	_inventory_screen.stack_dropped.connect(func(stack: Dictionary) -> void:
+		var forward := -_player.global_basis.z
+		ItemDrop.throw_stack(self, _player.eye_position() + forward * 0.6, forward, stack))
 
 	# Menú de pausa (Esc), por encima de todo.
 	var pause_layer := CanvasLayer.new()
@@ -569,6 +597,8 @@ func _save_player() -> void:
 		"objectives": _objectives.to_data(),
 		"drift_day": _last_drift_day,
 		"needs": _needs.to_data(),
+		"combat": _player.combat.to_data(),
+		"death_backpacks": get_tree().get_nodes_in_group("death_backpacks").filter(func(b: Node) -> bool: return not b.is_queued_for_deletion()).map(func(b: Node) -> Dictionary: return (b as DeathBackpack).to_data()),
 		"explored": (get_node("Exploration") as Exploration).to_data(),
 		"farm": _player.farm.to_data() if _player.farm != null else {},
 		"stumps": (get_node("TreeRegrowth") as TreeRegrowth).to_data(),
@@ -576,6 +606,7 @@ func _save_player() -> void:
 		"spawn": [_player.get_spawn_point().x, _player.get_spawn_point().y, _player.get_spawn_point().z],
 		"hour": _day_night.hour,
 		"day": _day_night.day,
+		"tower": _tower.to_data() if _tower != null else {},
 	}
 	var file := FileAccess.open(_player_save_path(), FileAccess.WRITE)
 	if file != null:
@@ -599,6 +630,11 @@ func _load_player() -> void:
 		(get_node("Exploration") as Exploration).from_data(d["explored"])
 	if d.get("needs") is Dictionary:
 		_needs.from_data(d["needs"])
+	if d.get("combat") is Dictionary:
+		_player.combat.from_data(d["combat"])
+	for bag in d.get("death_backpacks", []):
+		if bag is Dictionary:
+			DeathBackpack.restore(self, bag)
 	if d.get("farm") is Dictionary and _player.farm != null:
 		_player.farm.from_data(d["farm"])
 	if d.get("stumps") is Dictionary:

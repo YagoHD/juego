@@ -14,6 +14,8 @@ signal overflow(id: String, count: int)  # lo que no cupo al cerrar: se tira al 
 signal world_input(event: InputEvent)
 ## En el modo "fabricar": se ha soltado sobre el mundo un montón arrastrado desde un hueco.
 signal world_drop
+signal stack_dropped(stack: Dictionary)  # conserva desgaste al tirar fuera del panel
+var hotbar: Hotbar
 
 const SLOT := 48
 const GAP := 4
@@ -156,18 +158,24 @@ func _process(_delta: float) -> void:
 
 # ------------------------------------------------------------------ clics
 
+func _input(event: InputEvent) -> void:
+	# Godot entrega la liberación al control que recibió la pulsación, no al hueco destino.
+	# Resolver aquí usando la posición de pantalla, antes de que ese control la consuma.
+	if visible and event is InputEventMouseButton:
+		var button := event as InputEventMouseButton
+		if button.pressed:
+			_press_pos = button.position
+		elif _finish_drag(button, button.position):
+			get_viewport().set_input_as_handled()
+
 func _on_slot_input(event: InputEvent, section: int, index: int) -> void:
 	var button := event as InputEventMouseButton
 	if button == null:
 		return
 	if not button.pressed:
-		# Arrastrar un montón desde un hueco y soltarlo sobre el mundo (modo fabricar).
-		var mouse := get_global_mouse_position()
-		if _layout == "craft" and button.button_index == MOUSE_BUTTON_LEFT and not _cursor.is_empty() \
-				and mouse.distance_to(_press_pos) > 8.0 and not is_over_ui(mouse):
-			world_drop.emit()
+		_finish_drag(button, _slot_event_position(button, section, index))
 		return
-	_press_pos = get_global_mouse_position()
+	_press_pos = _slot_event_position(button, section, index)
 	var inv: Inventory = _sections[section]["inventory"]
 	if button.shift_pressed and _cursor.is_empty():
 		_quick_move(section, index)
@@ -175,6 +183,49 @@ func _on_slot_input(event: InputEvent, section: int, index: int) -> void:
 		_left_click(inv, index)
 	elif button.button_index == MOUSE_BUTTON_RIGHT:
 		_right_click(inv, index)
+	_refresh()
+
+
+func _slot_event_position(event: InputEventMouseButton, section: int, index: int) -> Vector2:
+	for view in _slot_views:
+		if view["section"] == section and view["index"] == index:
+			return (view["panel"] as Control).get_global_transform() * event.position
+	return get_global_mouse_position()
+
+
+func _slot_target_at(pos: Vector2) -> Dictionary:
+	for view in _slot_views:
+		if (view["panel"] as Control).get_global_rect().has_point(pos):
+			return {"inventory": _sections[view["section"]]["inventory"], "index": view["index"]}
+	return hotbar.slot_target_at(pos) if hotbar != null else {}
+
+
+func _finish_drag(button: InputEventMouseButton, pos: Vector2) -> bool:
+	if button.button_index != MOUSE_BUTTON_LEFT or _cursor.is_empty() or pos.distance_to(_press_pos) <= 8.0:
+		return false
+	var destination := _slot_target_at(pos)
+	if not destination.is_empty():
+		_left_click(destination["inventory"], destination["index"])
+		_refresh()
+		return true
+	elif not is_over_ui(pos):
+		if _layout == "craft":
+			world_drop.emit()
+		else:
+			_drop_cursor(false)
+		return true
+	return false
+
+
+func _drop_cursor(one: bool) -> void:
+	if _cursor.is_empty():
+		return
+	var stack := _cursor.duplicate(true)
+	stack["count"] = 1 if one else int(_cursor["count"])
+	_cursor["count"] = int(_cursor["count"]) - int(stack["count"])
+	if int(_cursor["count"]) <= 0:
+		_cursor = {}
+	stack_dropped.emit(stack)
 	_refresh()
 
 
@@ -188,10 +239,12 @@ func _left_click(inv: Inventory, index: int) -> void:
 	elif slot.is_empty():  # soltarlo entero
 		inv.set_slot(index, _cursor)
 		_cursor = {}
-	elif slot["id"] == _cursor["id"]:  # juntar con uno igual
+	elif Inventory.stacks_match(slot, _cursor):  # juntar solo montones compatibles
 		var room := ItemDB.max_stack(slot["id"]) - int(slot["count"])
 		var put := mini(room, int(_cursor["count"]))
-		inv.set_slot(index, {"id": slot["id"], "count": int(slot["count"]) + put})
+		var merged := slot.duplicate(true)
+		merged["count"] = int(slot["count"]) + put
+		inv.set_slot(index, merged)
 		_cursor["count"] = int(_cursor["count"]) - put
 		if int(_cursor["count"]) <= 0:
 			_cursor = {}
@@ -206,12 +259,15 @@ func _right_click(inv: Inventory, index: int) -> void:
 	if _cursor.is_empty():
 		if not slot.is_empty():  # coger la mitad (redondeando hacia arriba)
 			var half := int(ceil(int(slot["count"]) / 2.0))
-			_cursor = {"id": slot["id"], "count": half}
+			_cursor = slot.duplicate(true)
+			_cursor["count"] = half
 			_cursor_from = {"inventory": inv, "index": index}
 			inv.take(index, half)
-	elif slot.is_empty() or (slot["id"] == _cursor["id"] and int(slot["count"]) < ItemDB.max_stack(slot["id"])):
+	elif slot.is_empty() or (Inventory.stacks_match(slot, _cursor) and int(slot["count"]) < ItemDB.max_stack(slot["id"])):
 		var current := 0 if slot.is_empty() else int(slot["count"])
-		inv.set_slot(index, {"id": _cursor["id"], "count": current + 1})  # dejar uno
+		var placed := _cursor.duplicate(true)
+		placed["count"] = current + 1
+		inv.set_slot(index, placed)  # dejar uno sin perder desgaste
 		_cursor["count"] = int(_cursor["count"]) - 1
 		if int(_cursor["count"]) <= 0:
 			_cursor = {}
@@ -237,28 +293,14 @@ func _quick_move(section: int, index: int) -> void:
 		for other in _sections:
 			if other != _sections[section]:
 				target_slots.append_array(other["slots"])
-	var left := _add_to_slots(target, target_slots, slot["id"], int(slot["count"]))
-	inv.set_slot(index, {} if left == 0 else {"id": slot["id"], "count": left})
+	var left := _add_stack_to_slots(target, target_slots, slot)
+	var remaining := slot.duplicate(true)
+	remaining["count"] = left
+	inv.set_slot(index, remaining)
 
 
-## Como Inventory.add pero solo en ciertos huecos. Devuelve lo que no cupo.
-func _add_to_slots(inv: Inventory, slots: Array, id: String, count: int) -> int:
-	var left := count
-	var limit := ItemDB.max_stack(id)
-	for pass_empty in [false, true]:
-		for i in slots:
-			if left == 0:
-				return 0
-			var s := inv.get_slot(i)
-			if not pass_empty and not s.is_empty() and s["id"] == id and int(s["count"]) < limit:
-				var put := mini(left, limit - int(s["count"]))
-				inv.set_slot(i, {"id": id, "count": int(s["count"]) + put})
-				left -= put
-			elif pass_empty and s.is_empty():
-				var put := mini(left, limit)
-				inv.set_slot(i, {"id": id, "count": put})
-				left -= put
-	return left
+func _add_stack_to_slots(inv: Inventory, slots: Array, stack: Dictionary) -> int:
+	return int(stack["count"]) if slots.is_empty() else inv.add_stack(stack, slots)
 
 
 func _return_cursor() -> void:
@@ -272,13 +314,19 @@ func _return_cursor() -> void:
 			inv.set_slot(index, _cursor)
 			_cursor = {}
 			return
-		var left := _add_to_slots(inv, slots_of(inv), _cursor["id"], int(_cursor["count"]))
-		_cursor = {} if left == 0 else {"id": _cursor["id"], "count": left}
+		var left := _add_stack_to_slots(inv, slots_of(inv), _cursor)
+		_cursor["count"] = left
+		if left == 0:
+			_cursor = {}
 	if not _cursor.is_empty() and not _sections.is_empty():
 		var first: Inventory = _sections[_sections.size() - 1]["inventory"]
-		var rest := _add_to_slots(first, slots_of(first), _cursor["id"], int(_cursor["count"]))
+		var rest := _add_stack_to_slots(first, slots_of(first), _cursor)
 		if rest > 0:
-			overflow.emit(_cursor["id"], rest)
+			_cursor["count"] = rest
+			if stack_dropped.has_connections():
+				stack_dropped.emit(_cursor.duplicate(true))
+			else:
+				overflow.emit(_cursor["id"], rest)
 	_cursor = {}
 
 
@@ -340,8 +388,28 @@ func _show_stack(icon: TextureRect, label: Label, stack: Dictionary) -> void:
 
 
 func _gui_input(event: InputEvent) -> void:
-	# Fuera de los paneles: en el modo fabricar, el ratón trabaja sobre el mundo; en los demás,
-	# un clic fuera se ignora (para no perder lo que se lleva cogido).
+	# La barra inferior también recibe objetos aunque el inventario cubra la pantalla.
+	if event is InputEventMouseButton:
+		var button := event as InputEventMouseButton
+		var pos := get_global_transform() * button.position
+		var destination := _slot_target_at(pos)
+		if button.pressed and not destination.is_empty():
+			_press_pos = pos
+			if button.button_index == MOUSE_BUTTON_LEFT:
+				_left_click(destination["inventory"], destination["index"])
+			elif button.button_index == MOUSE_BUTTON_RIGHT:
+				_right_click(destination["inventory"], destination["index"])
+			_refresh()
+			accept_event()
+			return
+		if _layout != "craft" and not is_over_ui(pos):
+			if button.pressed:
+				if button.button_index in [MOUSE_BUTTON_LEFT, MOUSE_BUTTON_RIGHT]:
+					_drop_cursor(button.button_index == MOUSE_BUTTON_RIGHT)
+			else:
+				_finish_drag(button, pos)
+			accept_event()
+			return
 	if _layout == "craft" and (event is InputEventMouseButton or event is InputEventMouseMotion):
 		world_input.emit(event)
 		accept_event()
@@ -368,6 +436,8 @@ func layout() -> String:
 
 ## ¿Está el ratón sobre algún panel (inventario o los de la capa extra)?
 func is_over_ui(pos: Vector2) -> bool:
+	if hotbar != null and not hotbar.slot_target_at(pos).is_empty():
+		return true
 	if _panel.get_global_rect().has_point(pos):
 		return true
 	for child in overlay.get_children():

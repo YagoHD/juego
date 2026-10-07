@@ -14,7 +14,7 @@ func try_eat() -> bool:
 		return false
 	if player.needs.eat(stack["id"]):
 		var food_id: String = stack["id"]
-		if food_id.begins_with("roasted") or food_id in ["cooked_fish", "flatbread", "cooked_crab"]:
+		if food_id.begins_with("roasted") or food_id in ["cooked_meat", "cooked_poultry", "cooked_fish", "flatbread", "cooked_crab"]:
 			player.get_tree().call_group("objectives", "mark", "comido_asado")
 		if not player.creative:
 			player.inventory.take(player._hotbar_index, 1)

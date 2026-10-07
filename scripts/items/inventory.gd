@@ -60,6 +60,42 @@ func add(id: String, count: int, allowed: Array = []) -> int:
 	return left
 
 
+## Transferir un montón existente sin reparar herramientas ni perder metadata.
+func add_stack(stack: Dictionary, allowed: Array = []) -> int:
+	var slots: Array = allowed if not allowed.is_empty() else range(size())
+	var left := int(stack.get("count", 0))
+	var limit := ItemDB.max_stack(str(stack["id"]))
+	for index in slots:
+		var old := get_slot(index)
+		if stacks_match(old, stack):
+			var added := mini(left, limit - int(old["count"]))
+			if added > 0:
+				var merged := old.duplicate(true)
+				merged["count"] = int(old["count"]) + added
+				set_slot(index, merged)
+				left -= added
+	for index in slots:
+		if left <= 0:
+			break
+		if is_empty_slot(index):
+			var added := mini(left, limit)
+			var restored := stack.duplicate(true)
+			restored["count"] = added
+			set_slot(index, restored)
+			left -= added
+	return left
+
+
+static func stacks_match(a: Dictionary, b: Dictionary) -> bool:
+	if a.is_empty() or b.is_empty():
+		return false
+	var first := a.duplicate(true)
+	var second := b.duplicate(true)
+	first.erase("count")
+	second.erase("count")
+	return first == second
+
+
 ## Quita hasta 'count' objetos del hueco. Devuelve cuántos se quitaron.
 func take(index: int, count: int) -> int:
 	var s := _slots[index]
