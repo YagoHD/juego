@@ -1,5 +1,5 @@
-// Cielo del ciclo día/noche: degradado (los colores los fija DayNight según la hora), disco y
-// halo del sol (luz 0), disco de la luna (luz 1) y estrellas por la noche.
+// Cielo del ciclo día/noche: degradado (los colores los fija DayNight según la hora), sol
+// cuadrado con halo (luz 0), luna cuadrada con manchas (luz 1) y estrellas por la noche.
 shader_type sky;
 
 uniform vec3 top_color : source_color = vec3(0.22, 0.48, 0.88);
@@ -15,6 +15,14 @@ float hash(vec3 p) {
 	return fract(p.x * p.y * p.z * (p.x + p.y + p.z));
 }
 
+// Coordenadas de 'dir' en el plano del astro (ejes derecha y arriba de su dirección).
+vec2 square_coords(vec3 dir, vec3 light) {
+	vec3 right = normalize(cross(light, abs(light.y) < 0.99 ? vec3(0.0, 1.0, 0.0) : vec3(1.0, 0.0, 0.0)));
+	vec3 up = cross(right, light);
+	float d = max(dot(dir, light), 0.0001);
+	return vec2(dot(dir, right), dot(dir, up)) / d;
+}
+
 void sky() {
 	vec3 dir = EYEDIR;
 	float up = dir.y;
@@ -25,17 +33,29 @@ void sky() {
 		col = mix(horizon_color, ground_color, clamp(-up * 4.0, 0.0, 1.0));
 	}
 
-	// Sol: disco nítido y un halo que tiñe el cielo a su alrededor.
+	// Sol y luna CUADRADOS (estilo de la guía visual): se mide la dirección en los ejes del astro
+	// y es astro si cae dentro de un cuadrado. El sol lleva un halo cuadrado suave; la luna, manchas.
 	if (LIGHT0_ENABLED) {
 		float d = dot(dir, LIGHT0_DIRECTION);
-		col += LIGHT0_COLOR * smoothstep(0.99955, 0.99975, d) * 6.0;
+		vec2 q = square_coords(dir, LIGHT0_DIRECTION);
+		float edge = max(abs(q.x), abs(q.y));
+		if (d > 0.0) {
+			col += LIGHT0_COLOR * (1.0 - step(0.045, edge)) * 5.0;
+			col += LIGHT0_COLOR * smoothstep(0.16, 0.045, edge) * 0.35;  // halo cuadrado
+		}
 		col += sun_glow_color * pow(max(d, 0.0), 10.0) * sun_glow;
 	}
-	// Luna: disco blanco azulado con un halo muy suave.
 	if (LIGHT1_ENABLED) {
 		float d = dot(dir, LIGHT1_DIRECTION);
-		col += vec3(0.85, 0.9, 1.0) * smoothstep(0.99935, 0.99955, d) * 1.6;
-		col += vec3(0.3, 0.38, 0.55) * pow(max(d, 0.0), 30.0) * 0.25;
+		vec2 q = square_coords(dir, LIGHT1_DIRECTION);
+		float edge = max(abs(q.x), abs(q.y));
+		if (d > 0.0 && edge < 0.04) {
+			// Manchas de la luna: una cuadrícula de 8x8 "píxeles" con algunos más oscuros.
+			vec2 cell = floor((q + 0.04) / 0.08 * 8.0);
+			float spot = step(0.7, hash(vec3(cell, 3.0)));
+			col += vec3(0.88, 0.92, 1.0) * (1.6 - 0.5 * spot);
+		}
+		col += vec3(0.35, 0.40, 0.65) * pow(max(d, 0.0), 30.0) * 0.35;
 	}
 	// Estrellas: puntos en una cuadrícula de direcciones, solo por encima del horizonte.
 	if (stars > 0.0 && up > 0.0) {

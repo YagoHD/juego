@@ -25,12 +25,14 @@ const KEYS := [
 	{"h": 6.3, "top": Color(0.26, 0.40, 0.70), "horizon": Color(0.98, 0.60, 0.36), "fog": Color(0.85, 0.66, 0.52),
 		"sun": Color(1.0, 0.62, 0.38), "glow": Color(1.0, 0.55, 0.3), "cloud": Color(1.0, 0.74, 0.58),
 		"ambient": Color(0.5, 0.45, 0.45), "sky_ambient": 0.5, "stars": 0.0},
-	{"h": 8.0, "top": Color(0.22, 0.48, 0.88), "horizon": Color(0.68, 0.82, 0.95), "fog": Color(0.86, 0.89, 0.93),
-		"sun": Color(1.0, 0.96, 0.88), "glow": Color(1.0, 0.92, 0.75), "cloud": Color(1.0, 1.0, 1.0),
-		"ambient": Color(0.62, 0.62, 0.64), "sky_ambient": 0.45, "stars": 0.0},
-	{"h": 17.5, "top": Color(0.22, 0.46, 0.86), "horizon": Color(0.74, 0.80, 0.90), "fog": Color(0.86, 0.86, 0.88),
-		"sun": Color(1.0, 0.93, 0.80), "glow": Color(1.0, 0.85, 0.65), "cloud": Color(1.0, 0.98, 0.95),
-		"ambient": Color(0.62, 0.61, 0.62), "sky_ambient": 0.45, "stars": 0.0},
+	# Día: cielo azul vivo y luz cálida, como en la guía visual (docs/estilo/guia_01_bosque.png).
+	{"h": 8.0, "top": Color(0.24, 0.52, 0.93), "horizon": Color(0.70, 0.84, 0.96), "fog": Color(0.84, 0.88, 0.93),
+		"sun": Color(1.0, 0.94, 0.82), "glow": Color(1.0, 0.90, 0.70), "cloud": Color(1.0, 1.0, 1.0),
+		"ambient": Color(0.64, 0.62, 0.60), "sky_ambient": 0.45, "stars": 0.0},
+	# Tarde: la hora dorada empieza pronto (docs/estilo/escena_elegida.webp).
+	{"h": 17.5, "top": Color(0.26, 0.46, 0.84), "horizon": Color(0.96, 0.80, 0.62), "fog": Color(0.92, 0.82, 0.70),
+		"sun": Color(1.0, 0.84, 0.60), "glow": Color(1.0, 0.75, 0.45), "cloud": Color(1.0, 0.90, 0.80),
+		"ambient": Color(0.66, 0.58, 0.52), "sky_ambient": 0.45, "stars": 0.0},
 	{"h": 19.4, "top": Color(0.20, 0.30, 0.60), "horizon": Color(1.0, 0.55, 0.34), "fog": Color(0.80, 0.62, 0.55),
 		"sun": Color(1.0, 0.6, 0.38), "glow": Color(1.0, 0.45, 0.25), "cloud": Color(1.0, 0.66, 0.5),
 		"ambient": Color(0.5, 0.46, 0.47), "sky_ambient": 0.5, "stars": 0.0},
@@ -90,7 +92,7 @@ func setup(parent: Node3D, fog_begin: float, fog_end: float, fog_max: float) -> 
 	_env.fog_depth_end = fog_end
 	_env.fog_depth_curve = 1.2
 	_env.fog_density = fog_max
-	_env.fog_sky_affect = 0.6
+	_env.fog_sky_affect = 0.35  # que la bruma no tape el sol ni la luna cuadrados
 	_env.fog_aerial_perspective = 0.0
 	var world_env := WorldEnvironment.new()
 	world_env.environment = _env
@@ -240,15 +242,15 @@ func _apply_realistic() -> void:
 	_env.ssil_radius = 4.0
 	_env.ssil_intensity = 1.2
 	_env.glow_enabled = on
-	_env.glow_intensity = 0.35
+	_env.glow_intensity = 0.5  # el fuego, las runas y la corrupción brillan (guía visual)
 	_env.glow_bloom = 0.04
 	_env.glow_hdr_threshold = 0.9
 	_env.glow_blend_mode = Environment.GLOW_BLEND_MODE_SOFTLIGHT
 	_env.adjustment_enabled = on
-	_env.adjustment_saturation = 1.08
+	_env.adjustment_saturation = 1.15
 	_env.adjustment_contrast = 1.1
 	_env.volumetric_fog_enabled = on
-	_env.volumetric_fog_density = 0.0012
+	_env.volumetric_fog_density = 0.0016  # bruma con rayos de sol, algo más que antes
 	_env.volumetric_fog_anisotropy = 0.6  # la luz se ve más mirando hacia el sol
 	_env.volumetric_fog_length = 96.0
 	_env.volumetric_fog_sky_affect = 0.0
