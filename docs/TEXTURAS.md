@@ -137,6 +137,8 @@ Hojas hechas (`docs/concept/`):
 | Grano de alba (cafeína) | ❌ | hoja 14 (nº 5); la planta en el mundo, modelo en `PROMPTS_MESHY.md` |
 | Mochila perdida al morir (en el suelo) | ❌ | modelo en `PROMPTS_MESHY.md`; ahora es una caja marrón |
 | Barra de sueño (icono de la luna) | ❌ | hoja 14 (nº 6); ahora sale la palabra "Sueño" |
+| Pepita de oro, moneda de oro | ❌ | hoja 15 (nº 1-2) |
+| Horno de piedra (icono y en el mundo) | ❌ | hoja 15 (nº 3); en el mundo, modelo en `PROMPTS_MESHY.md`; ahora es un bloque gris |
 
 ## Personaje
 
@@ -222,6 +224,16 @@ Same style as the item sheets. A clean 3x2 grid of 6 INVENTORY ICONS, one per ce
 4 a round wooden shield made of planks with a rope-wrapped rim
 5 a small cluster of amber glowing coffee-like beans on a green sprig (dawn grain)
 6 a small crescent moon icon for a sleep bar, soft violet
+```
+
+## Hoja 15: oro y horno (iconos)
+
+```
+Same style as the item sheets. A clean 3x1 grid of 3 INVENTORY ICONS, numbered 1-3 under each,
+plain beige background, front view slightly tilted, centered, no ground shadows:
+1 a small raw gold nugget, rough and shiny
+2 a stack of three medieval gold coins with a simple stamped cross
+3 a small stone furnace made of stacked rocks and clay, with a dark mouth and a short chimney
 ```
 
 ## Hoja 11: efectos y cielo

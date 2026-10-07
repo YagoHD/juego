@@ -72,6 +72,9 @@ const DROPS := {
 ## barra que añade; "storage": huecos de inventario que añade.
 const OTHER_ITEMS := {
 	"dawn_bean": {"name": "Grano de alba", "stack": 16},
+	"gold_nugget": {"name": "Pepita de oro", "stack": 32},
+	"gold_coin": {"name": "Moneda de oro", "stack": 100},
+	"furnace": {"name": "Horno de piedra", "stack": 1},
 	"raw_meat": {"name": "Carne cruda", "stack": 16},
 	"cooked_meat": {"name": "Carne asada", "stack": 16},
 	"raw_poultry": {"name": "Carne de ave cruda", "stack": 16},
@@ -265,7 +268,15 @@ static func drops_for(block_id: int, rng: RandomNumberGenerator) -> Array:
 		IslandGenerator.FLOWER_YELLOW:
 			return [["flower_yellow", 1]]
 	var drop := drop_of(block_id)
-	return [] if drop == "" else [[drop, 1]]
+	var result: Array = [] if drop == "" else [[drop, 1]]
+	if GOLD_CHANCE.has(block_id) and rng.randf() < float(GOLD_CHANCE[block_id]):
+		result.append(["gold_nugget", 1])  # a veces, al picar, sale oro
+	return result
+
+
+## Probabilidad de sacar una pepita de oro al picar cada bloque (provisional: más adelante, vetas
+## de oro propias en la montaña y en la mina abandonada).
+const GOLD_CHANCE := {IslandGenerator.STONE: 0.03, IslandGenerator.MOSSY_STONE: 0.03, IslandGenerator.ORE: 0.3}
 
 
 ## Objeto que se obtiene al romper un bloque ("" si no suelta nada).

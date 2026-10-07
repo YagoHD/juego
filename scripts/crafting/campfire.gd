@@ -9,6 +9,11 @@ class_name Campfire
 const FUEL := {"sticks": 45.0, "wood": 150.0, "board": 120.0, "planks": 90.0, "fiber": 10.0, "resin": 30.0}
 const COOKS := {"raw_meat": "cooked_meat", "raw_poultry": "cooked_poultry", "insect": "roasted_insect", "berries": "roasted_berries", "seeds": "roasted_seeds", "mushroom": "roasted_mushroom", "raw_fish": "cooked_fish", "wheat": "flatbread", "raw_crab": "cooked_crab"}
 const COOK_TIME := 4.0
+## El horno de piedra (la misma lumbre, pero cerrada y más caliente): funde en vez de asar.
+const SMELTS := {"gold_nugget": ["gold_coin", 2]}   # una pepita da dos monedas: todo su valor
+const SMELT_TIME := 8.0
+
+var furnace := false    # true: es un horno de piedra (funde oro; no asa comida)
 const LIGHT_CHANCE := 0.45
 
 var lit := false
@@ -24,7 +29,12 @@ var _crackle := 0.0
 func _ready() -> void:
 	add_to_group("campfires")  # la lluvia avisa con call_group("campfires", "rained_on")
 	var pit_path := "res://assets/models/voxel/campfire_pit.res"
-	if ResourceLoader.exists(pit_path):
+	if furnace:
+		# Horno provisional: bloque de piedra con la boca oscura delante y chimenea (falta el modelo).
+		_box(Vector3(0, 0.2, 0), Vector3(0.5, 0.4, 0.5), Color(0.5, 0.5, 0.52), 0.0)
+		_box(Vector3(0, 0.12, 0.23), Vector3(0.22, 0.16, 0.06), Color(0.12, 0.1, 0.09), 0.0)
+		_box(Vector3(0.12, 0.5, -0.1), Vector3(0.12, 0.25, 0.12), Color(0.45, 0.45, 0.47), 0.0)
+	elif ResourceLoader.exists(pit_path):
 		# Anillo de piedras con leña (Kenney Survival Kit, en cubitos).
 		var pit := MeshInstance3D.new()
 		pit.mesh = load(pit_path)
@@ -43,6 +53,9 @@ func _ready() -> void:
 	for k in 3:
 		var flame := TorchLight.make_flame()
 		flame.position = Vector3(cos(k * 2.1) * 0.04, 0.12 + k * 0.03, sin(k * 2.1) * 0.04)
+		if furnace:
+			flame.position.z += 0.24  # asoma por la boca del horno
+			flame.scale *= 0.5
 		flame.scale = Vector3.ONE * (1.5 - k * 0.3)
 		_flames.add_child(flame)
 	_light = TorchLight.make_light()
@@ -118,14 +131,20 @@ func interact(held: Dictionary, player: Player) -> int:
 		Sfx.play("colocar", global_position, -6.0)
 		player.notice.emit("Echas leña: %d s de fuego." % int(fuel))
 		return 1
-	if COOKS.has(id):
+	var recipes: Dictionary = SMELTS if furnace else COOKS
+	if recipes.has(id):
 		if not lit:
-			player.notice.emit("Primero hay que encenderla (clic derecho con pedernal).")
+			player.notice.emit("Primero hay que encender%s (clic derecho con pedernal)." % ("lo" if furnace else "la"))
 			return 0
-		_cooking.append({"id": COOKS[id], "left": COOK_TIME})
+		var out: Variant = recipes[id]
+		var result: String = out[0] if out is Array else out
+		_cooking.append({"id": result, "count": out[1] if out is Array else 1, "left": SMELT_TIME if furnace else COOK_TIME})
 		Sfx.play("colocar", global_position, -8.0)
-		player.notice.emit("Asando %s..." % ItemDB.display_name(id).to_lower())
+		player.notice.emit(("Fundiendo %s..." if furnace else "Asando %s...") % ItemDB.display_name(id).to_lower())
 		return 1
+	if furnace:
+		player.notice.emit("Horno %s: funde aquí las pepitas de oro en monedas (echa leña para que siga)." % ("encendido" if lit else "apagado; enciéndelo con pedernal"))
+		return 0
 	if lit:
 		player.notice.emit("Arde. Echa leña (palos, troncos) o pon a asar insectos o bayas.")
 	else:
@@ -135,7 +154,7 @@ func interact(held: Dictionary, player: Player) -> int:
 
 ## Llueve: si no hay nada encima que la tape, puede apagarse.
 func rained_on() -> void:
-	if not lit or randf() > 0.35:
+	if not lit or furnace or randf() > 0.35:  # el horno está cerrado: la lluvia no lo apaga
 		return
 	var from := global_position + Vector3.UP * 0.6
 	var hit := get_world_3d().direct_space_state.intersect_ray(PhysicsRayQueryParameters3D.create(from, from + Vector3.UP * 8.0, 1))
@@ -197,7 +216,7 @@ func _process(delta: float) -> void:
 		c["left"] = float(c["left"]) - delta
 		if float(c["left"]) <= 0.0:
 			_cooking.erase(c)
-			ItemDrop.spawn(get_parent().get_parent(), global_position + Vector3.UP * 0.3, c["id"], 1)
+			ItemDrop.spawn(get_parent().get_parent(), global_position + Vector3.UP * (0.6 if furnace else 0.3), c["id"], int(c.get("count", 1)))
 			Sfx.play("recoger", global_position, -6.0)
 
 

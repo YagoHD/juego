@@ -21,7 +21,7 @@ func _ready() -> void:
 ## Clic derecho con una antorcha o una hoguera en la mano: se pone en el suelo, donde se apunta.
 func place_torch(target: Dictionary) -> void:
 	var stack := player.active_inventory().get_slot(player._hotbar_index)
-	if not stack.is_empty() and (stack["id"] in ["torch", "campfire", "bedroll"]):
+	if not stack.is_empty() and (stack["id"] in ["torch", "campfire", "furnace", "bedroll"]):
 		place_on_ground(target)
 
 

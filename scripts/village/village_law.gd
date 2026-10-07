@@ -18,6 +18,7 @@ const VALUES := {
 	"cooked_meat": 2.0, "cooked_fish": 2.0, "cooked_poultry": 2.0, "flatbread": 2.0,
 	"hide": 2.0, "rope": 1.5, "cloth": 1.5, "planks": 1.0, "board": 1.0, "arrow": 0.5,
 	"captain_journal": 0.0,
+	"gold_coin": 1.0, "gold_nugget": 1.5,  # el banco paga la pepita a 1,5; fundida da 2 monedas
 }
 
 var warnings := 0       # avisos por tocar bloques (0..5)

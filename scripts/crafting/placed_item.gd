@@ -30,6 +30,8 @@ static func height_of(id: String) -> float:
 		return 0.05
 	if id == "campfire":
 		return 0.15
+	if id == "furnace":
+		return 0.4
 	if id == "bedroll":
 		return 0.12
 	return 0.18 if ItemDB.block_of(id) >= 0 else 0.3 / ItemPainter.S * 2.6
@@ -44,7 +46,7 @@ func _ready() -> void:
 	if item_id == "board":
 		_build_board()
 		return
-	if item_id == "campfire":
+	if item_id in ["campfire", "furnace"]:
 		_build_campfire()
 		return
 	if item_id == "bedroll" and ResourceLoader.exists("res://assets/models/voxel/bedroll.res"):
@@ -167,15 +169,16 @@ func _build_board() -> void:
 
 func _build_campfire() -> void:
 	campfire = Campfire.new()
+	campfire.furnace = item_id == "furnace"
 	add_child(campfire)
 	_material = StandardMaterial3D.new()  # (para el brillo de las recetas; la hoguera no lo usa)
 	var shape := CollisionShape3D.new()
 	var box := BoxShape3D.new()
-	box.size = Vector3(0.44, 0.15, 0.44)
+	box.size = Vector3(0.52, 0.42, 0.52) if campfire.furnace else Vector3(0.44, 0.15, 0.44)
 	shape.shape = box
-	shape.position.y = 0.075
+	shape.position.y = box.size.y * 0.5
 	add_child(shape)
-	_box = AABB(Vector3(-0.22, 0.0, -0.22), box.size).grow(0.01)
+	_box = AABB(Vector3(-box.size.x * 0.5, 0.0, -box.size.z * 0.5), box.size).grow(0.01)
 	set_process(false)
 
 

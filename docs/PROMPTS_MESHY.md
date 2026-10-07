@@ -103,6 +103,8 @@ Reply "OK" and wait.
 | `iron_scrap.glb` | A handful of rusty iron scraps and bent nails. |
 | `anchor_shard.glb` | A jagged shard of dark stone with glowing violet veins. |
 | `dawn_bean_plant.glb` | A small wild plant: a thin green stem with narrow leaves and a cluster of amber glowing beans at the top. |
+| `furnace.glb` | A small stone furnace made of stacked grey rocks and clay, with a dark arched mouth in front and a short chimney (unlit, no fire). |
+| `gold_coin.glb` | A single medieval gold coin with a simple stamped cross, seen at an angle. |
 | `death_backpack.glb` | A dropped makeshift backpack made of sail cloth and rope, lying on the ground, slightly open. |
 
 ## Animales (modelos con huesos para animarlos)
