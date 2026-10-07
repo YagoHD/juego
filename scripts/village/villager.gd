@@ -11,6 +11,9 @@ var villager_name := ""
 var job := ""
 var activity := ""           # lo que hace ahora, para la etiqueta
 var _alarm_seen := Vector3.INF   # el último aviso del pueblo al que ha acudido (guardias)
+var _bark := ""                  # frase suelta que dice ahora (sobre la cabeza)
+var _bark_left := 0.0
+var _bark_cooldown := 0.0
 
 
 func _ready() -> void:
@@ -20,6 +23,15 @@ func _ready() -> void:
 
 
 func _physics_process(delta: float) -> void:
+	_bark_left = maxf(0.0, _bark_left - delta)
+	_bark_cooldown = maxf(0.0, _bark_cooldown - delta)
+	if state == "talk" and not dead:
+		# Hablando con el jugador: quieto y mirándole.
+		if is_instance_valid(player):
+			_face(player.global_position - global_position, delta)
+		velocity = Vector3.ZERO
+		_update_label()
+		return
 	if not dead and state in ["idle", "feed", "rest"] and is_on_floor() and _knockback == Vector3.ZERO:
 		_still(delta)
 		return
@@ -181,6 +193,31 @@ func _player_ok() -> bool:
 	return is_instance_valid(player) and not player.creative and player.combat.health > 0.0
 
 
+## Empieza o acaba una conversación con el jugador.
+func start_talk() -> void:
+	target = null
+	_set_state("talk")
+
+
+func end_talk() -> void:
+	if state == "talk":
+		_set_state("idle")
+		_timer = 1.5
+
+
+## Al pasar el jugador cerca, a veces dice una frase de su oficio (para que se note que viven).
+func maybe_bark() -> void:
+	if _bark_cooldown > 0.0 or not can_talk() or state == "talk" or activity.begins_with("Durmiendo"):
+		return
+	_bark_cooldown = _rng.randf_range(25.0, 45.0)
+	var lines: Array = DialogueDB.BARKS.get(job, [])
+	if lines.is_empty() or _rng.randf() > 0.6:
+		return
+	_bark = lines[_rng.randi() % lines.size()]
+	_bark_left = 3.5
+	_update_label()
+
+
 ## ¿Se puede hablar con él ahora? No si pelea, huye, corre a denunciar o la ley va a por el jugador.
 func can_talk() -> bool:
 	if dead or village == null or village.law.guards_attack():
@@ -214,8 +251,11 @@ func _update_label() -> void:
 		"chase": doing = "¡A por ti!"
 		"confront": doing = "Paga la multa: tecla R"
 		"report": doing = "¡Corre a avisar a la guardia!"
+		"talk": doing = "Hablando contigo"
 		"return": doing = "De camino: " + activity.to_lower()
 		"windup", "recover", "stagger", "stunned": doing = "Peleando"
 	var text := "%s  %d/%d\n%s" % [villager_name, ceili(health), int(stats["hp"]), doing]
+	if _bark_left > 0.0:
+		text = "«%s»\n%s" % [_bark, text]
 	if _label.text != text:  # cambiar el texto rehace la etiqueta: solo si cambia
 		_label.text = text

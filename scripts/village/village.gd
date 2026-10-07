@@ -56,7 +56,7 @@ const SCHEDULES := {
 }
 const JOB_NAMES := {"farmer": "granjero", "fisher": "pescador", "merchant": "mercader", "blacksmith": "herrero",
 	"baker": "panadero", "innkeeper": "tabernero", "banker": "banquero", "woodcutter": "leñador", "hunter": "cazador",
-	"herbalist": "herbolaria", "priest": "sacerdote", "elder": "anciano", "old_miner": "viejo minero",
+	"herbalist": "herbolaria", "priest": "sacerdote", "elder": "anciana", "old_miner": "viejo minero",
 	"carpenter": "carpintero", "refugee": "refugiado", "guard_day": "guardia", "guard_night": "guardia de noche"}
 
 var player: Player
@@ -72,6 +72,7 @@ var _check := 0.0
 var _collector_met := false   # el guardia que cobra ya llegó junto al jugador
 var alarm_point := Vector3.INF  # dónde se vio por última vez al jugador perseguido por la ley
 var pending: Array = []       # delitos vistos solo por civiles que aún corren a denunciarlos
+var knowledge := {}           # lo que el jugador ha descubierto hablando (para el futuro cuaderno)
 
 
 func _ready() -> void:
@@ -170,6 +171,9 @@ func _physics_process(delta: float) -> void:
 				_actors.erase(record["id"])
 			record["position"] = _vec(_walk(record, position, step))
 	_watch_collector()
+	for actor in _actors.values():  # frases sueltas al pasar cerca
+		if is_instance_valid(actor) and not actor.dead and actor.global_position.distance_to(player.global_position) < 5.0:
+			actor.maybe_bark()
 	if law.guards_attack():
 		for witness in witnesses():
 			if witness.species == "guard":
@@ -348,7 +352,7 @@ func to_data() -> Dictionary:
 		if actor != null and is_instance_valid(actor) and not actor.dead:
 			record["position"] = _vec(actor.global_position)
 			record["health"] = actor.health
-	return {"records": records.duplicate(true), "law": law.to_data()}
+	return {"records": records.duplicate(true), "law": law.to_data(), "knowledge": knowledge.duplicate()}
 
 
 ## Carga las fichas guardadas encima de las del pueblo recién creado: los muertos siguen muertos.
@@ -365,6 +369,8 @@ func from_data(data: Dictionary) -> void:
 			record["position"] = saved["position"]
 	if data.get("law") is Dictionary:
 		law.from_data(data["law"])
+	if data.get("knowledge") is Dictionary:
+		knowledge = data["knowledge"].duplicate()
 
 
 static func _vec(point: Vector3) -> Array:

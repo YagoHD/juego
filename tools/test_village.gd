@@ -39,6 +39,18 @@ func _villager(job_prefix: String) -> Villager:
 	return null
 
 
+func _named(person: String) -> Villager:
+	var village: Village = _scene.village
+	for record in village.records:
+		if record["name"] == person:
+			var actor: Villager = village._actors.get(record["id"])
+			if actor == null:
+				actor = village._spawn(record)
+			actor.global_position = _scene.player.global_position + Vector3(1.5, 0, 0)
+			return actor
+	return null
+
+
 func _process(_delta: float) -> bool:
 	var player: Player = _scene.player
 	var village: Village = _scene.village
@@ -104,6 +116,27 @@ func _process(_delta: float) -> bool:
 			bank._on_pressed()
 			_check("Banco: 4 pepitas dan 6 monedas (con pérdida) y devuelve lo que no es oro",
 				player.inventory.count_of("gold_coin") == before_bank + 6 and player.inventory.count_of("rope") == rope_before + 2 and not _scene._inventory.visible)
+			# Diálogos: el viejo minero cuenta lo de la mina; el herrero enseña el horno.
+			var miner := _named("Viejo Bermudo")
+			_scene._on_talk(miner)
+			var talk: DialoguePanel = _scene._dialogue
+			_check("Clic derecho a un vecino abre su diálogo y se queda quieto", talk.is_open() and miner.state == "talk")
+			var story_index := -1
+			for i in talk._current.size():
+				if str(talk._current[i][1]) == "story:start":
+					story_index = i + 1
+			talk.choose_number(story_index)  # ¿Trabajaste en la mina?
+			talk.choose_number(1)            # ¿Qué cosas?
+			talk.choose_number(1)            # ¿Qué soñaban?
+			_check("La historia de la mina se apunta en lo descubierto", village.knowledge.has("mina_brillo_morado") and talk._text.text.contains("torre"))
+			talk.close()
+			_check("Al acabar, el vecino sigue con lo suyo", miner.state != "talk" and not player.ui_open)
+			var smith := _named("Lope")
+			_scene._on_talk(smith)
+			for i in talk._current.size():
+				if talk._current[i].size() > 2 and talk._current[i][2].get("action", "") == "teach_furnace":
+					talk.choose_number(i + 1)
+			_check("El herrero enseña a montar el horno", player.known_recipes.has("furnace"))
 			# Impedir la denuncia: el testigo muere antes de llegar a la guardia.
 			player.global_position = Vector3(0, 0.3, 8)
 			var witness := _villager("farmer")

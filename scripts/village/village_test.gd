@@ -32,6 +32,8 @@ var _info: Label
 var _notice_time := 0.0
 var _save_timer := 15.0
 var _offer: OfferPanel         # pantalla de pago o de banco abierta
+var _dialogue: DialoguePanel
+var _talking: Villager
 
 
 func _ready() -> void:
@@ -190,6 +192,11 @@ func _build_ui() -> void:
 	_info.add_theme_color_override("font_outline_color", Color.BLACK)
 	_info.add_theme_constant_override("outline_size", 4)
 	canvas.add_child(_info)
+	_dialogue = DialoguePanel.new()
+	canvas.add_child(_dialogue)
+	_dialogue.closed.connect(_on_dialogue_closed)
+	_dialogue.action_chosen.connect(_on_dialogue_action)
+	_dialogue.learned.connect(func(_flag: String) -> void: _show_notice("Lo apuntas en tu memoria (más adelante, en el cuaderno)."))
 	var crosshair := Label.new()
 	crosshair.text = "+"
 	crosshair.set_anchors_and_offsets_preset(Control.PRESET_CENTER)
@@ -259,6 +266,10 @@ func _toggle_panel() -> void:
 func _input(event: InputEvent) -> void:
 	if not event is InputEventKey or not event.pressed or event.echo:
 		return
+	if event.keycode == KEY_ESCAPE and _dialogue.is_open():
+		_dialogue.close()
+		get_viewport().set_input_as_handled()
+		return
 	if event.keycode == KEY_F2 or event.keycode == KEY_ESCAPE:
 		if _inventory.visible:
 			_inventory.close()
@@ -290,14 +301,38 @@ func open_offer(kind: String, who: String) -> void:
 	_inventory.open(_offer.sections(), _offer)
 
 
+## Clic derecho a un vecino: se abre el diálogo.
 func _on_talk(villager: Node3D) -> void:
-	var person := villager as Villager
-	if person.species == "guard" and village.law.fine > 0.0:
-		open_offer("fine", person.villager_name)
-	elif person.job == "banker":
-		open_offer("bank", person.villager_name)
-	else:
-		_show_notice("%s: «%s»" % [person.villager_name, person.activity])
+	if _inventory.visible or _dialogue.is_open():
+		return
+	_talking = villager as Villager
+	_talking.start_talk()
+	_dialogue.knowledge = village.knowledge
+	player.ui_open = true
+	player._set_captured(false)
+	_dialogue.open(_talking, village)
+
+
+func _on_dialogue_closed() -> void:
+	if is_instance_valid(_talking):
+		_talking.end_talk()
+	_talking = null
+	if not _inventory.visible:
+		player.ui_open = false
+		player._set_captured(true)
+
+
+func _on_dialogue_action(action: String, villager: Villager) -> void:
+	match action:
+		"pay":
+			open_offer("fine", villager.villager_name)
+		"bank":
+			open_offer("bank", villager.villager_name)
+		"teach_furnace":
+			if player.learn("furnace"):
+				_show_notice("%s te enseña a montar un horno de piedra (piedras y arcilla): funde allí las pepitas en monedas. Está en el diario (J)." % villager.villager_name)
+			else:
+				_show_notice("%s: «Ya te lo expliqué: horno de piedra, buen fuego y paciencia.»" % villager.villager_name)
 
 
 func _bind_hotbar() -> void:
@@ -320,7 +355,7 @@ func _process(delta: float) -> void:
 		status = "multa pendiente: %d (R junto a un guardia)" % ceili(law.fine)
 	elif law.warnings > 0:
 		status = "avisos: %d de %d" % [law.warnings, VillageLaw.WARNINGS]
-	_info.visible = not _inventory.visible
+	_info.visible = not _inventory.visible and not _dialogue.is_open()
 	_info.text = "ALDEA — %02d:%02d — vivos %d/%d, con IA completa %d — %d FPS, física %.1f ms\nLey: %s\nF2 panel · E inventario · R pagar multa" % [
 		int(hour), int(fmod(hour, 1.0) * 60.0), village.living_count(), village.records.size(), village.active_count(),
 		Engine.get_frames_per_second(), Performance.get_monitor(Performance.TIME_PHYSICS_PROCESS) * 1000.0, status]
