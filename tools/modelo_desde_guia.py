@@ -34,6 +34,12 @@ BACK_X = 1081    # ... en la de espaldas (la derecha del personaje, a la derecha
 SIDE_X = 689     # ... en la de lado (muestra el lado derecho; delante = a la derecha de la imagen)
 K = 2            # casillas de textura por píxel del modelo
 
+# Hoja del brazo sin ropa (docs/estilo/guia_24_brazo_vistas.webp): proporciones del brazo y la mano,
+# y la piel de sus cajas. Vistas de frente, espalda, lado de fuera y de dentro, el brazo colgando.
+ARM_SHEET = os.path.join(ROOT, "docs", "estilo", "guia_24_brazo_vistas.webp")
+ARM = {"S": 41.5, "tip_y": 560, "tip": 9.4, "axis": 5.25,  # punta de los dedos: y = 560 en la hoja
+       "front": 340, "back": 618, "outer": 912, "inner": 1195}
+
 SKIN = "skin"      # filtro: piel (la mano no debe coger las pulseras de encima)
 SHIRT = "shirt"    # filtro: casillas que no son camisa se cambian por la camisa más cercana
 BROWN = "brown"    # filtro: cuero / tela marrón
@@ -54,24 +60,26 @@ BONES = [
     ("leg_right/lower", "lower", "leg_right", (2.0, 8.0, 0)),   # rodilla
     ("leg_right/lower/foot", "foot", "leg_right/lower", (2.0, 3.3, 0)),  # tobillo
     ("arm_right", "arm_right", None, (5.25, 21.2, 0)),          # hombro
-    ("arm_right/lower", "lower", "arm_right", (5.25, 16.7, 0)),  # codo
-    ("arm_right/lower/wrist", "wrist", "arm_right/lower", (5.25, 13.4, 0)),  # muñeca
+    ("arm_right/lower", "lower", "arm_right", (5.25, 17.1, 0)),  # codo
+    ("arm_right/lower/wrist", "wrist", "arm_right/lower", (5.25, 13.35, 0)),  # muñeca
     # Dónde se agarra un mango: dentro del puño cerrado, bajo la palma.
-    ("arm_right/lower/grip", "grip", "arm_right/lower", (5.0, 11.0, 0.0)),
+    ("arm_right/lower/grip", "grip", "arm_right/lower", (5.05, 10.35, 0.0)),
 ]
 
 # Mano: palma y dedos con sus falanges. Los dedos van uno detrás de otro de delante (índice, -Z) a
 # atrás (meñique), pegados al lado de la palma (-X en la mano derecha, hacia el cuerpo), y se
 # doblan hacia ese lado. Cada falange es un hueso: nudillo, articulación del medio y la de la punta.
-PALM_BOTTOM = 11.7
-FINGER_X = (4.3, 5.45)                      # grosor de los dedos
+# Medidas de la hoja del brazo (guia_24): la palma es más ancha (2,4) que gruesa (1,5) y los dedos,
+# más finos que la palma, miden 1,6 en total.
+PALM_BOTTOM = 11.0
+FINGER_X = (4.5, 5.9)                       # grosor de los dedos
 FINGERS = [  # (z0, z1, largos de las 3 falanges)
-    (-1.45, -0.75, (0.75, 0.55, 0.45)),     # índice
-    (-0.72, -0.02, (0.8, 0.6, 0.45)),       # corazón
-    (0.01, 0.71, (0.75, 0.55, 0.45)),       # anular
-    (0.74, 1.4, (0.6, 0.45, 0.4)),          # meñique
+    (-1.2, -0.63, (0.65, 0.5, 0.45)),       # índice
+    (-0.59, -0.02, (0.7, 0.55, 0.45)),      # corazón
+    (0.02, 0.59, (0.65, 0.5, 0.45)),        # anular
+    (0.63, 1.15, (0.55, 0.42, 0.38)),       # meñique
 ]
-THUMB = {"base": (3.95, 12.9, -1.15), "size": (0.8, 0.8), "lengths": (0.85, 0.65)}
+THUMB = {"base": (4.35, 12.55, -1.25), "size": (0.8, 0.8), "lengths": (0.9, 0.7)}
 
 
 def hand_bones_and_boxes():
@@ -84,7 +92,7 @@ def hand_bones_and_boxes():
         for j, length in enumerate(lengths):
             bid = "arm_right/lower/wrist/f%d%s" % (f, "abc"[j]) if j == 0 else parent + "/f%d%s" % (f, "abc"[j])
             bones.append((bid, "f%d%s" % (f, "abc"[j]), parent, (cx, y, (z0 + z1) / 2)))
-            boxes.append(box(bid, (FINGER_X[0], y - length - 0.05, z0), (FINGER_X[1], y + 0.05, z1), name="dedo", filter=SKIN))
+            boxes.append(box(bid, (FINGER_X[0], y - length - 0.05, z0), (FINGER_X[1], y + 0.05, z1), name="dedo", filter=SKIN, sheet="arm"))
             parent = bid
             y -= length
     # Pulgar: sale del lado de delante de la palma, hacia abajo.
@@ -95,7 +103,7 @@ def hand_bones_and_boxes():
         bid = parent + "/t" + "ab"[j]
         bones.append((bid, "t" + "ab"[j], parent, (bx, by, bz)))
         boxes.append(box(bid, (bx - w / 2, by - length - 0.05, bz - d / 2), (bx + w / 2, by + 0.05, bz + d / 2),
-                         name="pulgar", sample_from=None, filter=SKIN))
+                         name="pulgar", sample_from=None, filter=SKIN, sheet="arm"))
         parent = bid
         by -= length
     return bones, boxes
@@ -118,20 +126,28 @@ def boxes_right_side():
     b.append(box("leg_right/lower/foot", (0.1, 0.5, -2.9), (4.0, 4.4, 2.1), name="bota"))
     b.append(box("leg_right/lower/foot", (0.0, 0.0, -3.2), (4.1, 0.55, 2.3), name="suela",
                  color=(52, 38, 30)))
-    # Brazo: hombro redondeado (escalones), brazo, manga con volumen rota en diagonal.
-    b.append(box("arm_right", (4.0, 16.6, -1.4), (6.5, 21.3, 1.4)))
-    b.append(box("arm_right", (4.25, 21.3, -1.15), (6.25, 22.0, 1.15)))
-    # Manga: tres tiras de delante a atrás, cada una más larga (corte en diagonal), y la hombrera.
-    for k, (z0, z1, bottom) in enumerate([(-1.7, -0.55, 18.6), (-0.55, 0.55, 18.0), (0.55, 1.7, 17.4)]):
-        b.append(box("arm_right", (3.7, bottom, z0), (6.8, 21.6, z1), name="manga", filter=SHIRT))
-    b.append(box("arm_right", (3.95, 21.6, -1.45), (6.55, 22.3, 1.45), name="manga", filter=SHIRT))
-    # Antebrazo, dos pulseras de cuero con relieve (y un remache delante), mano grande y pulgar.
-    b.append(box("arm_right/lower", (4.1, 13.3, -1.15), (6.4, 16.9, 1.15)))
-    for y0 in (13.5, 14.6):
-        b.append(box("arm_right/lower", (3.8, y0, -1.45), (6.7, y0 + 0.8, 1.45), name="pulsera", filter=BROWN))
-        b.append(box("arm_right/lower", (4.95, y0 + 0.2, -1.7), (5.55, y0 + 0.6, -1.45), name="remache",
+    # Brazo (medidas de guia_24): hombro ancho redondeado con escalones, brazo, codo más estrecho,
+    # antebrazo que se afina hacia la muñeca. La piel sale de la hoja del brazo.
+    arm = {"sheet": "arm", "filter": SKIN}
+    b.append(box("arm_right", (4.4, 21.75, -0.9), (6.1, 22.3, 0.9), name="hombro", **arm))
+    b.append(box("arm_right", (3.75, 20.1, -1.5), (6.75, 21.6, 1.5), name="hombro", **arm))
+    b.append(box("arm_right", (4.0, 19.7, -1.25), (6.5, 21.95, 1.25), name="hombro", **arm))
+    b.append(box("arm_right", (4.15, 17.3, -1.0), (6.35, 20.0, 1.0), name="brazo", **arm))
+    b.append(box("arm_right/lower", (4.3, 16.8, -0.9), (6.2, 17.5, 0.9), name="codo", **arm))
+    b.append(box("arm_right/lower", (4.2, 13.8, -0.95), (6.3, 16.9, 0.95), name="antebrazo", **arm))
+    b.append(box("arm_right/lower", (4.35, 13.2, -0.85), (6.15, 13.9, 0.85), name="muneca", **arm))
+    # Manga con volumen: tres tiras de delante a atrás, cada una más larga (corte en diagonal), y
+    # la hombrera por encima.
+    for z0, z1, bottom in [(-1.75, -0.58, 18.7), (-0.58, 0.58, 18.1), (0.58, 1.75, 17.5)]:
+        b.append(box("arm_right", (3.5, bottom, z0), (7.0, 21.75, z1), name="manga", filter=SHIRT))
+    b.append(box("arm_right", (3.9, 21.7, -1.45), (6.6, 22.45, 1.45), name="manga", filter=SHIRT))
+    # Dos pulseras de cuero con relieve (y un remache delante).
+    for y0 in (13.5, 14.5):
+        b.append(box("arm_right/lower", (3.95, y0, -1.2), (6.55, y0 + 0.7, 1.2), name="pulsera", filter=BROWN))
+        b.append(box("arm_right/lower", (4.95, y0 + 0.15, -1.45), (5.55, y0 + 0.55, -1.2), name="remache",
                      color=(150, 120, 90)))
-    b.append(box("arm_right/lower/wrist", (3.8, PALM_BOTTOM, -1.5), (6.7, 13.5, 1.5), name="palma", filter=SKIN))
+    # Mano: palma más ancha que gruesa; dedos y pulgar en HAND_BOXES.
+    b.append(box("arm_right/lower/wrist", (4.25, PALM_BOTTOM, -1.25), (6.25, 13.45, 1.25), name="palma", **arm))
     b += HAND_BOXES
     return b
 
@@ -253,7 +269,49 @@ def ncells(length):
     return max(1, int(round(length * K)))
 
 
+def arm_face_pixels(bx, face):
+    """Una cara de una caja del brazo, de la hoja del brazo (guia_24): x respecto al eje del brazo."""
+    sheet = _arm_sheet()
+    x0, y0, z0 = bx["from"]
+    x1, y1, z1 = bx["to"]
+    if x0 + x1 < 0:  # brazo izquierdo: se mira como el derecho (la piel es simétrica)
+        x0, x1 = -x1, -x0
+        face = {"right": "left", "left": "right"}.get(face, face)
+    a = ARM
+    to_y = lambda y: a["tip_y"] - (y - a["tip"]) * a["S"]
+    ya, yb = to_y(y1), to_y(y0)
+    if face == "front":
+        xa, xb = a["front"] - (x1 - a["axis"]) * a["S"], a["front"] - (x0 - a["axis"]) * a["S"]
+    elif face == "back":
+        xa, xb = a["back"] + (x0 - a["axis"]) * a["S"], a["back"] + (x1 - a["axis"]) * a["S"]
+    elif face == "right":
+        xa, xb = a["outer"] - z1 * a["S"], a["outer"] - z0 * a["S"]
+    elif face == "left":
+        xa, xb = a["inner"] + z0 * a["S"], a["inner"] + z1 * a["S"]
+    else:
+        y = y1 if face == "top" else y0
+        yy = to_y(y) + (a["S"] * 0.3 if face == "top" else -a["S"] * 0.3)
+        cols, rows = ncells(x1 - x0), ncells(z1 - z0)
+        row = sample_strip(sheet, a["front"] - (x1 - a["axis"]) * a["S"], a["front"] - (x0 - a["axis"]) * a["S"],
+                           yy - 3, yy + 3, cols, 1)[0]
+        return fix(np.repeat(row[None], rows, axis=0), is_skin)
+    cols = ncells((x1 - x0) if face in ("front", "back") else (z1 - z0))
+    return fix(sample_strip(sheet, xa, xb, ya, yb, cols, ncells(y1 - y0)), is_skin)
+
+
+_ARM_SHEET = None
+
+
+def _arm_sheet():
+    global _ARM_SHEET
+    if _ARM_SHEET is None:
+        _ARM_SHEET = np.asarray(Image.open(ARM_SHEET).convert("RGB")).astype(float)
+    return _ARM_SHEET
+
+
 def face_pixels(sheet, bx, face):
+    if bx.get("sheet") == "arm":
+        return arm_face_pixels(bx, face)
     x0, y0, z0 = bx["from"]
     x1, y1, z1 = bx["to"]
     if bx.get("sample_from"):  # zona propia en la vista de frente/lado (x o z, y): orejas, trapo

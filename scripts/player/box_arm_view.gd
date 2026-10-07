@@ -9,7 +9,7 @@ extends Node3D
 ## Hombro respecto a los ojos (metros, ejes de la cámara: x derecha, y arriba, z hacia atrás).
 const SHOULDER := Vector3(0.55, -0.45, -0.15)
 ## Tamaño del brazo respecto al del personaje (en primera persona se ve más grande, como en Minecraft).
-const SCALE := 1.35
+const SCALE := 1.5
 ## Píxeles de skin desde el final de la mano hasta el punto de agarre (el objeto va en el puño).
 const GRIP_FROM_END := 1.5
 
