@@ -1,3 +1,8 @@
+> **EN PAUSA (2026-10-07):** con el estilo elegido (Minecraft Dungeons en primera/tercera
+> persona, ver `docs/ESTILO_GRAFICO.md`) casi todo se hace con imágenes de ChatGPT
+> (`docs/TEXTURAS.md`). Esta lista queda para alguna pieza especial, y habría que pedirla en el
+> estilo nuevo.
+
 # Prompts: objetos para ChatGPT → Meshy
 
 Cómo se hace cada objeto:
