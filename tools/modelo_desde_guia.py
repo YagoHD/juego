@@ -34,6 +34,15 @@ BACK_X = 1081    # ... en la de espaldas (la derecha del personaje, a la derecha
 SIDE_X = 689     # ... en la de lado (muestra el lado derecho; delante = a la derecha de la imagen)
 K = 2            # casillas de textura por píxel del modelo
 
+SKIN = "skin"      # filtro: piel (la mano no debe coger las pulseras de encima)
+SHIRT = "shirt"    # filtro: casillas que no son camisa se cambian por la camisa más cercana
+BROWN = "brown"    # filtro: cuero / tela marrón
+
+
+def box(bone, lo, hi, **opts):
+    return {"bone": bone, "from": list(lo), "to": list(hi), **opts}
+
+
 # --- Huesos: id, nombre del nodo, padre, pivote (px desde los pies; derecha del personaje = +X,
 # delante = -Z). Los que no tienen padre son las partes que anima PlayerAvatar.
 BONES = [
@@ -47,15 +56,54 @@ BONES = [
     ("arm_right", "arm_right", None, (5.25, 21.2, 0)),          # hombro
     ("arm_right/lower", "lower", "arm_right", (5.25, 16.7, 0)),  # codo
     ("arm_right/lower/wrist", "wrist", "arm_right/lower", (5.25, 13.4, 0)),  # muñeca
-    ("arm_right/lower/grip", "grip", "arm_right/lower", (5.25, 11.4, -0.4)),  # donde se agarra
+    # Dónde se agarra un mango: dentro del puño cerrado, bajo la palma.
+    ("arm_right/lower/grip", "grip", "arm_right/lower", (5.0, 11.0, 0.0)),
 ]
 
-SHIRT = "shirt"    # filtro: casillas que no son camisa se cambian por la camisa más cercana
-BROWN = "brown"    # filtro: cuero / tela marrón
+# Mano: palma y dedos con sus falanges. Los dedos van uno detrás de otro de delante (índice, -Z) a
+# atrás (meñique), pegados al lado de la palma (-X en la mano derecha, hacia el cuerpo), y se
+# doblan hacia ese lado. Cada falange es un hueso: nudillo, articulación del medio y la de la punta.
+PALM_BOTTOM = 11.7
+FINGER_X = (4.3, 5.45)                      # grosor de los dedos
+FINGERS = [  # (z0, z1, largos de las 3 falanges)
+    (-1.45, -0.75, (0.75, 0.55, 0.45)),     # índice
+    (-0.72, -0.02, (0.8, 0.6, 0.45)),       # corazón
+    (0.01, 0.71, (0.75, 0.55, 0.45)),       # anular
+    (0.74, 1.4, (0.6, 0.45, 0.4)),          # meñique
+]
+THUMB = {"base": (3.95, 12.9, -1.15), "size": (0.8, 0.8), "lengths": (0.85, 0.65)}
 
 
-def box(bone, lo, hi, **opts):
-    return {"bone": bone, "from": list(lo), "to": list(hi), **opts}
+def hand_bones_and_boxes():
+    """Huesos y cajas de la mano derecha (falanges y pulgar)."""
+    bones, boxes = [], []
+    cx = (FINGER_X[0] + FINGER_X[1]) / 2
+    for f, (z0, z1, lengths) in enumerate(FINGERS):
+        parent = "arm_right/lower/wrist"
+        y = PALM_BOTTOM
+        for j, length in enumerate(lengths):
+            bid = "arm_right/lower/wrist/f%d%s" % (f, "abc"[j]) if j == 0 else parent + "/f%d%s" % (f, "abc"[j])
+            bones.append((bid, "f%d%s" % (f, "abc"[j]), parent, (cx, y, (z0 + z1) / 2)))
+            boxes.append(box(bid, (FINGER_X[0], y - length - 0.05, z0), (FINGER_X[1], y + 0.05, z1), name="dedo", filter=SKIN))
+            parent = bid
+            y -= length
+    # Pulgar: sale del lado de delante de la palma, hacia abajo.
+    bx, by, bz = THUMB["base"]
+    w, d = THUMB["size"]
+    parent = "arm_right/lower/wrist"
+    for j, length in enumerate(THUMB["lengths"]):
+        bid = parent + "/t" + "ab"[j]
+        bones.append((bid, "t" + "ab"[j], parent, (bx, by, bz)))
+        boxes.append(box(bid, (bx - w / 2, by - length - 0.05, bz - d / 2), (bx + w / 2, by + 0.05, bz + d / 2),
+                         name="pulgar", sample_from=None, filter=SKIN))
+        parent = bid
+        by -= length
+    return bones, boxes
+
+
+HAND_BONES, HAND_BOXES = hand_bones_and_boxes()
+BONES += HAND_BONES
+
 
 
 def boxes_right_side():
@@ -83,8 +131,8 @@ def boxes_right_side():
         b.append(box("arm_right/lower", (3.8, y0, -1.45), (6.7, y0 + 0.8, 1.45), name="pulsera", filter=BROWN))
         b.append(box("arm_right/lower", (4.95, y0 + 0.2, -1.7), (5.55, y0 + 0.6, -1.45), name="remache",
                      color=(150, 120, 90)))
-    b.append(box("arm_right/lower/wrist", (3.8, 10.2, -1.5), (6.7, 13.5, 1.5), name="mano"))
-    b.append(box("arm_right/lower/wrist", (3.45, 11.3, -1.3), (3.85, 12.9, -0.1), name="pulgar"))
+    b.append(box("arm_right/lower/wrist", (3.8, PALM_BOTTOM, -1.5), (6.7, 13.5, 1.5), name="palma", filter=SKIN))
+    b += HAND_BOXES
     return b
 
 
@@ -121,6 +169,8 @@ def mirror(bx):
     out["to"] = [-bx["from"][0], bx["to"][1], bx["to"][2]]
     if "sample_from" in bx:
         sf = bx["sample_from"]
+        if sf is None:
+            return out
         out["sample_from"] = (-sf[0], sf[1], -sf[2], sf[3])
     return out
 
@@ -151,6 +201,10 @@ def is_bg(c):
 
 def is_shirt(c):
     return (c[..., 0] > 165) & (c[..., 0] - c[..., 2] < 100)
+
+
+def is_skin(c):
+    return (c[..., 0] > 195) & (c[..., 0] - c[..., 2] > 85) & (c[..., 1] > 110)
 
 
 def is_brown(c):
@@ -185,6 +239,8 @@ def fix(cells, keep):
         bad |= ~keep(cells)
     good = np.argwhere(~bad)
     if len(good) == 0:
+        if keep is is_skin:
+            return np.tile(np.array([236.0, 156.0, 98.0]), cells.shape[:2] + (1,))
         return cells
     out = cells.copy()
     for j, i in np.argwhere(bad):
@@ -200,21 +256,21 @@ def ncells(length):
 def face_pixels(sheet, bx, face):
     x0, y0, z0 = bx["from"]
     x1, y1, z1 = bx["to"]
-    if "sample_from" in bx:  # zona propia en la vista de frente/lado (x o z, y): orejas, trapo
+    if bx.get("sample_from"):  # zona propia en la vista de frente/lado (x o z, y): orejas, trapo
         sx0, sy0, sx1, sy1 = bx["sample_from"]
-    keep = {SHIRT: is_shirt, BROWN: is_brown}.get(bx.get("filter"))
+    keep = {SHIRT: is_shirt, BROWN: is_brown, SKIN: is_skin}.get(bx.get("filter"))
     ya, yb = GROUND - y1 * S, GROUND - y0 * S
     if face in ("front", "back"):
         cols, rows = ncells(x1 - x0), ncells(y1 - y0)
         if face == "front":
             xa, xb = FRONT_X - x1 * S, FRONT_X - x0 * S
-            if "sample_from" in bx and bx["name"] == "trapo":
+            if bx.get("sample_from") and bx["name"] == "trapo":
                 xa, xb = FRONT_X - sx1 * S, FRONT_X - sx0 * S
         else:
             xa, xb = BACK_X + x0 * S, BACK_X + x1 * S
     elif face in ("right", "left"):
         cols, rows = ncells(z1 - z0), ncells(y1 - y0)
-        if "sample_from" in bx and bx["name"] == "oreja":  # la oreja se ve de frente: su zona allí
+        if bx.get("sample_from") and bx["name"] == "oreja":  # la oreja se ve de frente: su zona allí
             xa, xb = FRONT_X - sx0 * S, FRONT_X - sx1 * S
         elif face == "right":
             xa, xb = SIDE_X - z1 * S, SIDE_X - z0 * S

@@ -7,7 +7,7 @@ extends Node3D
 ## Mismo uso que el brazo de Meshy (real_arm_view.gd): build(color, capa) y pose(nombre).
 
 ## Hombro respecto a los ojos (metros, ejes de la cámara: x derecha, y arriba, z hacia atrás).
-const SHOULDER := Vector3(0.50, -0.38, 0.02)
+const SHOULDER := Vector3(0.55, -0.45, -0.15)
 ## Tamaño del brazo respecto al del personaje (en primera persona se ve más grande, como en Minecraft).
 const SCALE := 1.35
 ## Píxeles de skin desde el final de la mano hasta el punto de agarre (el objeto va en el puño).
@@ -16,6 +16,8 @@ const GRIP_FROM_END := 1.5
 var skin: Texture2D        # la skin del jugador (la pone HeldBlock antes de build)
 var slim := false
 var _pivot: Node3D
+var _wrist: Node3D        # mano del modelo de cajas (con sus falanges)
+var _hand_pose := "relaxed"
 
 
 func build(_color: Color, layer: int) -> void:
@@ -35,6 +37,8 @@ func _build_box_model(layer: int) -> void:
 	var lower := arm.get_node("lower") as Node3D
 	var grip := lower.get_node("grip") as Node3D
 	var grip_pos := lower.position + grip.position  # respecto al hombro
+	_wrist = lower.get_node_or_null("wrist") as Node3D
+	BoxModel.pose_hand(_wrist, _hand_pose, true)
 	var align := Node3D.new()
 	align.basis = Basis(Quaternion((-grip_pos).normalized(), Vector3.UP))
 	_pivot.add_child(align)
@@ -66,21 +70,28 @@ func _build_skin_arm(layer: int) -> void:
 		_pivot.add_child(mesh_instance)
 
 
-## Las cajas no tienen dedos que cerrar: las posturas de la mano no cambian nada.
-func pose(_mode: String, _instant := false) -> void:
-	pass
+## Postura de la mano (BoxModel.HAND_POSES): "relaxed", "handle" (puño sobre un mango), "cup",
+## "pinch", "open" o "float" (palma arriba, el bloque levita encima). Los dedos van llegando poco a poco.
+func pose(mode: String, instant := false) -> void:
+	_hand_pose = mode
+	if instant:
+		BoxModel.pose_hand(_wrist, mode, true)
 
 
-func _process(_delta: float) -> void:
+func _process(delta: float) -> void:
+	BoxModel.pose_hand(_wrist, _hand_pose, true, 1.0 - exp(-14.0 * delta))
 	var hand := get_parent() as Node3D
 	if hand == null or _pivot == null:
 		return
-	# Hombro y "hacia la cámara" en el espacio de la mano (HeldBlock, hijo de la cámara).
+	# Hombro y "arriba" de la cámara en el espacio de la mano (HeldBlock, hijo de la cámara).
 	var to_shoulder := hand.transform.affine_inverse() * SHOULDER
-	var back := (hand.basis.inverse() * Vector3.BACK).normalized()
+	var up := (hand.basis.inverse() * Vector3.UP).normalized()
 	var y := to_shoulder.normalized()
-	var x := y.cross(back).normalized()
-	if not x.is_finite() or x.length_squared() < 0.5:
+	# La mano de lado, como en la guía: el índice arriba (los dedos en fila de arriba abajo), así un
+	# mango vertical pasa por dentro del puño.
+	var z := -(up - y * up.dot(y))
+	if z.length_squared() < 0.01:
 		return
-	var z := x.cross(y)
+	z = z.normalized()
+	var x := y.cross(z)
 	_pivot.basis = Basis(x, y, z).scaled(Vector3.ONE * SCALE)

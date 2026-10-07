@@ -13,6 +13,18 @@ class_name BoxModel
 
 const DEFAULT := "res://assets/models/cajas/naufrago.json"
 
+## Posturas de la mano: ángulos (radianes) de las tres falanges de cada dedo (índice, corazón,
+## anular, meñique) y del pulgar [doblar hacia la palma, cruzar por delante de los dedos, punta].
+const HAND_POSES := {
+	"relaxed": {"fingers": [[0.3, 0.35, 0.25]], "thumb": [0.35, -0.1, 0.2]},
+	"open": {"fingers": [[0.05, 0.05, 0.0]], "thumb": [0.15, 0.0, 0.0]},
+	"float": {"fingers": [[0.15, 0.2, 0.1]], "thumb": [0.2, 0.0, 0.1]},
+	"handle": {"fingers": [[1.35, 1.45, 1.0]], "thumb": [1.0, -0.55, 0.6]},
+	"cup": {"fingers": [[0.75, 0.8, 0.5]], "thumb": [0.6, -0.3, 0.3]},
+	"pinch": {"fingers": [[1.0, 0.9, 0.6], [1.2, 1.3, 0.9], [1.25, 1.35, 0.9], [1.3, 1.4, 0.9]],
+		"thumb": [0.9, -0.6, 0.4]},
+}
+
 static var _cache := {}  # ruta -> {"data": Dictionary, "texture": Texture2D}
 
 
@@ -176,6 +188,32 @@ static func hair_mesh(curls: Array) -> ArrayMesh:
 			for p: Vector3 in quad:
 				st.add_vertex(p)
 	return st.commit()
+
+
+## Pone la mano (el nodo "wrist") en una postura de HAND_POSES. t = 0..1 mezcla desde la postura
+## actual (para animarla poco a poco). right: mano derecha (los dedos se doblan hacia -X).
+static func pose_hand(wrist: Node3D, mode: String, right: bool, t := 1.0) -> void:
+	if wrist == null:
+		return
+	var pose: Dictionary = HAND_POSES.get(mode, HAND_POSES["relaxed"])
+	var sign := -1.0 if right else 1.0
+	var fingers: Array = pose["fingers"]
+	for f in 4:
+		var angles: Array = fingers[mini(f, fingers.size() - 1)]
+		var node: Node3D = wrist.get_node_or_null("f%da" % f)
+		for j in 3:
+			if node == null:
+				break
+			node.rotation.z = lerpf(node.rotation.z, float(angles[j]) * sign, t)
+			node = node.get_node_or_null("f%d%s" % [f, "bc"[j]]) if j < 2 else null
+	var thumb: Array = pose["thumb"]
+	var ta := wrist.get_node_or_null("ta") as Node3D
+	if ta != null:
+		ta.rotation.z = lerpf(ta.rotation.z, float(thumb[0]) * sign, t)
+		ta.rotation.x = lerpf(ta.rotation.x, float(thumb[1]), t)
+		var tb := ta.get_node_or_null("tb") as Node3D
+		if tb != null:
+			tb.rotation.z = lerpf(tb.rotation.z, float(thumb[2]) * sign, t)
 
 
 static func _mesh_node(mesh: ArrayMesh, material: Material, layer: int, on_top: bool) -> MeshInstance3D:

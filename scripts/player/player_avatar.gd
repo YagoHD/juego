@@ -207,6 +207,9 @@ func set_item(id: String) -> void:
 			_held.position = hand.item_point(id)
 	elif _held != null and _arm_right != null and _arm_right.has_node("lower/grip"):
 		_held.position = (_arm_right.get_node("lower/grip") as Node3D).position
+		# Mano de cajas con falanges (BoxModel): los dedos se cierran según lo que lleve.
+		var pose: String = HeldBlock.ITEM_PROFILES.get_profile(id)["pose"] if id != "" else "relaxed"
+		BoxModel.pose_hand(_arm_right.get_node_or_null("lower/wrist") as Node3D, pose, true)
 	if _held != null:
 		_held.visible = id != ""  # "" = mano vacía
 		if id == "":
