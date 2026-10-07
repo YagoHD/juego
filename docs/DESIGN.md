@@ -3,6 +3,12 @@
 > Memoria viva del proyecto. Se actualiza cuando cambia el diseño.
 > El `.docx` original está en la raíz del repo. Si algo difiere, **prevalece este archivo**.
 
+## Nombres improvisados (2026-10-07)
+
+Yago deja a Claude improvisar nombres (se pueden cambiar): material **umbrita**, familia **Valdés**,
+invasores **el Ojo Cerrado**. La verdad del lore y las pistas, en
+[HISTORIA_NOMBRES.md](HISTORIA_NOMBRES.md); descubrimientos y deducciones en `scripts/story/`.
+
 ## Ampliación narrativa acordada el 6 de octubre de 2026
 
 Ver [HISTORIA_INICIO_BETA.md](HISTORIA_INICIO_BETA.md) para el inicio vigente y las instrucciones de desarrollo para Claude. Yago confirma: naufragio y mini tutorial de comida/fabricación → humo de un pueblo pesquero destruido y abandonado → campos → elección entre montaña y un segundo pueblo habitado, señalado por su campanario. Sus vecinos temen a los atacantes y ayudan al náufrago; tendrán rutinas sencillas. Se propone comercio con un par de vendedores. Desde el pueblo se puede explorar la montaña por sus minerales o las ruinas por equipo antiguo único/legendario y lore.
@@ -103,6 +109,11 @@ masivo queda para tras el portal).
 bonito desde el día 1; el borde de la zona corrompida marca visualmente dónde empieza el peligro.
 
 ### Supervivencia y sueño
+> **Cambio de Yago (2026-10-07): se elimina el cansancio.** Nada de barra de sueño, desmayos, mareo
+> ni cafeína. El saco de dormir queda solo para marcar dónde reaparecer y saltar la noche si se
+> quiere. Lo de abajo (fatiga, calidad de cama, cafeína) queda como historia del diseño. Pendiente
+> de decidir: si los sueños narrativos se mantienen al dormir en el saco y qué uso tiene el grano de alba.
+
 Naufraga, construye base pequeña, mejora equipo, duerme en cama cada noche. Dormir es supervivencia,
 ritmo del tutorial y fuente de sueños narrativos.
 
