@@ -23,6 +23,9 @@ const DATA := {
 	"hen": {"name": "Gallina", "hp": 16.0, "speed": 0.85, "temper": "timid", "height": 0.45, "radius": 0.18, "color": Color(0.85, 0.73, 0.51), "loot": [["raw_poultry", 1, 2, 1.0], ["feather", 1, 3, 1.0]]},
 	"gull": {"name": "Gaviota", "hp": 12.0, "speed": 2.2, "temper": "timid", "flying": true, "height": 0.35, "radius": 0.16, "color": Color(0.9, 0.92, 0.93), "loot": [["raw_poultry", 1, 1, 1.0], ["feather", 1, 3, 1.0]]},
 	"crow": {"name": "Cuervo", "hp": 15.0, "speed": 2.0, "temper": "shy", "flying": true, "height": 0.4, "radius": 0.17, "color": Color(0.13, 0.15, 0.2), "loot": [["raw_poultry", 1, 1, 1.0], ["feather", 1, 3, 1.0]]},
+	# Gente del pueblo (no son enemigos ni animales: los maneja scripts/village/villager.gd).
+	"villager": {"name": "Vecino", "hp": 40.0, "speed": 1.15, "temper": "timid", "height": 1.5, "sense": 14.0, "color": Color(0.78, 0.66, 0.5), "loot": []},
+	"guard": {"name": "Guardia", "hp": 90.0, "speed": 2.0, "damage": 12.0, "armor": 0.15, "temper": "defensive", "height": 1.55, "sense": 16.0, "windup": 0.7, "cooldown": 1.5, "leash": 80.0, "color": Color(0.35, 0.42, 0.62), "loot": [["cloth", 1, 1, 0.5]]},
 	"eagle": {"name": "Águila", "hp": 30.0, "speed": 2.8, "temper": "hunter", "flying": true, "height": 0.6, "radius": 0.23, "damage": 8.0, "color": Color(0.42, 0.31, 0.2), "loot": [["raw_poultry", 1, 2, 1.0], ["feather", 2, 4, 1.0]]},
 }
 

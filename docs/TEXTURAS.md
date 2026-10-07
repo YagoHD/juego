@@ -91,7 +91,7 @@ Hojas hechas (`docs/concept/`):
 |---|---|---|
 | Rastreador, arquero, soldado, capitán, mago (invasores; algunos enmascarados) | ❌ | `PROMPTS_MESHY.md` (enemigos); ahora son bolas de color |
 | Guardián de la torre (jefe de piedra) | ❌ | `PROMPTS_MESHY.md` (enemigos) |
-| Vecinos y guardias del pueblo | ❌ | se apuntarán al hacerlos |
+| Vecinos (granjero, pescador, mercader) y guardias del pueblo | ❌ | `PROMPTS_MESHY.md` (gente del pueblo); ahora son bolas de color |
 | Brazo en primera persona | ✅ | modelo de Meshy (`docs/mano/brazo final hombre`) |
 
 ## Objetos (iconos del inventario)

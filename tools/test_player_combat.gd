@@ -26,6 +26,7 @@ func enemy(at := Vector3(0, 0.1, -1.8)) -> CreatureActor:
 	return c
 
 func reset() -> void:
+	p.skills.xp = {}  # sin práctica: los daños esperados son los de base
 	combat.cancel_actions()
 	combat.invulnerable = 0.0
 	combat.health = 100.0

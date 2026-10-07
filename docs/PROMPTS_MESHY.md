@@ -139,6 +139,19 @@ huesos. Los enmascarados sirven al ancla; los de cara descubierta son soldados c
 | `mage.glb` | A masked mage in a violet robe with glowing violet runes, face hidden by a smooth mask, T-pose, full body, front view. |
 | `tower_guardian.glb` | A huge mute stone golem with a glowing violet crystal core in the chest, T-pose, full body, front view. |
 
+## Gente del pueblo (personas con huesos, en pose de T)
+
+Mismo método que los enemigos: **entero, de frente, en pose de T**. Ropa medieval sencilla de
+pueblo pesquero y agrícola; caras descubiertas y amables.
+
+| Archivo | Prompt para ChatGPT |
+|---|---|
+| `villager_farmer.glb` | A medieval peasant farmer in a brown linen tunic, straw hat and leather boots, T-pose, full body, front view. |
+| `villager_fisher.glb` | A medieval fisherman in a patched blue tunic, rolled-up trousers and a knitted cap, T-pose, full body, front view. |
+| `villager_merchant.glb` | A medieval merchant in a green wool coat with a leather belt pouch, T-pose, full body, front view. |
+| `villager_woman.glb` | A medieval village woman in a simple dress with an apron and a head scarf, T-pose, full body, front view. |
+| `guard.glb` | A village guard in a padded gambeson, a simple iron kettle helmet and a spear, face uncovered, T-pose, full body, front view. |
+
 ## Consejos para Meshy
 
 - Si sale el objeto con suelo o con una base que no tiene, vuelve a generar la imagen sin sombra.

@@ -24,7 +24,7 @@ func steer(actor: CharacterBody3D, goal: Vector3, delta: float) -> Vector3:
 	offset.y = 0.0
 	if offset.length() < 0.65:
 		return Vector3.ZERO
-	if not actor.test_move(actor.global_transform, offset.normalized() * 1.0) and path.is_empty():
+	if not _blocked(actor, offset.normalized() * 1.0) and path.is_empty():
 		return offset
 	if _retry <= 0.0 and (_goal.distance_to(goal) > 2.0 or path.is_empty() or _stuck > 0.8):
 		var frame := Engine.get_physics_frames()
@@ -42,11 +42,21 @@ func steer(actor: CharacterBody3D, goal: Vector3, delta: float) -> Vector3:
 	if not path.is_empty():
 		var next := path[0] - actor.global_position
 		# Construcciones nuevas invalidan el tramo inmediatamente.
-		if actor.test_move(actor.global_transform, next.normalized() * 0.4):
+		if _blocked(actor, next.normalized() * 0.4):
 			_retry = minf(_retry, 0.15)
 			_goal = Vector3.INF
 		return next
 	return Vector3.ZERO if _retry > 0.0 else offset
+
+## ¿Hay terreno o construcción en medio? Las demás criaturas no cuentan: se apartan solas al
+## moverse, y contarlas lanzaba el A* (lo más caro) cada vez que dos vecinos se cruzaban.
+func _blocked(actor: CharacterBody3D, motion: Vector3) -> bool:
+	var mask := actor.collision_mask
+	actor.collision_mask = 1
+	var hit := actor.test_move(actor.global_transform, motion)
+	actor.collision_mask = mask
+	return hit
+
 
 func find_path(actor: CharacterBody3D, goal: Vector3) -> Array[Vector3]:
 	var origin := actor.global_position
