@@ -17,6 +17,12 @@ for t in "${tests[@]}"; do
 	out=$(timeout 400 "$GODOT" --headless --path . --script res://tools/test_$t.gd 2>&1)
 	fails=$(echo "$out" | grep -c FALLO)
 	errors=$(echo "$out" | grep -ci 'SCRIPT ERROR')
+	# Una prueba que se cuelga o se corta no imprime nada: eso también es un fallo.
+	if ! echo "$out" | grep -q -e OK -e FALLO; then
+		echo "$t: SIN RESULTADOS (se colgó o no terminó)"
+		total=$((total + 1))
+		continue
+	fi
 	echo "$t: $fails fallos, $errors errores"
 	total=$((total + fails + errors))
 done

@@ -65,7 +65,7 @@ func recover(player: Player) -> bool:
 		if not stack is Dictionary or stack.is_empty():
 			contents.erase(stack)
 			continue
-		var left := transfer_stack(player.inventory, stack, player.unlocked_slots())
+		var left := player.inventory.add_stack(stack, player.unlocked_slots())  # conserva el desgaste
 		if left == 0:
 			contents.erase(stack)
 		else:
@@ -76,35 +76,6 @@ func recover(player: Player) -> bool:
 	if empty:
 		queue_free()
 	return empty
-
-## A diferencia de Inventory.add, conserva 'dur' y cualquier metadata del montón.
-static func transfer_stack(inventory: Inventory, stack: Dictionary, allowed: Array) -> int:
-	var left := int(stack["count"])
-	var limit := ItemDB.max_stack(str(stack["id"]))
-	for index in allowed:
-		var old := inventory.get_slot(index)
-		var old_metadata := old.duplicate(true)
-		var new_metadata := stack.duplicate(true)
-		old_metadata.erase("count")
-		new_metadata.erase("count")
-		var same: bool = not old.is_empty() and old_metadata == new_metadata
-		if same:
-			var added := mini(left, limit - int(old["count"]))
-			if added > 0:
-				var merged := old.duplicate(true)
-				merged["count"] = int(old["count"]) + added
-				inventory.set_slot(index, merged)
-				left -= added
-	for index in allowed:
-		if left <= 0:
-			break
-		if inventory.is_empty_slot(index):
-			var added := mini(left, limit)
-			var restored := stack.duplicate(true)
-			restored["count"] = added
-			inventory.set_slot(index, restored)
-			left -= added
-	return left
 
 func to_data() -> Dictionary:
 	return {"position": [global_position.x, global_position.y, global_position.z], "contents": contents.duplicate(true), "equipment": equipment.duplicate(true)}

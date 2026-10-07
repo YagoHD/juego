@@ -10,6 +10,8 @@ var _goal := Vector3.INF
 var _retry := 0.0
 var _last := Vector3.INF
 var _stuck := 0.0
+var _edge_shape: CapsuleShape3D   # formas de la criatura, creadas una vez (A* hace cientos de consultas)
+var _room_shape: CapsuleShape3D
 
 func steer(actor: CharacterBody3D, goal: Vector3, delta: float) -> Vector3:
 	_retry -= delta
@@ -103,9 +105,9 @@ func find_path(actor: CharacterBody3D, goal: Vector3) -> Array[Vector3]:
 	return result
 
 func _edge_clear(actor: CharacterBody3D, from: Vector3, to: Vector3) -> bool:
-	var capsule := CapsuleShape3D.new()
-	capsule.radius = float(actor.get("stats")["radius"])
-	capsule.height = maxf(float(actor.get("stats")["height"]), capsule.radius * 2.0)
+	if _edge_shape == null:
+		_edge_shape = _capsule(actor, 0.0)
+	var capsule := _edge_shape
 	var query := PhysicsShapeQueryParameters3D.new()
 	query.shape = capsule
 	var lift := maxf(0.04, to.y - from.y + 0.04)
@@ -130,12 +132,18 @@ func _walkable(actor: CharacterBody3D, point: Vector3) -> Vector3:
 	if floor_hit.is_empty() or floor_hit["normal"].y < 0.7:
 		return Vector3.INF
 	point = floor_hit["position"] + Vector3.UP * 0.04
-	var capsule := CapsuleShape3D.new()
-	capsule.radius = float(actor.get("stats")["radius"]) + 0.08
-	capsule.height = maxf(float(actor.get("stats")["height"]), capsule.radius * 2.0)
+	if _room_shape == null:
+		_room_shape = _capsule(actor, 0.08)
+	var capsule := _room_shape
 	var query := PhysicsShapeQueryParameters3D.new()
 	query.shape = capsule
 	query.transform = Transform3D(Basis.IDENTITY, point + Vector3.UP * capsule.height * 0.5)
 	query.collision_mask = 1
 	query.exclude = exclude
 	return point if space.intersect_shape(query, 1).is_empty() else Vector3.INF
+
+func _capsule(actor: CharacterBody3D, margin: float) -> CapsuleShape3D:
+	var capsule := CapsuleShape3D.new()
+	capsule.radius = float(actor.get("stats")["radius"]) + margin
+	capsule.height = maxf(float(actor.get("stats")["height"]), capsule.radius * 2.0)
+	return capsule

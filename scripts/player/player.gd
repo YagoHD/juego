@@ -286,13 +286,16 @@ func _unhandled_input(event: InputEvent) -> void:
 			MOUSE_BUTTON_RIGHT:
 				if combat.try_recover_backpack():
 					pass
-				elif Input.is_key_pressed(KEY_SHIFT):
-					_edit_block(true)
-				elif combat.WEAPONS.has(combat.selected_id()) or combat.selected_id() in ["bow", "wooden_shield"] or combat.has_shield():
+				elif Input.is_key_pressed(KEY_SHIFT) or _aims_at_usable():
+					_edit_block(true)  # cofres, balsa, saco, hoguera: antes que la guardia
+				elif combat.WEAPONS.has(combat.selected_id()) or combat.selected_id() in ["bow", "wooden_shield"]:
 					combat.cancel_bow()
 					combat.set_blocking(true)
+				elif combat.has_shield() and active_inventory().get_slot(_hotbar_index).is_empty():
+					if not survival.try_drink():  # con la mano vacía se sigue pudiendo beber
+						combat.set_blocking(true)
 				else:
-					_edit_block(true)
+					_edit_block(true)  # comer, colocar bloques... aunque se lleve escudo
 			MOUSE_BUTTON_WHEEL_UP:
 				if zooming:
 					_zoom_camera(-ZOOM_WHEEL_STEP)
@@ -710,6 +713,17 @@ func _edit_block(place: bool) -> void:
 		if not held_tool.is_empty() and ItemDB.tool_speed(held_tool["id"], broken) > 1.0:
 			survival.wear_tool()
 		block_broken.emit(cell, broken)
+
+
+## ¿Apunta a algo que se usa con clic derecho (balsa, objeto colocado o cofre)?
+func _aims_at_usable() -> bool:
+	var target := aim.target()
+	if target.has("raft") or target.has("item"):
+		return true
+	if not target.has("voxel") or _tool == null:
+		return false
+	var id := _tool.get_voxel(target["voxel"])
+	return id == IslandGenerator.CHEST or id == IslandGenerator.CHEST_OPEN
 
 
 func _overlaps_body(cell: Vector3i) -> bool:

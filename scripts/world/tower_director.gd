@@ -159,8 +159,9 @@ func _spawn(id: String) -> void:
 	var actor := CreatureActor.new()
 	actor.species = record["species"]
 	actor.player = player
+	# Antes de add_child: _ready toma la posición como casa y destino (si no, irían al origen).
+	actor.position = _point(record["position"])
 	add_child(actor)
-	actor.global_position = _point(record["position"])
 	actor.home = _point(record["home"])
 	actor.health = clampf(float(record["health"]), 1.0, float(actor.stats["hp"]))
 	actor.alert_seconds = float(record.get("alert", 0.0))

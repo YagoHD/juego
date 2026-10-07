@@ -111,7 +111,7 @@ func _process(delta: float) -> void:
 			var attack := _pending
 			_pending = {}
 			if selected_id() == attack["id"] and player._hotbar_index == attack["slot"]:
-				_resolve_attack(attack)
+				_resolve_attack(attack, true)
 	if player.is_on_ground_ready():
 		invulnerable = maxf(0.0, invulnerable - delta)
 	knockback = knockback.move_toward(Vector3.ZERO, delta * 10.0)
@@ -234,8 +234,8 @@ func try_attack(heavy := false, prepared := false) -> bool:
 		_combo = ""
 	return true
 
-func _resolve_attack(attack: Dictionary) -> void:
-	if attack.get("heavy", false):
+func _resolve_attack(attack: Dictionary, delayed := false) -> void:
+	if delayed:  # el golpe pesado preparado sale ahora: segundo movimiento del brazo
 		player._held.swing()
 		player._avatar.swing()
 	var hit := _ray(float(attack["reach"]))

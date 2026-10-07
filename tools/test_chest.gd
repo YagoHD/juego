@@ -4,7 +4,8 @@ extends SceneTree
 ##   1. Los dos cofres del naufragio existen en el mundo.
 ##   2. Al abrir uno, aparece la pantalla con su botín.
 ##   3. Mayús+clic en un hueco del cofre pasa ese montón al jugador.
-##   4. Al romper un cofre, su contenido cae al suelo como objetos.
+##   4. Con un arma en la mano, el clic derecho abre el cofre (no se pone en guardia).
+##   5. Al romper un cofre, su contenido cae al suelo como objetos.
 
 var _main: Node
 var _step := 0
@@ -61,6 +62,23 @@ func _process(_delta: float) -> bool:
 			_step = 1
 			_wait = 30
 		1:
+			# Mirando el cofre desde arriba con el hacha de piedra en la mano.
+			var center := terrain.to_global(Vector3(_cell) + Vector3.ONE * 0.5)
+			player.global_position = center + Vector3.UP * 0.3
+			player._camera.global_transform = Transform3D(Basis.looking_at(Vector3.DOWN, Vector3.FORWARD), center + Vector3.UP * 0.9)
+			player.inventory.set_slot(0, {"id": "stone_axe", "count": 1})
+			player._select_slot(0)
+			var click := InputEventMouseButton.new()
+			click.button_index = MOUSE_BUTTON_RIGHT
+			click.pressed = true
+			player._unhandled_input(click)
+			var screen: InventoryScreen = _main.get("_inventory_screen")
+			var opened := screen.visible and not player.combat.blocking
+			print("Clic derecho con hacha sobre el cofre: abierto=%s, guardia=%s -> %s" % [screen.visible, player.combat.blocking, "OK" if opened else "FALLO"])
+			screen.close()
+			_step = 2
+			_wait = 30
+		2:
 			var before := root.get_tree().get_nodes_in_group("item_drops").size()
 			tool.set_voxel(_cell, IslandGenerator.AIR)
 			_main._on_block_broken(_cell, IslandGenerator.CHEST)

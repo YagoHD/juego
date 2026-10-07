@@ -41,5 +41,6 @@ func _physics_process(delta: float) -> void:
 		queue_free()
 		return
 	global_position = next
-	if velocity.length_squared() > 0.0:
+	# look_at falla si la flecha va justo en vertical (dirección paralela a "arriba").
+	if velocity.length_squared() > 0.0 and absf(velocity.normalized().y) < 0.999:
 		look_at(global_position + velocity)
