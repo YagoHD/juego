@@ -7,7 +7,7 @@ signal attack_started(kind: String, seconds: float)
 signal damaged(amount: float)
 signal died(actor: CreatureActor)
 
-const LAYER := 8
+const LAYER := 1 << 5  # capa propia (la 8 es la de los troncos que caen, ver TreeFelling)
 const NavigationScript = preload("res://scripts/creatures/creature_navigation.gd")
 var navigator = NavigationScript.new()
 const PREY := ["pig", "deer", "rabbit", "hen"]
