@@ -221,10 +221,13 @@ ICON_SHEETS = {
                             "ancient_greaves", "ancient_boots", "ancient_gauntlets", None, None],
 }
 ICON_SIZE = 32
+GRAY_ICONS = ("rock", "sharp_rock", "flint", "stone_knife", "stone_axe", "stone_pick", "spear", "arrow",
+              "iron_scrap", "furnace", "campfire", "anchor_shard", "ancient_helm", "ancient_cuirass",
+              "ancient_greaves", "ancient_boots", "ancient_gauntlets", "green_ore", "captain_journal")
 ICONS_OLD = os.path.join(ROOT, "assets", "textures", "items_antiguos")
 
 
-def _icon(cell):
+def _icon(cell, holes=False, gray=False):
     """Dibujo de una casilla de icono sin el fondo (ni su sombra), encuadrado y reducido."""
     arr = np.asarray(cell.convert("RGB")).astype(int)
     h, w = arr.shape[:2]
@@ -235,7 +238,8 @@ def _icon(cell):
     dist = np.abs(diff).sum(2)
     # Fondo: casi el color del fondo, o su sombra (más oscura pero del mismo tono y sin color propio).
     chroma = np.abs((arr[..., 0] - arr[..., 1]) - (bg[0] - bg[1])) + np.abs((arr[..., 1] - arr[..., 2]) - (bg[1] - bg[2]))
-    like_bg = (dist < 45) | ((chroma < 20) & (arr.sum(2) > 3 * 125))
+    # Los objetos grises (piedra, hierro) se parecen a la sombra: con ellos solo el fondo claro.
+    like_bg = (dist < 45) | ((chroma < 22) & (arr.sum(2) > 3 * (175 if gray else 120)))
     # Solo cuenta como fondo lo que está unido al borde (no se come lo claro de dentro del dibujo).
     from collections import deque
     bgmask = np.zeros((h, w), bool)
@@ -257,6 +261,12 @@ def _icon(cell):
             if 0 <= ny < h and 0 <= nx < w and like_bg[ny, nx] and not bgmask[ny, nx]:
                 bgmask[ny, nx] = True
                 q.append((ny, nx))
+    # Fondo o sombra en cualquier sitio (también encerrado, como el hueco de un arco): gris claro con
+    # el mismo tono que el fondo. Lo claro del dibujo (hueso, papel, tela) es más cálido y se salva.
+    rb = (arr[..., 0] - arr[..., 2]) - (bg[0] - bg[2])
+    rg = (arr[..., 0] - arr[..., 1]) - (bg[0] - bg[1])
+    if holes:  # solo en los que tienen huecos (el arco): en los de tela clara se comería la tela
+        bgmask |= (np.abs(rb) < 14) & (np.abs(rg) < 9) & (arr.sum(2) > 3 * 130)
     ys, xs = np.where(~bgmask)
     if len(xs) < 50:
         return None
@@ -314,7 +324,9 @@ def _icon(cell):
             continue
         part = label == n
         pale_part = ((c[part].sum(1) > 520) & (np.abs(c[part][:, 0] - c[part][:, 2]) < 70)).mean() > 0.5
-        if pale_part or sizes[n] < 3:
+        rows = np.where(part.any(1))[0]
+        text = rows.min() >= ICON_SIZE * 0.72 and rows.max() - rows.min() <= 4  # restos del nombre de abajo
+        if pale_part or text or sizes[n] < 3:
             out[part] = 0
     return Image.fromarray(out, "RGBA")
 
@@ -335,8 +347,8 @@ def cut_icons():
             cx, cy = k % 4, k // 4
             # Casilla sin el nombre de abajo (ni las rayas de la rejilla, si las hay).
             cell = img.crop((int((cx + 0.03) * w / 4), int((cy + 0.02) * h / 4),
-                             int((cx + 0.97) * w / 4), int((cy + 0.78) * h / 4)))
-            icon = _icon(cell)
+                             int((cx + 0.97) * w / 4), int((cy + 0.74) * h / 4)))
+            icon = _icon(cell, holes=name in ("bow", "pants", "hide_trousers", "ancient_greaves", "hide_boots", "ancient_boots"), gray=name in GRAY_ICONS)
             if icon is None:
                 print("  sin dibujo:", sheet, k)
                 continue
