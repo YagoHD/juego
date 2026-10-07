@@ -25,6 +25,63 @@ const DIAGONAL_ICONS := ["stone_knife", "stone_axe", "stone_pick", "spear", "tor
 	"arrow", "bow", "sticks"]
 
 
+## Objetos de cubitos sacados de su hoja de vistas (tools/objetos_desde_vistas.py).
+const OBJECTS_DIR := "res://assets/models/objetos/"
+static var _object_cache := {}
+
+
+static func has_voxel_object(id: String) -> bool:
+	return FileAccess.file_exists(OBJECTS_DIR + id + ".json")
+
+
+## Malla del objeto de cubitos con su lado más largo igual a "size". Con grip >= 0 (en la mano),
+## el punto a "grip" de su alto (desde abajo) queda en el origen; si no, el objeto va centrado.
+static func _voxel_object(id: String, size: float, grip := -1.0) -> Mesh:
+	var key := "%s:%.3f:%.3f" % [id, size, grip]
+	if _object_cache.has(key):
+		return _object_cache[key]
+	var data: Dictionary = JSON.parse_string(FileAccess.get_file_as_string(OBJECTS_DIR + id + ".json"))
+	var dims := Vector3(data["size"][0], data["size"][1], data["size"][2])
+	var k := size / maxf(dims.x, maxf(dims.y, dims.z))
+	var center := dims * 0.5
+	if grip >= 0.0:
+		center.y = dims.y * grip
+	var filled := {}
+	for v: Array in data["voxels"]:
+		filled[Vector3i(int(v[0]), int(v[1]), int(v[2]))] = true
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	# Caras de cada cubito que no tapa otro: color de la vista desde la que se ve esa cara. Delante
+	# en el archivo es z = 0; en el juego, delante es -Z.
+	var dirs := {Vector3i(0, 0, -1): 3, Vector3i(0, 0, 1): 3, Vector3i(1, 0, 0): 4, Vector3i(-1, 0, 0): 4,
+		Vector3i(0, 1, 0): 5, Vector3i(0, -1, 0): 5}
+	for v: Array in data["voxels"]:
+		var cell := Vector3i(int(v[0]), int(v[1]), int(v[2]))
+		for dir: Vector3i in dirs:
+			if filled.has(cell + dir):
+				continue
+			var color := Color.html(v[dirs[dir]])
+			if dir == Vector3i(0, 0, 1) or dir == Vector3i(0, -1, 0):
+				color = color.darkened(0.15)  # detrás y abajo, un poco más oscuro
+			var n := Vector3(dir.x, dir.y, -dir.z)
+			var c := (Vector3(cell.x + 0.5, cell.y + 0.5, -(cell.z + 0.5)) - Vector3(center.x, center.y, -center.z)) * k
+			var u := Vector3(n.y, n.z, n.x).abs()
+			var w := n.cross(u)
+			var o := c + n * 0.5 * k
+			var a := o + (-u - w) * 0.5 * k
+			var b := o + (u - w) * 0.5 * k
+			var cc := o + (u + w) * 0.5 * k
+			var d := o + (-u + w) * 0.5 * k
+			st.set_color(color)
+			st.set_normal(n)
+			var quad := [a, d, cc, a, cc, b] if u.cross(w).dot(n) > 0.0 else [a, b, cc, a, cc, d]
+			for p: Vector3 in quad:
+				st.add_vertex(p)
+	var mesh := st.commit()
+	_object_cache[key] = mesh
+	return mesh
+
+
 static func has_model(id: String) -> bool:
 	return USE_MESHY and ResourceLoader.exists(MODELS_DIR + id + ".res")
 
@@ -66,6 +123,8 @@ static func _model(id: String, size: float, grip_fraction := -1.0) -> Mesh:
 
 
 static func make_held(id: String, length: float, grip_fraction: float) -> Mesh:
+	if has_voxel_object(id):
+		return _voxel_object(id, length, grip_fraction)
 	if has_model(id):
 		return _model(id, length, grip_fraction)
 	if id in DIAGONAL_ICONS and ItemDB.block_of(id) < 0:
@@ -99,6 +158,8 @@ static func make(id: String, size: float) -> Mesh:
 		return PrefabLibrary.centered_mesh(PrefabLibrary.first_id(BlockAim.SHAPED[block]), size)
 	if block >= 0:
 		return BlockTextures.make_block_mesh(block, size)
+	if has_voxel_object(id):  # modelo de cubitos sacado de su hoja de vistas
+		return _voxel_object(id, size)
 	if has_model(id):  # modelo 3D de Meshy (assets/models/items)
 		return _model(id, size * float(MODEL_SCALE.get(id, 1.0)))
 	# Si ya tiene dibujo del arte conceptual, manda el dibujo (el modelo de Kenney era provisional).
