@@ -13,6 +13,13 @@ Pendiente para la Beta: integrar fauna/encuentros y patrullas en la isla, navega
 
 Actualización posterior de esta sesión: ya hay navegación A* local para rodear obstáculos editables y un director de torre integrado a días 1–4, con refuerzos persistentes, campamentos provisionales, jefe interior y rutas de patrulla en la región corrupta. La API para registrar futuros caminos está preparada; no crea caminos que aún no existen. Ver `TORRE_Y_NAVEGACION.md`. Siguen pendientes arte definitivo, navegación global/multiplanta y los objetivos/idioma/portal narrativos.
 
+Revisión de Claude (2026-10-07) del código de combate de ChatGPT: el punto de mira (`BlockAim`) mira
+la capa 1 y la 2 (objetos colocados y balsas); las criaturas usan la capa física `1 << 5` (la 8 es
+de los troncos que caen). El clic derecho da prioridad a cofres/balsa/objetos colocados antes que a
+la guardia, y con escudo puesto se sigue comiendo y colocando. `tools/run_tests.sh` marca como fallo
+la prueba que no imprime resultados (se colgó o se cortó). No lanzar dos pruebas a la vez: comparten
+el mundo de pruebas y se corrompen.
+
 ## Entorno
 - PC del usuario: Windows 11, **RTX 4070**, CPU de 16 hilos.
 - Motor: **Godot 4.7.2 de Zylann con godot_voxel 1.7 integrado**
