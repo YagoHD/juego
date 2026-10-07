@@ -23,6 +23,9 @@ func _physics_process(delta: float) -> void:
 	if not dead and state in ["idle", "feed", "rest"] and is_on_floor() and _knockback == Vector3.ZERO:
 		_still(delta)
 		return
+	if state == "report" and not dead:
+		_run_to_guard(delta)
+		return
 	if state != "confront" or dead:
 		super._physics_process(delta)
 		return
@@ -36,6 +39,33 @@ func _physics_process(delta: float) -> void:
 	var offset := player.global_position - global_position
 	offset.y = 0.0
 	_move(offset if offset.length() > 2.2 else Vector3.ZERO, float(stats["speed"]) * 1.5, delta)  # a paso ligero
+	_face(offset, delta)
+	_update_label()
+
+
+## Testigo de un delito: corre al guardia más cercano a denunciarlo (se le puede impedir).
+func start_report() -> void:
+	if dead or species == "guard":
+		return
+	target = null
+	_set_state("report")
+
+
+func _run_to_guard(delta: float) -> void:
+	if is_instance_valid(player) and not player.is_on_ground_ready():
+		return
+	_timer -= delta
+	var guard: Villager = village.nearest_guard(global_position)
+	if guard == null:
+		_set_state("return")  # no queda ningún guardia a quien avisar
+		return
+	var offset := guard.global_position - global_position
+	offset.y = 0.0
+	if offset.length() < 2.5:
+		village.reported(self)
+		_set_state("return")
+		return
+	_move(offset, float(stats["speed"]) * 1.8, delta)
 	_face(offset, delta)
 	_update_label()
 
@@ -100,7 +130,7 @@ func _choose_target() -> void:
 
 
 func _civilian_think() -> void:
-	if state == "flee":
+	if state in ["flee", "report"]:
 		if _target_valid():
 			_last_seen = target.global_position
 		return
@@ -113,8 +143,11 @@ func _guard_think() -> void:
 	if not _player_ok():
 		_stand_down()
 		return
-	var in_town: bool = village.contains(player.global_position, 15.0)
-	if village.law.guards_attack() and in_town:
+	# Persiguen fuera del pueblo, pero no mucho; más lejos solo si le tienen muy cerca.
+	var gap := global_position.distance_to(player.global_position)
+	var in_reach: bool = village.contains(player.global_position, Village.CHASE_MARGIN) \
+		or (target == player and gap < Village.CLOSE_CHASE and village.contains(player.global_position, Village.CHASE_LIMIT))
+	if village.law.guards_attack() and in_reach:
 		var close := global_position.distance_to(player.global_position) < float(stats["sense"])
 		if target == player or (close and can_see(player)):
 			target = player
@@ -150,7 +183,7 @@ func _player_ok() -> bool:
 
 ## Huir del jugador unos segundos (al ver violencia o a un criminal).
 func scare(seconds: float) -> void:
-	if dead or species == "guard" or not _player_ok():
+	if dead or species == "guard" or not _player_ok() or state == "report":
 		return
 	target = player
 	_last_seen = player.global_position
@@ -173,6 +206,7 @@ func _update_label() -> void:
 		"flee": doing = "¡Huyendo!"
 		"chase": doing = "¡A por ti!"
 		"confront": doing = "Paga la multa: tecla R"
+		"report": doing = "¡Corre a avisar a la guardia!"
 		"return": doing = "De camino: " + activity.to_lower()
 		"windup", "recover", "stagger", "stunned": doing = "Peleando"
 	var text := "%s  %d/%d\n%s" % [villager_name, ceili(health), int(stats["hp"]), doing]

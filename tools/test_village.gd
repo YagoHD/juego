@@ -69,7 +69,13 @@ func _process(_delta: float) -> bool:
 			var victim := _villager("fisher")
 			player.global_position = victim.global_position + Vector3(1.5, 0.2, 0)
 			victim.take_damage(5.0, player)
-			_check("Golpear a un vecino: multa (%d)" % village.law.fine, village.law.fine == VillageLaw.FINE_ASSAULT and village.law.wants_payment())
+			_check("Golpear a un vecino sin guardias delante: el testigo corre a avisar", victim.state == "report" and village.law.fine == 0.0 and village.pending.size() == 1)
+			_step = 20
+			_wait = 0
+		20:
+			if village.law.fine == 0.0 and _wait < 2400:
+				return false
+			_check("Al llegar el testigo junto a un guardia: multa (%d)" % village.law.fine, village.law.fine == VillageLaw.FINE_ASSAULT and village.law.wants_payment())
 			_step = 2
 			_wait = 0
 		2:
@@ -81,13 +87,26 @@ func _process(_delta: float) -> bool:
 			var rope := player.inventory.count_of("rope")
 			var paid := village.try_pay()
 			_check("Pagar con R: multa saldada con lo más barato primero", paid and village.law.fine == 0.0 and player.inventory.count_of("rope") < rope and player.inventory.count_of("iron_scrap") == scraps)
+			# Impedir la denuncia: el testigo muere antes de llegar a la guardia.
+			var witness := _villager("farmer")
+			witness.global_position = Vector3(50, 0.2, 50)  # una esquina sin guardias a la vista
+			player.global_position = witness.global_position + Vector3(1.5, 0.2, 0)
+			witness.take_damage(5.0, player)
+			var reporting := witness.state == "report"
+			witness.take_damage(1000.0)  # sin culpable: no es otro delito
+			_check("Si el testigo no llega, no hay multa", reporting and village.pending.is_empty() and village.law.fine == 0.0)
 			# Matar a un vecino.
 			var victim := _villager("merchant")
 			player.global_position = victim.global_position + Vector3(1.5, 0.2, 0)
 			var victim_id := victim.villager_id
 			victim.take_damage(1000.0, player)
-			_check("Matar: muerte permanente en su ficha", not village._record(victim_id)["alive"] and village.living_count() == 19)
-			_check("Matar a la vista: asesino", village.law.murderer and village.law.guards_attack())
+			_check("Matar: muerte permanente en su ficha", not village._record(victim_id)["alive"] and village.living_count() == 18)
+			_step = 30
+			_wait = 0
+		30:
+			if not village.law.murderer and _wait < 2400:
+				return false
+			_check("Matar a la vista: cuando avisan, asesino", village.law.murderer and village.law.guards_attack())
 			_step = 3
 			_wait = 0
 		3:
@@ -104,7 +123,7 @@ func _process(_delta: float) -> bool:
 			for record in village.records:
 				copy.add_record(record["id"], record["name"], record["job"], Village._point(record["home"]))
 			copy.from_data(JSON.parse_string(JSON.stringify(data)))
-			_check("Al cargar, los muertos siguen muertos", copy.living_count() == 19)
+			_check("Al cargar, los muertos siguen muertos", copy.living_count() == 18)
 			_check("Al cargar, la ley se acuerda", copy.law.murderer)
 			copy.free()
 			DirAccess.remove_absolute(ProjectSettings.globalize_path(TEST_SAVE))

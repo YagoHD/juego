@@ -12,6 +12,9 @@ const FAR := 90.0             # metros: más allá, solo la ficha
 const WITNESS_RANGE := 18.0   # a qué distancia alguien ve un delito
 const WALK := 1.2             # m/s de los vecinos simulados sin física
 const PANIC_RANGE := 20.0
+const CHASE_MARGIN := 25.0    # los guardias persiguen hasta este margen fuera del pueblo
+const CLOSE_CHASE := 6.0      # ... y más lejos si le tienen así de cerca
+const CHASE_LIMIT := 60.0     # pero nunca más allá de este margen
 ## Horarios por oficio: [hora de inicio, lugar, actividad]. "home" es la casa de cada uno;
 ## "patrol", la ronda de los guardias. Las actividades que empiezan por "Durmiendo" son dormir.
 const SCHEDULES := {
@@ -39,6 +42,7 @@ var _actors := {}             # id -> Villager
 var _check := 0.0
 var _collector_met := false   # el guardia que cobra ya llegó junto al jugador
 var alarm_point := Vector3.INF  # dónde se vio por última vez al jugador perseguido por la ley
+var pending: Array = []       # delitos vistos solo por civiles que aún corren a denunciarlos
 
 
 func _ready() -> void:
@@ -122,7 +126,8 @@ func _physics_process(delta: float) -> void:
 				actor = _spawn(record)
 			actor.hour = hour
 			# Con una multa o un delito pendiente, los guardias piensan aunque estén lejos.
-			var on_duty: bool = record["species"] == "guard" and (law.wants_payment() or law.guards_attack())
+			var on_duty: bool = (record["species"] == "guard" and (law.wants_payment() or law.guards_attack() or not pending.is_empty())) \
+				or actor.state == "report"
 			var near := distance < NEAR or on_duty
 			actor.set_physics_process(near)
 			if not near:
@@ -136,8 +141,11 @@ func _physics_process(delta: float) -> void:
 				_actors.erase(record["id"])
 			record["position"] = _vec(_walk(record, position, step))
 	_watch_collector()
-	if law.guards_attack() and witnessed():
-		alarm_point = player.global_position  # alguien le ve: los guardias acuden ahí
+	if law.guards_attack():
+		for witness in witnesses():
+			if witness.species == "guard":
+				alarm_point = player.global_position  # un guardia le ve: los demás acuden ahí
+				break
 
 
 ## Vecino sin física: avanza hacia el sitio que le toca a paso de persona.
@@ -169,33 +177,80 @@ func _on_died(_actor: CreatureActor, id: String) -> void:
 		record["alive"] = false
 		record["health"] = 0.0
 	_actors.erase(id)
+	# Un testigo muerto ya no denuncia: si no quedaba nadie más, el delito se olvida.
+	for crime in pending.duplicate():
+		crime["reporters"].erase(id)
+		if crime["reporters"].is_empty():
+			pending.erase(crime)
+			notice.emit("Nadie ha llegado a denunciarte.")
 
 
-## ¿Lo ve alguien? Cualquier vecino o guardia vivo cerca y con línea de visión al jugador.
-func witnessed() -> bool:
+## Quién ve ahora al jugador: vecinos y guardias vivos cerca y con línea de visión.
+func witnesses() -> Array[Villager]:
+	var seen: Array[Villager] = []
 	for actor in _actors.values():
 		if is_instance_valid(actor) and not actor.dead and actor.global_position.distance_to(player.global_position) < WITNESS_RANGE and actor.can_see(player):
-			return true
-	return false
+			seen.append(actor)
+	return seen
+
+
+func witnessed() -> bool:
+	return not witnesses().is_empty()
+
+
+## Un delito a la vista: si lo ve un guardia, cuenta ya; si solo lo ven vecinos, corren a avisar
+## a la guardia y no cuenta hasta que llegue alguno (matarlos o perderlos de vista lo impide).
+func _crime(kind: String, guard_victim := false) -> void:
+	var seen := witnesses()
+	if seen.is_empty():
+		return
+	var reporters: Array = []
+	for witness in seen:
+		if witness.species == "guard":
+			_apply(kind, guard_victim, player.global_position)
+			return
+		reporters.append(witness.villager_id)
+	pending.append({"kind": kind, "guard": guard_victim, "point": player.global_position, "reporters": reporters})
+	for witness in seen:
+		witness.start_report()
+	notice.emit("Un testigo corre a avisar a la guardia. ¡Aún puedes impedirlo!")
+
+
+func _apply(kind: String, guard_victim: bool, point: Vector3) -> void:
+	match kind:
+		"block": law.block_edit()
+		"assault": law.assault(guard_victim)
+		"murder": law.murder()
+	alarm_point = point
+
+
+## Un testigo ha llegado junto a un guardia: el delito que vio ya cuenta.
+func reported(witness: Villager) -> void:
+	for crime in pending.duplicate():
+		if crime["reporters"].has(witness.villager_id):
+			pending.erase(crime)
+			_apply(crime["kind"], crime["guard"], crime["point"])
+
+
+func nearest_guard(from: Vector3) -> Villager:
+	var best: Villager = null
+	for actor in _actors.values():
+		if is_instance_valid(actor) and not actor.dead and actor.species == "guard":
+			if best == null or actor.global_position.distance_to(from) < best.global_position.distance_to(from):
+				best = actor
+	return best
 
 
 ## El jugador ha golpeado (o matado) a un vecino o guardia.
 func report_attack(victim: Villager, killed: bool) -> void:
-	var seen := witnessed()
-	if killed:
-		if seen:
-			law.murder()
-	elif seen:
-		law.assault(victim.species == "guard")
-	if seen:
-		alarm_point = player.global_position
+	_crime("murder" if killed else "assault", victim.species == "guard")
 	panic(player.global_position)
 
 
 ## El jugador ha roto o colocado un bloque en 'at'.
 func report_block_edit(at: Vector3) -> void:
-	if contains(at) and witnessed():
-		law.block_edit()
+	if contains(at):
+		_crime("block")
 
 
 ## Los civiles que ven la violencia huyen.

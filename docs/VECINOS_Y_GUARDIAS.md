@@ -31,7 +31,10 @@
 
 ## Delitos (reglas confirmadas, detalles provisionales)
 
-Solo cuentan si **algún vecino o guardia lo ve** (tiene línea de visión a menos de 18 m).
+Solo cuentan si **algún vecino o guardia lo ve** (tiene línea de visión a menos de 18 m). Si lo
+ve un guardia, cuenta al momento. Si solo lo ven vecinos, **corren a avisar al guardia más cercano**
+y no cuenta hasta que llega alguno: si mueren antes (o no queda ningún guardia), se olvida.
+Solo multas, sin cárcel (decidido con Yago).
 
 | Qué haces | Qué pasa |
 |---|---|
@@ -44,6 +47,8 @@ Solo cuentan si **algún vecino o guardia lo ve** (tiene línea de visión a men
   multa (primero los de menos valor). Precios provisionales hasta decidir el comercio.
 - Si mueres mientras te persiguen por una multa, dejan de atacarte (la multa sigue). Un asesino
   sigue siéndolo.
+- Los guardias persiguen **fuera del pueblo, pero no mucho** (25 m); hasta 60 m solo si te tienen
+  muy cerca (a menos de 6 m).
 - Los guardias que no te ven van a **buscarte al último sitio donde alguien te vio**; no saben
   dónde estás a través de las paredes. Con una multa o un delito pendiente, los guardias piensan
   aunque estén lejos.
@@ -56,7 +61,5 @@ izquierda. Los vecinos quietos (durmiendo, trabajando, charlando) apenas gastan.
 
 ## Pendiente de decidir con Yago
 
-- Testigos que tengan que ir a avisar a un guardia (y que se pueda impedir), en vez de avisar al momento.
-- Cárcel o solo multas. Cuánto vale cada objeto (va con el comercio).
-- Si los guardias persiguen fuera del pueblo.
+- Cuánto vale cada objeto (va con el comercio y las monedas de oro).
 - Diálogos de cada vecino (sistema 4) y vendedores (sistema 5).
