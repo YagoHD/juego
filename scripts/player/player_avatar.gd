@@ -129,9 +129,10 @@ func _build_lids(texture: Texture2D) -> void:
 	var skin_color := image.get_pixel(face.position.x * 2 + 5, face.position.y * 2 + 12) if k > 1 \
 		else image.get_pixel(face.position.x + 3, face.position.y + 2)  # la mejilla / la frente
 	# Ojos del náufrago: más abajo y más pequeños (el pelo ocupa la parte de arriba de la cara).
-	var eye_x := 1.5 if k > 1 else 2.0
-	var eye_y := 2.6 if k > 1 else 3.5
-	var eye_size := Vector2(1.4, 0.8) if k > 1 else Vector2(2.0, 1.0)
+	# (La skin de cajas de la guía, al doble, tiene los ojos en las filas 8 a 10 de 16.)
+	var eye_x := 1.75 if k > 1 else 2.0
+	var eye_y := 3.2 if k > 1 else 3.5
+	var eye_size := Vector2(1.6, 1.4) if k > 1 else Vector2(2.0, 1.0)
 	var material := StandardMaterial3D.new()
 	material.albedo_color = skin_color
 	material.roughness = 0.9

@@ -3,7 +3,10 @@ class_name HeldBlock
 ## Vista de primera persona independiente: mano articulada y objetos a escala uniforme.
 const HAND_RIG := preload("res://scripts/player/first_person_hand.gd")
 const MESHY_HAND := preload("res://scripts/player/meshy_view_hand.gd")
-const REAL_ARM := preload("res://scripts/player/real_arm_view.gd")  # brazo de Meshy (predeterminado)
+const REAL_ARM := preload("res://scripts/player/real_arm_view.gd")  # brazo de Meshy
+const BOX_ARM := preload("res://scripts/player/box_arm_view.gd")    # brazo de cajas (estilo nuevo)
+## Brazo de primera persona: true = de cajas, como en la guía visual (guia_23); false = el de Meshy.
+const USE_BOX_ARM := true
 const ITEM_PROFILES := preload("res://scripts/player/first_person_items.gd")
 const REST_POSITION := Vector3(0.20, -0.15, -0.50)
 const REST_ROTATION := Vector3(0.10, -0.55, -0.12)
@@ -87,8 +90,12 @@ func set_skin(texture: Texture2D, _slim: bool) -> void:
 		color = image.get_pixel(46, 28)
 		color.a = 1.0
 	var original := ResourceLoader.exists(MESHY_HAND.DIR + Settings.body + ".scn")
-	var real_arm := ResourceLoader.exists(REAL_ARM.SCENE)
-	if real_arm:
+	var real_arm := ResourceLoader.exists(REAL_ARM.SCENE) or USE_BOX_ARM
+	if USE_BOX_ARM:
+		_arm = BOX_ARM.new()
+		_arm.skin = texture
+		_arm.slim = _slim
+	elif real_arm:
 		_arm = REAL_ARM.new()
 	else:
 		_arm = MESHY_HAND.new() if original else HAND_RIG.new()
@@ -127,7 +134,7 @@ func _show_item(id: String) -> void:
 	var profile := ITEM_PROFILES.get_profile(id)
 	_arm.pose(profile["pose"])
 	_block_mesh.mesh = ItemMesh.make_held(id, profile["length"], profile["grip"])
-	_floating = _arm is REAL_ARM and ItemDB.block_of(id) >= 0
+	_floating = (_arm is REAL_ARM or _arm is BOX_ARM) and ItemDB.block_of(id) >= 0
 	if _floating:
 		_arm.pose("float")
 		_block_mesh.mesh = ItemMesh.make_held(id, FLOAT_SIZE, 0.5)

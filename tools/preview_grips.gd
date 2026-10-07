@@ -33,7 +33,7 @@ func _run() -> void:
 	camera.add_child(hand)
 	hand.set_skin(null, false)
 	camera.cull_mask = 0
-	for id in ["stone_axe", "stone_pick", "stone_knife", "spear", "torch", "rock", "flint", "", "stone"]:
+	for id in (OS.get_cmdline_user_args()[0].split(",") if OS.get_cmdline_user_args().size() > 0 and not OS.get_cmdline_user_args()[0].begins_with("--") else ["stone_axe", "stone_pick", "stone_knife", "spear", "torch", "rock", "flint", "", "stone"]):
 		hand.set_item(id)
 		for frame in 40:
 			await process_frame

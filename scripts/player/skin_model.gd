@@ -24,9 +24,16 @@ const JOINT_UNDERLAP := 1.0   # px que el segmento superior baja dentro del infe
 const HIP_OVERLAP := 2.5      # px que el muslo sube dentro del torso (sin hueco en la cadera)
 const JOINT_INSET := 0.05     # px de estrechamiento de las piezas que se solapan (evita parpadeos)
 ## Cuerpo de cubitos (VoxelBody) con manos de 5 dedos (VoxelHand) en vez de cajas lisas.
-const VOXEL := true
+## Desde el estilo nuevo (docs/ANALISIS_ESTILO.md) el personaje es de cajas, como en la guía.
+const VOXEL := false
 ## El personaje es el náufrago modelado con cubitos (CastawayModel), no una skin de cajas.
-const CASTAWAY := true
+const CASTAWAY := false
+## Pelo de cubos del náufrago de cajas (sale de la guía con tools/skin_desde_guia.py).
+const HAIR_PATH := "res://assets/skins/naufrago/pelo.json"
+## Cabeza más grande que la de Minecraft (como en Minecraft Dungeons y la guía visual); el pelo
+## abulta aún un poco más.
+const HEAD_SCALE := 1.2
+const HAIR_SCALE := 1.12
 const HAND_CUT := 2           # px del final del brazo que se cambian por la mano de cubitos
 ## Redondeo de las aristas de cada parte (px) y si se redondean también arriba y abajo.
 const ROUNDING := {"head": [1.5, true], "body": [1.0, false], "arm_right": [0.75, false],
@@ -179,7 +186,7 @@ static func _box_mesh(lo: Vector3, hi: Vector3, rects: Dictionary) -> ArrayMesh:
 static func make_material(texture: Texture2D, on_top := false) -> StandardMaterial3D:
 	var material := StandardMaterial3D.new()
 	material.albedo_texture = texture
-	material.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST_WITH_MIPMAPS_ANISOTROPIC
+	material.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST_WITH_MIPMAPS
 	material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA_SCISSOR
 	material.alpha_scissor_threshold = 0.5
 	material.roughness = 0.9
@@ -215,6 +222,15 @@ static func make_part(part: String, texture: Texture2D, slim: bool, layer: int, 
 	if not is_limb(part):
 		for overlay in [false, true]:
 			pivot.add_child(_mesh_node(part_mesh(part, slim, overlay), material, layer, on_top))
+		if part == "head" and not FileAccess.file_exists(SkinComposer.USER_SKIN_PATH):
+			var hair := hair_mesh()
+			if hair != null:
+				var hair_node := _mesh_node(hair, make_voxel_material(on_top), layer, on_top)
+				hair_node.name = "hair"
+				hair_node.scale = Vector3.ONE * HAIR_SCALE
+				hair_node.position = Vector3(0, 4.0 * (1.0 - HAIR_SCALE), 0) * PIXEL  # crece desde el centro de la cabeza
+				pivot.add_child(hair_node)
+			pivot.scale = Vector3.ONE * HEAD_SCALE
 		_voxel_image = null
 		return pivot
 
@@ -244,6 +260,51 @@ static func make_part(part: String, texture: Texture2D, slim: bool, layer: int, 
 		hand.build(_skin_color(part, slim), part == "arm_right", material, layer, on_top)
 	_voxel_image = null
 	return pivot
+
+
+## Pelo rizado del náufrago: un montón de cubos de 1 píxel de skin alrededor de la cabeza (posición
+## en píxeles desde el cuello). Solo se dibujan las caras que no tapa otro cubo.
+static func hair_mesh() -> ArrayMesh:
+	if not FileAccess.file_exists(HAIR_PATH):
+		return null
+	var data: Variant = JSON.parse_string(FileAccess.get_file_as_string(HAIR_PATH))
+	if not data is Dictionary:
+		return null
+	var cubes := {}
+	for cube: Array in data["cubos"]:
+		cubes[Vector3i(int(cube[0]), int(cube[1]), int(cube[2]))] = Color.html(cube[3])
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	for cell: Vector3i in cubes:
+		# Cada rizo con su tono (más claro o más oscuro), como en la guía: así se leen los cubos.
+		var vary := 0.82 + 0.36 * float(absi(cell.x * 73856093 ^ cell.y * 19349663 ^ cell.z * 83492791) % 100) / 100.0
+		var base: Color = cubes[cell]
+		var color := Color(base.r * vary, base.g * vary, base.b * vary)
+		for dir: Vector3i in [Vector3i.RIGHT, Vector3i.LEFT, Vector3i.UP, Vector3i.DOWN, Vector3i.BACK, Vector3i.FORWARD]:
+			# Las caras que dan a la cabeza también se dibujan: el pelo va un poco separado (HAIR_SCALE).
+			if cubes.has(cell + dir):
+				continue
+			# Un poco más oscuro abajo y a los lados: el pelo tiene volumen aunque no le dé la luz.
+			var shade := 1.0 if dir == Vector3i.UP else (0.8 if dir == Vector3i.DOWN else 0.92)
+			_cube_face(st, Vector3(cell), Vector3(dir), Color(color.r * shade, color.g * shade, color.b * shade))
+	return st.commit()
+
+
+static func _cube_face(st: SurfaceTool, cell: Vector3, n: Vector3, color: Color) -> void:
+	# Cara del cubo [cell, cell + 1] (en px) que mira hacia n, en metros.
+	var u := Vector3(n.y, n.z, n.x).abs()  # dos ejes perpendiculares a n
+	var v := n.cross(u)
+	var center := (cell + Vector3.ONE * 0.5 + n * 0.5) * PIXEL
+	var a := center + (-u - v) * 0.5 * PIXEL
+	var b := center + (u - v) * 0.5 * PIXEL
+	var c := center + (u + v) * 0.5 * PIXEL
+	var d := center + (-u + v) * 0.5 * PIXEL
+	st.set_color(color)
+	st.set_normal(n)
+	# Sentido horario visto desde fuera (cara frontal en Godot).
+	var quad := [a, d, c, a, c, b] if u.cross(v).dot(n) > 0.0 else [a, b, c, a, c, d]
+	for p: Vector3 in quad:
+		st.add_vertex(p)
 
 
 ## Color de la piel de una parte (el antebrazo, en el centro de su cara de delante).

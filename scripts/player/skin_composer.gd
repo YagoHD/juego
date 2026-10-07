@@ -8,6 +8,9 @@ class_name SkinComposer
 const USER_SKIN_PATH := "user://skins/skin.png"
 ## Capas del náufrago sacadas del arte conceptual; si no están, se pinta la skin por código.
 const CASTAWAY_DIR := "res://assets/skins/castaway/"
+## Skin del náufrago de cajas del estilo nuevo (tools/skin_desde_guia.py, de la guía visual):
+## si está, es la del jugador.
+const BOXY_SKIN := "res://assets/skins/naufrago/skin.png"
 
 const DEFAULT_OPTIONS := {
 	"skin": Color8(222, 170, 132),
@@ -47,6 +50,12 @@ static func load_player_skin(options := DEFAULT_OPTIONS) -> ImageTexture:
 static func compose(options: Dictionary) -> Image:
 	var o := DEFAULT_OPTIONS.duplicate()
 	o.merge(options, true)
+	if ResourceLoader.exists(BOXY_SKIN):
+		var boxy := (load(BOXY_SKIN) as Texture2D).get_image()
+		if boxy.is_compressed():
+			boxy.decompress()
+		boxy.convert(Image.FORMAT_RGBA8)
+		return boxy
 	if ResourceLoader.exists(CASTAWAY_DIR + "base.png"):
 		return _compose_castaway(o)
 	var img := Image.create(SkinModel.TEXTURE_SIZE, SkinModel.TEXTURE_SIZE, false, Image.FORMAT_RGBA8)
