@@ -31,6 +31,7 @@ var _notice: Label
 var _info: Label
 var _notice_time := 0.0
 var _save_timer := 15.0
+var _offer: OfferPanel         # pantalla de pago o de banco abierta
 
 
 func _ready() -> void:
@@ -72,8 +73,13 @@ func _ready() -> void:
 		get_tree().paused = false
 		village.player_died())
 	_inventory.closed.connect(func() -> void:
+		if _offer != null:
+			_offer.return_offer()  # lo que no se entregó vuelve al inventario
+			_offer = null
 		player.ui_open = false
 		player._set_captured(true))
+	village.payment_requested.connect(func(guard: Villager) -> void: open_offer("fine", guard.villager_name))
+	player.talk_requested.connect(_on_talk)
 	if not _load():
 		_supply()
 	_bind_hotbar()
@@ -159,7 +165,8 @@ func _supply() -> void:
 	player.set_equipment({"shirt": "shirt", "pants": "pants", "belt": "belt", "backpack": "backpack"})
 	for id in ["stone_knife", "stone_axe", "spear", "cooked_meat"]:
 		player.inventory.add(id, 6 if id == "cooked_meat" else 1, player.unlocked_slots())
-	player.inventory.add("iron_scrap", 20, player.unlocked_slots())  # para pagar multas
+	player.inventory.add("gold_coin", 30, player.unlocked_slots())  # para pagar multas
+	player.inventory.add("gold_nugget", 6, player.unlocked_slots())  # para el banco
 	player.inventory.add("rope", 20, player.unlocked_slots())
 	_bind_hotbar()
 
@@ -273,6 +280,26 @@ func _input(event: InputEvent) -> void:
 		get_viewport().set_input_as_handled()
 
 
+## Pantalla de pago de una multa ("fine") o de cambio de oro en el banco ("bank").
+func open_offer(kind: String, who: String) -> void:
+	if _inventory.visible:
+		return
+	_offer = OfferPanel.new(player, _inventory, village, kind, who)
+	player.ui_open = true
+	player._set_captured(false)
+	_inventory.open(_offer.sections(), _offer)
+
+
+func _on_talk(villager: Node3D) -> void:
+	var person := villager as Villager
+	if person.species == "guard" and village.law.fine > 0.0:
+		open_offer("fine", person.villager_name)
+	elif person.job == "banker":
+		open_offer("bank", person.villager_name)
+	else:
+		_show_notice("%s: «%s»" % [person.villager_name, person.activity])
+
+
 func _bind_hotbar() -> void:
 	if _hotbar != null:
 		_hotbar.bind(player.active_inventory(), player.creative, player.hotbar_size())
@@ -293,6 +320,7 @@ func _process(delta: float) -> void:
 		status = "multa pendiente: %d (R junto a un guardia)" % ceili(law.fine)
 	elif law.warnings > 0:
 		status = "avisos: %d de %d" % [law.warnings, VillageLaw.WARNINGS]
+	_info.visible = not _inventory.visible
 	_info.text = "ALDEA — %02d:%02d — vivos %d/%d, con IA completa %d — %d FPS, física %.1f ms\nLey: %s\nF2 panel · E inventario · R pagar multa" % [
 		int(hour), int(fmod(hour, 1.0) * 60.0), village.living_count(), village.records.size(), village.active_count(),
 		Engine.get_frames_per_second(), Performance.get_monitor(Performance.TIME_PHYSICS_PROCESS) * 1000.0, status]

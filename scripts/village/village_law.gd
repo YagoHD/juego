@@ -83,34 +83,19 @@ func player_died() -> void:
 	hostile = false
 
 
-## Paga la multa con objetos del inventario (primero los de menos valor). Devuelve si se pagó.
-func pay(inventory: Inventory, slots: Array) -> bool:
+## Paga la multa con lo ofrecido en la pantalla de pago (su valor en monedas). Devuelve el cambio,
+## o -1 si no llega. Un asesinato no se perdona pagando.
+func pay_offer(value: float) -> float:
 	if fine <= 0.0 or murderer:
-		return false
-	var owned: Array = []
-	var total := 0.0
-	for index in slots:
-		var stack := inventory.get_slot(index)
-		if stack.is_empty() or value_of(stack["id"]) <= 0.0:
-			continue
-		owned.append(index)
-		total += value_of(stack["id"]) * int(stack["count"])
-	if total < fine:
-		changed.emit("No llevas suficiente para pagar la multa (vale %d; llevas %d)." % [ceili(fine), floori(total)])
-		return false
-	owned.sort_custom(func(a: int, b: int) -> bool: return value_of(inventory.get_slot(a)["id"]) < value_of(inventory.get_slot(b)["id"]))
-	var left := fine
-	for index in owned:
-		var price := value_of(inventory.get_slot(index)["id"])
-		while left > 0.0 and not inventory.is_empty_slot(index):
-			inventory.take(index, 1)
-			left -= price
-		if left <= 0.0:
-			break
+		return -1.0
+	if value < fine:
+		changed.emit("No llega para pagar la multa (vale %d; ofreces %.1f)." % [ceili(fine), value])
+		return -1.0
+	var change := value - fine
 	fine = 0.0
 	hostile = false
 	changed.emit("Has pagado la multa. Los guardias te dejan en paz.")
-	return true
+	return change
 
 
 func to_data() -> Dictionary:

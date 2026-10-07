@@ -181,6 +181,13 @@ func _player_ok() -> bool:
 	return is_instance_valid(player) and not player.creative and player.combat.health > 0.0
 
 
+## ¿Se puede hablar con él ahora? No si pelea, huye, corre a denunciar o la ley va a por el jugador.
+func can_talk() -> bool:
+	if dead or village == null or village.law.guards_attack():
+		return false
+	return state not in ["flee", "report", "chase", "windup", "charge", "recover", "stagger", "stunned", "search"]
+
+
 ## Huir del jugador unos segundos (al ver violencia o a un criminal).
 func scare(seconds: float) -> void:
 	if dead or species == "guard" or not _player_ok() or state == "report":

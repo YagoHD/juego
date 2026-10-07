@@ -45,8 +45,13 @@ Solo multas, sin cárcel (decidido con Yago).
 | Golpear a un guardia | Resistencia: multa mayor y los guardias te atacan. |
 | Matar a alguien | Delito máximo: los guardias te atacan nada más verte en el pueblo. **No se perdona pagando.** |
 
-- **Pagar:** junto a un guardia, tecla **R**: se pagan objetos del inventario por el valor de la
-  multa (primero los de menos valor). Precios provisionales hasta decidir el comercio.
+- **Pagar (como en Kingdom Come):** junto al guardia, tecla **R** o clic derecho sobre él: se abre
+  una pantalla con "Lo que entregas", donde se arrastran monedas de oro u objetos; se ve cuánto
+  vale lo ofrecido y, si llega, se paga. Si se da de más, devuelve el cambio en monedas. Lo no
+  entregado vuelve al inventario. Precios provisionales (`VillageLaw.VALUES`, en monedas).
+- **Dinero:** monedas de oro. Se consiguen fundiendo pepitas de oro en un horno de piedra (cada
+  pepita, 2 monedas: todo su valor) o cambiándolas en el banco (1,5 monedas: con pérdida). Las
+  pepitas salen a veces al picar piedra y más en el mineral (provisional: vetas propias más adelante).
 - Si mueres mientras te persiguen por una multa, dejan de atacarte (la multa sigue). Un asesino
   sigue siéndolo.
 - Los guardias persiguen **fuera del pueblo, pero no mucho** (25 m); hasta 60 m solo si te tienen

@@ -46,6 +46,21 @@ static func paint(id: String) -> Image:
 		"iron_scrap": _rock(img, Color(0.55, 0.6, 0.65))
 		"arcane_dust", "anchor_shard": _rock(img, Color(0.65, 0.3, 0.85))
 		"enemy_orders": _note(img)
+		"gold_nugget": _rock(img, Color(0.95, 0.75, 0.2))
+		"gold_coin":  # monedas apiladas
+			for k in 3:
+				_rect(img, 4, 10 - k * 3, 11, 12 - k * 3, Color(0.95, 0.78, 0.25).darkened(0.12 * (2 - k)))
+			_rect(img, 6, 4, 9, 4, Color(1.0, 0.92, 0.55))
+		"furnace":
+			_rect(img, 3, 4, 12, 13, Color(0.55, 0.55, 0.57))
+			_rect(img, 6, 9, 9, 13, Color(0.15, 0.12, 0.1))
+			_rect(img, 7, 11, 8, 12, Color(1.0, 0.55, 0.15))
+			_rect(img, 10, 1, 11, 3, Color(0.48, 0.48, 0.5))
+		"dawn_bean":
+			_line(img, Vector2i(7, 14), Vector2i(8, 6), Color(0.35, 0.5, 0.2))
+			_rect(img, 5, 3, 7, 5, Color(1.0, 0.7, 0.25))
+			_rect(img, 8, 2, 10, 4, Color(1.0, 0.75, 0.3))
+			_rect(img, 7, 5, 9, 7, Color(0.95, 0.62, 0.2))
 		"rope": _rope(img)
 		"wheat": _wheat_bundle(img)
 		"sticks": _sticks(img)

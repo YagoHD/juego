@@ -86,10 +86,24 @@ func _process(_delta: float) -> bool:
 			if _wait < 2400 and (guard == null or guard.state != "confront" or guard.global_position.distance_to(player.global_position) > 3.0):
 				return false
 			_check("Un guardia viene a cobrar", guard != null and guard.state == "confront" and guard.global_position.distance_to(player.global_position) <= 3.0)
-			var scraps := player.inventory.count_of("iron_scrap")
-			var rope := player.inventory.count_of("rope")
-			var paid := village.try_pay()
-			_check("Pagar con R: multa saldada con lo más barato primero", paid and village.law.fine == 0.0 and player.inventory.count_of("rope") < rope and player.inventory.count_of("iron_scrap") == scraps)
+			_check("R junto al guardia abre la pantalla de pago", village.try_pay() and _scene._offer != null and _scene._inventory.visible)
+			var offer: OfferPanel = _scene._offer
+			var coins := player.inventory.count_of("gold_coin")
+			offer.offer.set_slot(0, {"id": "gold_coin", "count": 4})
+			offer._on_pressed()
+			_check("Con 4 monedas no llega: sigue la multa", village.law.fine == VillageLaw.FINE_ASSAULT)
+			offer.offer.set_slot(1, {"id": "rope", "count": 6})  # 4 + 6 x 1,5 = 13: sobra 3
+			offer._on_pressed()
+			_check("Pagar con monedas y objetos: multa saldada y 3 monedas de cambio", village.law.fine == 0.0 and player.inventory.count_of("gold_coin") == coins + 3 and not _scene._inventory.visible)
+			_scene.open_offer("bank", "Olga")
+			var bank: OfferPanel = _scene._offer
+			bank.offer.set_slot(0, {"id": "gold_nugget", "count": 4})
+			bank.offer.set_slot(1, {"id": "rope", "count": 2})
+			var before_bank := player.inventory.count_of("gold_coin")
+			var rope_before := player.inventory.count_of("rope")
+			bank._on_pressed()
+			_check("Banco: 4 pepitas dan 6 monedas (con pérdida) y devuelve lo que no es oro",
+				player.inventory.count_of("gold_coin") == before_bank + 6 and player.inventory.count_of("rope") == rope_before + 2 and not _scene._inventory.visible)
 			# Impedir la denuncia: el testigo muere antes de llegar a la guardia.
 			player.global_position = Vector3(0, 0.3, 8)
 			var witness := _villager("farmer")

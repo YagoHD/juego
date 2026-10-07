@@ -1,6 +1,7 @@
 extends CharacterBody3D
 class_name Player
 
+signal talk_requested(villager: Node3D)  # clic derecho a un vecino: diálogo, pago o banco
 signal creative_changed(enabled: bool)
 ## Cambia cuántos huecos hay (al ponerse o quitarse ropa o la mochila, o al cambiar de modo).
 signal inventory_layout_changed
@@ -288,7 +289,7 @@ func _unhandled_input(event: InputEvent) -> void:
 				else:
 					breaker.start()
 			MOUSE_BUTTON_RIGHT:
-				if combat.try_recover_backpack():
+				if combat.try_recover_backpack() or _try_talk():
 					pass
 				elif Input.is_key_pressed(KEY_SHIFT) or _aims_at_usable():
 					_edit_block(true)  # cofres, balsa, saco, hoguera: antes que la guardia
@@ -725,6 +726,15 @@ func _edit_block(place: bool) -> void:
 		if not held_tool.is_empty() and ItemDB.tool_speed(held_tool["id"], broken) > 1.0:
 			survival.wear_tool()
 		block_broken.emit(cell, broken)
+
+
+## Clic derecho mirando a un vecino tranquilo: hablar con él (lo atiende quien escuche la señal).
+func _try_talk() -> bool:
+	var hit := combat._ray(REACH)
+	if hit.is_empty() or not hit["collider"] is Villager or not (hit["collider"] as Villager).can_talk():
+		return false
+	talk_requested.emit(hit["collider"])
+	return true
 
 
 ## ¿Apunta a algo que se usa con clic derecho (balsa, objeto colocado o cofre)?

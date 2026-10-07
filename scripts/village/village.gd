@@ -6,6 +6,7 @@ class_name Village
 ## figura, solo su ficha. La muerte es permanente. Ver docs/VECINOS_Y_GUARDIAS.md.
 
 signal notice(text: String)
+signal payment_requested(guard: Villager)   # abrir la pantalla de pago de la multa
 
 const NEAR := 30.0            # metros: IA completa con física
 const FAR := 90.0             # metros: más allá, solo la ficha
@@ -321,12 +322,13 @@ func _watch_collector() -> void:
 		_collector_met = false
 
 
-## Pagar la multa junto a un guardia (tecla R).
+## Pagar la multa junto a un guardia (tecla R o hablarle): abre la pantalla de pago.
 func try_pay() -> bool:
 	var guard := collector()
-	if law.fine <= 0.0 or guard == null or guard.global_position.distance_to(player.global_position) > 3.5:
+	if law.fine <= 0.0 or law.murderer or guard == null or guard.global_position.distance_to(player.global_position) > 3.5:
 		return false
-	return law.pay(player.active_inventory(), player.unlocked_slots())
+	payment_requested.emit(guard)
+	return true
 
 
 func player_died() -> void:
