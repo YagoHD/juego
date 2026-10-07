@@ -1,9 +1,21 @@
 extends SceneTree
 
+## Modelos de Meshy para la vista en primera persona, tal cual (sin tocar la malla ni los huesos).
+## Uso: godot --headless --path . --script res://tools/import_view_hands.gd -- [nombre ...]
+## Sin nombres: todos.
+const SOURCES := {
+	"hombre": "res://docs/mano/Meshy_AI_Character_output.glb",
+	"mujer": "res://docs/mano/femeninai/Meshy_AI_Character_output (1).glb",
+	"brazo_real": "res://docs/mano/brazo final hombre/Meshy_AI_Character_output (2).glb",
+}
+
 func _init() -> void:
 	DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path("res://assets/models/hands"))
-	for body in ["hombre", "mujer"]:
-		var path := "res://docs/mano/Meshy_AI_Character_output.glb" if body == "hombre" else "res://docs/mano/femeninai/Meshy_AI_Character_output (1).glb"
+	var names: Array = OS.get_cmdline_user_args()
+	if names.is_empty():
+		names = SOURCES.keys()
+	for body in names:
+		var path: String = SOURCES[body]
 		var state := GLTFState.new()
 		assert(GLTFDocument.new().append_from_file(path, state) == OK)
 		var scene := GLTFDocument.new().generate_scene(state)

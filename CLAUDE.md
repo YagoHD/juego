@@ -29,5 +29,8 @@
   carga en ~15 s; la isla tarda minutos). `Sala de muestras.bat` la abre para Yago.
 - **En la nube (Linux, sin tarjeta gráfica)**: `tools/setup_cloud.sh` (se lanza solo al empezar)
   descarga el Godot de Linux en `./godot` e importa el proyecto. Las pruebas sin ventana
-  funcionan; **las capturas no** (no hay GPU): lo visual se revisa luego en el PC de Yago.
+  funcionan. **Capturas**: sin GPU, pero sí con dibujo por software (lento):
+  `LIBGL_ALWAYS_SOFTWARE=1 xvfb-run -a -s "-screen 0 1280x720x24" ./godot --rendering-driver opengl3 --path . --script res://tools/preview_grips.gd --resolution 1280x720`
+  (deja las imágenes en `.godot/grip_previews/`). Sirve para escenas pequeñas; la isla, mejor en el PC de Yago.
+- **No lanzar dos pruebas a la vez**: comparten el mundo de pruebas y se corrompen.
 - Si creas un `class_name` nuevo, ejecuta `godot --headless --path . --import` antes de probar.
