@@ -25,3 +25,4 @@ assets/third_party_raw/*
 
 # Godot de Linux de la nube (tools/setup_cloud.sh)
 /godot
+__pycache__/
