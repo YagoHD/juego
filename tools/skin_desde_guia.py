@@ -262,7 +262,47 @@ def build_hair(sheet):
             if (c[0], c[1], c[2]) not in seen:
                 seen.add((c[0], c[1], c[2]))
                 cubes.append(c)
-    return cubes
+    # Fuera los cubos sueltos (sin otro cubo al lado): quedan flotando junto a la cara.
+    cells = {(c[0], c[1], c[2]) for c in cubes}
+    def touching(c):
+        return any((c[0] + a, c[1] + b, c[2] + d) in cells for a, b, d in
+                   ((1, 0, 0), (-1, 0, 0), (0, 1, 0), (0, -1, 0), (0, 0, 1), (0, 0, -1)))
+    return [c for c in cubes if touching(c)]
+
+
+def build_afro(sheet):
+    """Pelo rizado como en la guía: una bola redonda de cubos alrededor de la cabeza, con bultos,
+    que deja la cara al aire (flequillo encima de las cejas y patillas). Los tonos salen del pelo
+    de la hoja (vista de espaldas, todo pelo)."""
+    x0, y0, x1, y1 = 100 + BACK, 40, 290 + BACK, 240
+    hair = sheet[y0:y1, x0:x1].reshape(-1, 3)
+    hair = hair[is_hair(hair)]
+    tones = [np.percentile(hair, q, axis=0) for q in (35, 55, 70, 82)]
+    cubes = []
+    for y in range(0, 13):
+        for x in range(-7, 7):
+            for z in range(-7, 8):
+                X, Y, Z = x + 0.5, y + 0.5, z + 0.5
+                h = (x * 73856093 ^ y * 19349663 ^ z * 83492791) & 0xffff
+                bump = (h % 7) / 7.0 * 0.9  # rizos que sobresalen
+                # Bola: centro algo por detrás y por encima del centro de la cabeza.
+                d = (X / 6.2) ** 2 + ((Y - 6.0) / 5.2) ** 2 + ((Z - 0.6) / 6.4) ** 2
+                if d > 1.0 + bump * 0.25:
+                    continue
+                if abs(X) < 4 and Y < 8 and abs(Z) < 4:
+                    continue  # dentro de la cabeza
+                if Z < -3 and Y < 6.5:
+                    continue  # la cara, al aire
+                if Y < 2.5 and Z < 2:
+                    continue  # nada por debajo de la mandíbula salvo detrás
+                tone = tones[h % 4]
+                cubes.append([x, y, z, "#%02x%02x%02x" % tuple(int(v) for v in tone.clip(0, 255))])
+    # Fuera los pinchos: cubos con un solo vecino o ninguno.
+    cells = {(c[0], c[1], c[2]) for c in cubes}
+    def neighbours(c):
+        return sum((c[0] + a, c[1] + b, c[2] + d) in cells for a, b, d in
+                   ((1, 0, 0), (-1, 0, 0), (0, 1, 0), (0, -1, 0), (0, 0, 1), (0, 0, -1)))
+    return [c for c in cubes if neighbours(c) >= 2]
 
 
 def main():
@@ -270,7 +310,7 @@ def main():
     os.makedirs(OUT, exist_ok=True)
     skin = build_skin(sheet)
     Image.fromarray(skin, "RGBA").save(os.path.join(OUT, "skin.png"))
-    hair = build_hair(sheet)
+    hair = build_afro(sheet)
     with open(os.path.join(OUT, "pelo.json"), "w") as f:
         json.dump({"cubos": hair}, f)
     print("skin: %s; pelo: %d cubos" % (os.path.join(OUT, "skin.png"), len(hair)))

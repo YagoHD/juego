@@ -33,7 +33,7 @@ const HAIR_PATH := "res://assets/skins/naufrago/pelo.json"
 ## Cabeza más grande que la de Minecraft (como en Minecraft Dungeons y la guía visual); el pelo
 ## abulta aún un poco más.
 const HEAD_SCALE := 1.2
-const HAIR_SCALE := 1.12
+const HAIR_SCALE := 1.0
 const HAND_CUT := 2           # px del final del brazo que se cambian por la mano de cubitos
 ## Redondeo de las aristas de cada parte (px) y si se redondean también arriba y abajo.
 const ROUNDING := {"head": [1.5, true], "body": [1.0, false], "arm_right": [0.75, false],

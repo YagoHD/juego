@@ -17,6 +17,13 @@ const ACTIONS := {"estirarse": 2.6, "sentadillas": 2.6, "salto": 1.1, "voltereta
 const K := SkinModel.BODY_HEIGHT / 1.4
 const HIP_HEIGHT := 0.7 * K   # centro de giro del cuerpo (para la voltereta)
 const SMOOTHING := 14.0   # rapidez con la que las articulaciones alcanzan su pose (más = más seco)
+## Postura de Minecraft Dungeons (no el muñeco tieso de Minecraft): piernas abiertas y algo
+## arqueadas, puntas de los pies hacia fuera, rodillas un poco dobladas y brazos separados del
+## cuerpo. Radianes; al andar se suaviza.
+const STANCE_LEGS := 0.15        # apertura de cada pierna
+const STANCE_TOES := 0.30        # puntas hacia fuera
+const STANCE_KNEES := 0.14       # rodillas dobladas (arqueadas)
+const STANCE_ARMS := 0.13        # brazos separados
 
 var _root: Node3D          # "cadera": todo cuelga de aquí; se mueve y gira para las acciones
 var _head: Node3D
@@ -327,6 +334,7 @@ func _process(delta: float) -> void:
 		"leg_l": Vector3(stride, 0.0, 0.0),
 		"knee_l": -1.15 * lift_l - 0.08 * walk - 0.04,
 	}
+	_add_stance(pose, 1.0 - 0.6 * walk)
 	if ACTIONS.has(_action):
 		_blend_action(pose)
 	_kneel = move_toward(_kneel, 1.0 if _kneeling else 0.0, delta * 3.0)
@@ -397,6 +405,17 @@ func _update_blink(delta: float) -> void:
 
 ## De rodillas: la pierna derecha con la rodilla en el suelo, la izquierda delante en ángulo
 ## recto; el cuerpo algo inclinado y las manos sobre la rodilla.
+## Postura de Minecraft Dungeons encima de la pose (w = cuánto: 1 quieto, menos al andar).
+func _add_stance(pose: Dictionary, w: float) -> void:
+	pose["leg_r"] += Vector3(STANCE_KNEES * 0.5, STANCE_TOES, STANCE_LEGS) * w   # derecha = +X
+	pose["leg_l"] += Vector3(STANCE_KNEES * 0.5, -STANCE_TOES, -STANCE_LEGS) * w
+	pose["knee_r"] -= STANCE_KNEES * w
+	pose["knee_l"] -= STANCE_KNEES * w
+	pose["root_y"] -= 0.012 * K * w  # un poco más bajo por las rodillas dobladas
+	pose["arm_r"] += Vector3(0.0, 0.0, STANCE_ARMS) * w
+	pose["arm_l"] += Vector3(0.0, 0.0, -STANCE_ARMS) * w
+
+
 func _kneel_pose(pose: Dictionary, w: float) -> void:
 	var target := {
 		"root_y": -0.3 * K,
