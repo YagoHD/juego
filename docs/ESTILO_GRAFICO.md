@@ -13,6 +13,9 @@ limpios. Hojas de estilo: `docs/estilo/biblia.webp` y `biblia_2.webp`. Descartad
 cubitos pequeños, más tipo Terraria (`descartado_mas_voxel.webp`), y el pintado liso
 (`descartado_pintado.webp`). **Regla: bloques grandes y formas simples; no llenar de cubitos.**
 
+**En una frase (Yago):** el estilo de **Minecraft Dungeons** (el 1 o el 2), pero en primera y
+tercera persona.
+
 **Cómo es:**
 - **Todo es de bloques y cubos**: el terreno, los árboles, el barco, los edificios.
 - **Personajes de cubos**, de proporciones rechonchas (cabeza grande, como Minecraft pero con más
@@ -29,8 +32,8 @@ cubitos pequeños, más tipo Terraria (`descartado_mas_voxel.webp`), y el pintad
 
 ```
 Same art style, proportions, colors, lighting and level of detail as the attached style sheet:
-a blocky voxel world; characters, tools and props built from chunky cubes with hand-painted
-pixel detail; warm cinematic lighting.
+the look of Minecraft Dungeons in first/third person: a blocky world of big clean blocks, chunky
+characters with slightly big heads, rich hand-painted pixel textures, warm cinematic lighting.
 ```
 
 **Lo que significa para el juego:**
