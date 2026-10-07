@@ -1,0 +1,209 @@
+#!/usr/bin/env python3
+"""Recorta las hojas de la guía visual (docs/estilo) en texturas e iconos para el juego.
+
+Uso (en la nube o en un PC con Python y Pillow):  python3 tools/cortar_hojas.py [bloques|iconos|plantas|todo]
+
+Las hojas de ChatGPT son rejillas: cada casilla es un cuadro (textura o icono) con su nombre
+debajo. Se buscan los cuadros por el contraste con el fondo crema, se recortan y se reducen:
+  - texturas de bloque: a 16x16 píxeles (las de ChatGPT son pixel art de 16x16 ampliado);
+  - iconos: a 64x64 con el fondo quitado (transparente).
+"""
+import os
+import sys
+
+import numpy as np
+from PIL import Image
+
+ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..")
+STYLE = os.path.join(ROOT, "docs", "estilo")
+BLOCKS = os.path.join(ROOT, "assets", "textures", "blocks")
+BLOCKS_NEW = os.path.join(ROOT, "assets", "textures", "blocks_extra")
+ICONS = os.path.join(ROOT, "assets", "textures", "items")
+DECOR = os.path.join(ROOT, "assets", "textures", "decor")
+
+
+def _runs(profile, threshold, min_len):
+    runs, start = [], None
+    for i, on in enumerate(profile > threshold):
+        if on and start is None:
+            start = i
+        if not on and start is not None:
+            runs.append((start, i))
+            start = None
+    if start is not None:
+        runs.append((start, len(profile)))
+    return [r for r in runs if r[1] - r[0] >= min_len]
+
+
+def _background(img):
+    corners = [img[2, 2], img[2, -3], img[-3, 2], img[-3, -3]]
+    return np.median(np.array(corners), axis=0)
+
+
+def texture_tiles(path, cols=4, rows=4):
+    """Cuadros de textura (cuadrados) de una hoja, de izquierda a derecha y de arriba abajo.
+
+    Las columnas salen del contraste con el fondo; las filas, de juntar las de todas las columnas
+    (una textura clara, como la arena o la nieve, se confunde a veces con el fondo crema)."""
+    img = np.asarray(Image.open(path).convert("RGB")).astype(int)
+    mask = np.abs(img - _background(img)).sum(2) > 40
+    h, w = mask.shape
+    xs = _runs(mask.sum(0), h * 0.2, 80)[:cols]
+    size = int(np.median([x1 - x0 for x0, x1 in xs]))
+    starts, heights = [], []
+    for x0, x1 in xs:
+        for y0, y1 in _runs(mask[:, x0:x1].sum(1), (x1 - x0) * 0.6, size * 0.6):
+            starts.append(y0)
+            heights.append(y1 - y0)
+    height = int(np.median(heights))  # las casillas no siempre son cuadradas del todo
+    starts.sort()
+    row_starts = []
+    for y in starts:
+        if not row_starts or y - row_starts[-1][-1] > size * 0.5:
+            row_starts.append([y])
+        else:
+            row_starts[-1].append(y)
+    ys = [int(np.median(group)) for group in row_starts][:rows]
+    pil = Image.open(path).convert("RGB")
+    return [pil.crop((x0, y0, x0 + size, y0 + height)) for y0 in ys for x0, x1 in xs]
+
+
+def to_pixels(tile, size=16):
+    """Reduce un cuadro de pixel art ampliado a su tamaño real tomando el color central de cada píxel."""
+    w, h = tile.size
+    margin = 6  # los bordes del cuadro a veces llevan sombra o línea
+    tile = tile.crop((margin, margin, w - margin, h - margin))
+    w, h = tile.size
+    arr = np.asarray(tile).astype(float)
+    out = np.zeros((size, size, 3))
+    for j in range(size):
+        for i in range(size):
+            cx0, cx1 = int((i + 0.3) * w / size), int((i + 0.7) * w / size)
+            cy0, cy1 = int((j + 0.3) * h / size), int((j + 0.7) * h / size)
+            out[j, i] = np.median(arr[cy0:cy1 + 1, cx0:cx1 + 1].reshape(-1, 3), axis=0)
+    # Si un borde salió del color del fondo de la hoja (crema), se repite la fila o columna vecina.
+    cream = np.array([240.0, 232.0, 220.0])
+
+    def stray(edge, inner):  # borde claro como el fondo y distinto de lo de dentro
+        return np.abs(edge - cream).sum(-1).mean() < 140 and np.abs(edge - inner).sum(-1).mean() > 60
+
+    for _ in range(2):
+        if stray(out[-1], out[-2]):
+            out[-1] = out[-2]
+        if stray(out[0], out[1]):
+            out[0] = out[1]
+        if stray(out[:, -1], out[:, -2]):
+            out[:, -1] = out[:, -2]
+        if stray(out[:, 0], out[:, 1]):
+            out[:, 0] = out[:, 1]
+    return Image.fromarray(out.clip(0, 255).astype(np.uint8))
+
+
+# Hoja -> nombres de las texturas del juego, en orden (None: no se usa aún; "extra:" para bloques futuros).
+BLOCK_SHEETS = {
+    "guia_10_bloques_suelo.png": [
+        ["grass_top"], ["grass_side"], ["grass_top_flowers"], ["dirt", "dirt_side"],
+        ["sand", "sand_side"], ["wet_sand", "wet_sand_side"], ["gravel", "gravel_side"], ["clay", "clay_side"],
+        ["mud", "mud_side"], ["snow"], ["snow_side"], ["stone", "stone_side"],
+        ["mossy_stone", "mossy_side"], ["ore", "ore_side"], ["extra:gold_ore"], ["corrupt_top", "corrupt_side"],
+    ],
+    "guia_11_bloques_madera.png": [
+        ["log_side", "rot:log_side_h"], ["log_top"], ["dead_log_side", "rot:dead_log_side_h"], ["dead_log_top"],
+        ["driftwood", "driftwood_side"], ["planks", "planks_side"], ["leaves"], ["pine_leaves"],
+        ["chest_side"], ["chest_back"], ["chest_top"], ["workbench_top"],
+        ["workbench_side"], ["cloth", "cloth_side"], ["extra:straw"], ["rope"],
+    ],
+    "guia_12_bloques_construccion.png": [
+        ["extra:cobblestone"], ["extra:stone_bricks"], ["extra:cracked_stone_bricks"], ["extra:ruin_runes"],
+        ["extra:timber_wall"], ["extra:roof_tiles"], ["extra:thatch"], ["extra:window"],
+        ["extra:door_top"], ["extra:door_bottom"], ["extra:iron_block"], ["extra:gold_block"],
+        ["extra:glass"], ["extra:wool"], ["extra:tower_stone"], ["extra:violet_crystal"],
+    ],
+}
+
+
+def cut_blocks():
+    os.makedirs(BLOCKS, exist_ok=True)
+    os.makedirs(BLOCKS_NEW, exist_ok=True)
+    for sheet, names in BLOCK_SHEETS.items():
+        tiles = texture_tiles(os.path.join(STYLE, sheet))
+        if len(tiles) != len(names):
+            print(f"{sheet}: encontrados {len(tiles)} cuadros (se esperaban {len(names)})")
+        for tile, outs in zip(tiles, names):
+            pixels = to_pixels(tile)
+            for name in outs:
+                image = pixels
+                if name.startswith("rot:"):
+                    name = name[4:]
+                    image = pixels.rotate(90)
+                if name.startswith("extra:"):
+                    image.save(os.path.join(BLOCKS_NEW, name[6:] + ".png"))
+                else:
+                    image.save(os.path.join(BLOCKS, name + ".png"))
+        print(f"{sheet}: {len(tiles)} texturas")
+
+
+PLANTS = ["tall_grass", "flower_red", "flower_yellow", "extra:pebbles", "extra:sticks", "extra:shell",
+	"extra:wheat_1", "extra:wheat_2", "extra:wheat_3", "extra:mushrooms_red", "extra:mushrooms_brown",
+	"extra:berry_bush", "extra:small_bush", "extra:fern", "extra:sapling", "extra:dawn_plant"]
+
+
+def _sprite(cell, size):
+    """Dibujo de una casilla con fondo (negro, blanco o magenta) quitado, encuadrado y reducido."""
+    arr = np.asarray(cell.convert("RGB")).astype(int)
+    total = arr.sum(2)
+    r, g, b = arr[..., 0], arr[..., 1], arr[..., 2]
+    background = (total < 70) | (total > 700) | ((r > 200) & (g < 90) & (b > 200)) \
+        | ((r > 230) & (g > 230) & (b < 90)) | ((g > 220) & (r < 120) & (b < 120))  # halos amarillos y verdes
+    ys, xs = np.where(~background)
+    if len(xs) == 0:
+        return None
+    x0, x1, y0, y1 = xs.min(), xs.max() + 1, ys.min(), ys.max() + 1
+    side = max(x1 - x0, y1 - y0)
+    cx, by = (x0 + x1) // 2, y1  # centrado y apoyado abajo (las plantas salen del suelo)
+    box = (cx - side // 2, by - side, cx - side // 2 + side, by)
+    rgba = np.zeros((size, size, 4), dtype=np.uint8)
+    for j in range(size):
+        for i in range(size):
+            px = int(box[0] + (i + 0.5) * side / size)
+            py = int(box[1] + (j + 0.5) * side / size)
+            if 0 <= px < arr.shape[1] and 0 <= py < arr.shape[0] and not background[py, px]:
+                rgba[j, i, :3] = arr[py, px]
+                rgba[j, i, 3] = 255
+    # Quitar puntitos sueltos (restos del fondo de la hoja): píxeles con casi nada alrededor.
+    for _ in range(2):
+        alpha = rgba[..., 3] > 0
+        padded = np.pad(alpha, 1)
+        neighbours = sum(np.roll(np.roll(padded, dy, 0), dx, 1) for dy in (-1, 0, 1) for dx in (-1, 0, 1)
+                         if (dy, dx) != (0, 0))[1:-1, 1:-1]
+        rgba[alpha & (neighbours <= 2)] = 0
+    return Image.fromarray(rgba, "RGBA")
+
+
+def cut_plants():
+    os.makedirs(DECOR, exist_ok=True)
+    extra = os.path.join(DECOR, "extra")
+    os.makedirs(extra, exist_ok=True)
+    sheet = Image.open(os.path.join(STYLE, "guia_13_plantas.png"))
+    w, h = sheet.size
+    for k, name in enumerate(PLANTS):
+        cx, cy = k % 4, k // 4
+        cell = sheet.crop((int((cx + 0.04) * w / 4), int((cy + 0.03) * h / 4),
+                           int((cx + 0.96) * w / 4), int((cy + 0.80) * h / 4)))  # sin el nombre de abajo
+        sprite = _sprite(cell, 16)
+        if sprite is None:
+            continue
+        sprite = sprite.resize((32, 32), Image.NEAREST)
+        if name.startswith("extra:"):
+            sprite.save(os.path.join(extra, name[6:] + ".png"))
+        else:
+            sprite.save(os.path.join(DECOR, name + ".png"))
+    print("plantas: %d" % len(PLANTS))
+
+
+if __name__ == "__main__":
+    what = sys.argv[1] if len(sys.argv) > 1 else "todo"
+    if what in ("bloques", "todo"):
+        cut_blocks()
+    if what in ("plantas", "todo"):
+        cut_plants()
