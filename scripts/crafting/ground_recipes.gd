@@ -93,6 +93,16 @@ const RECIPES := {
 		"result": "campfire", "count": 1, "action": "Montar", "time": 2.5,
 		"layers": [["RRR", "RSR", "RRR"], ["...", ".F.", "..."]], "key": {"R": "rock", "S": "sticks", "F": "fiber"},
 	},
+	# Equipo de piel (piel de animales, cuerda y hueso): ver GearDB.
+	"hide_cap": {"result": "hide_cap", "count": 1, "action": "Coser", "time": 3.0, "layers": [["HHR"]], "key": {"H": "hide", "R": "rope"}},
+	"hide_vest": {"result": "hide_vest", "count": 1, "action": "Coser", "time": 5.0, "layers": [["HHH", "HRH"]], "key": {"H": "hide", "R": "rope"}},
+	"hide_trousers": {"result": "hide_trousers", "count": 1, "action": "Coser", "time": 4.0, "layers": [["HHH", "H.H"]], "key": {"H": "hide"}},
+	"hide_boots": {"result": "hide_boots", "count": 1, "action": "Coser", "time": 3.0, "layers": [["H.H", "R.R"]], "key": {"H": "hide", "R": "rope"}},
+	"hide_gloves": {"result": "hide_gloves", "count": 1, "action": "Coser", "time": 2.5, "layers": [["H.H"]], "key": {"H": "hide"}},
+	"sail_cloak": {"result": "sail_cloak", "count": 1, "action": "Coser", "time": 3.0, "layers": [["TTT", "TRT"]], "key": {"T": "cloth", "R": "rope"}},
+	"bone_necklace": {"result": "bone_necklace", "count": 1, "action": "Atar", "time": 2.0, "layers": [["BR"]], "key": {"B": "bone", "R": "rope"}},
+	"tusk_ring": {"result": "tusk_ring", "count": 1, "action": "Tallar", "time": 3.0, "layers": [["TK"]], "key": {"T": "tusk", "K": "stone_knife"}, "tools": ["K"]},
+	"shell_amulet": {"result": "shell_amulet", "count": 1, "action": "Atar", "time": 2.0, "layers": [["SR"]], "key": {"S": "shell", "R": "rope"}},
 	"furnace": {
 		"result": "furnace", "count": 1, "action": "Montar", "time": 5.0,
 		"layers": [["RRR", "RCR", "RRR"], [".R.", "R.R", ".R."]], "key": {"R": "rock", "C": "clay"},
@@ -114,7 +124,8 @@ const RECIPES := {
 ## Lo que el personaje sabe hacer desde el principio (nada: lo básico viene en el diario).
 const KNOWN_AT_START := []
 ## Lo que se puede leer en el diario del capitán (está empapado: solo se salva lo básico).
-const JOURNAL_RECIPES := ["rope", "sharp_rock", "stone_knife", "stone_axe", "board", "workbench", "torch", "campfire", "bedroll", "spear", "raft", "plank_slab", "chest", "bow", "arrow", "wooden_shield"]  # el horno lo enseña el herrero
+const JOURNAL_RECIPES := ["rope", "sharp_rock", "stone_knife", "stone_axe", "board", "workbench", "torch", "campfire", "bedroll", "spear", "raft", "plank_slab", "chest", "bow", "arrow", "wooden_shield",
+	"hide_cap", "hide_vest", "hide_trousers", "hide_boots", "hide_gloves", "sail_cloak", "bone_necklace", "tusk_ring", "shell_amulet"]  # el horno lo enseña el herrero
 
 
 ## Celdas de la forma: {Vector3i(columna, capa, fila): id del objeto}.

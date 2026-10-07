@@ -13,13 +13,7 @@ const BOW_FULL_DRAW := 1.5
 const BOW_FATIGUE := 2.5
 const HEAVY_CHARGE := 0.55
 const COMBOS := {"LHL": {"damage": 1.5, "stun": 0.6}, "LLH": {"damage": 1.65, "stun": 1.0}, "HLL": {"damage": 1.4, "stun": 0.5}}
-const WEAPONS := {
-	"": {"damage": 5.0, "reach": 1.8, "cooldown": 0.55, "cost": 7.0},
-	"stone_knife": {"damage": 12.0, "reach": 2.0, "cooldown": 0.45, "cost": 10.0},
-	"stone_axe": {"damage": 22.0, "reach": 2.3, "cooldown": 0.85, "cost": 18.0},
-	"stone_pick": {"damage": 16.0, "reach": 2.3, "cooldown": 0.8, "cost": 16.0},
-	"spear": {"damage": 18.0, "reach": 3.1, "cooldown": 0.7, "cost": 13.0},
-}
+const WEAPONS := GearDB.WEAPONS  # las armas son fichas del catálogo de equipo
 var player: Player
 var health := MAX_HEALTH
 var stamina := MAX_STAMINA
@@ -61,7 +55,8 @@ func apply_shock(seconds: float, speed_factor: float) -> void:
 	_shock_speed = clampf(speed_factor, 0.2, 1.0)
 
 func movement_factor() -> float:
-	return _shock_speed if _shock_seconds > 0.0 else 1.0
+	var heavy := 1.0 - GearDB.burden(float(player.gear["weight"])) * 0.5  # la armadura pesada frena
+	return heavy * (_shock_speed if _shock_seconds > 0.0 else 1.0)
 
 func _ready() -> void:
 	var canvas := CanvasLayer.new()
@@ -118,7 +113,8 @@ func _process(delta: float) -> void:
 	if not player.ui_open and not _dying:
 		if _regen_delay <= 0.0 and not blocking and not drawing_bow and _dodge_time <= 0.0:
 			var tired := player.needs != null and player.needs.fatigue >= Needs.EXHAUSTED
-			stamina = minf(MAX_STAMINA, stamina + delta * (9.0 if tired else 18.0))  # agotado, la mitad
+			var regen := (9.0 if tired else 18.0) * (1.0 - GearDB.burden(float(player.gear["weight"])) * 0.5) * (1.0 + player.gear_effect("stamina_regen"))
+			stamina = minf(MAX_STAMINA, stamina + delta * regen)  # agotado, la mitad; el peso, menos
 		if health > 0.0 and player.needs != null and player.needs.hunger > 50.0 and player.needs.thirst > 40.0 and _poison <= 0.0:
 			health = minf(MAX_HEALTH, health + delta * 0.5)
 	if _poison > 0.0 and not player.creative and not _dying:
@@ -221,7 +217,7 @@ func try_attack(heavy := false, prepared := false) -> bool:
 	var finisher: Dictionary = COMBOS.get(_combo, {})
 	var airborne := not player.is_on_floor() and not player._flying and player.raft == null
 	var attack := {"id": id, "slot": player._hotbar_index, "reach": weapon["reach"],
-		"damage": float(weapon["damage"]) * (2.0 if heavy else 1.0) * (1.25 if airborne else 1.0) * float(finisher.get("damage", 1.0)) * player.skills.bonus("melee", 0.04),
+		"damage": float(weapon["damage"]) * (2.0 if heavy else 1.0) * (1.25 if airborne else 1.0) * float(finisher.get("damage", 1.0)) * player.skills.bonus("melee", 0.04) * (1.0 + player.gear_effect("melee")),
 		"stun": float(finisher.get("stun", 0.0)), "heavy": heavy}
 	player._held.swing()
 	player._avatar.swing()
@@ -264,6 +260,7 @@ func selected_id() -> String:
 func _spend(amount: float) -> bool:
 	if player.creative:
 		return true
+	amount *= 1.0 + GearDB.burden(float(player.gear["weight"]))  # el peso cansa más
 	if stamina < amount:
 		return false
 	stamina -= amount
@@ -454,6 +451,9 @@ func take_damage(amount: float, from: Vector3, poison_seconds := 0.0, attacker: 
 	_combo_timer = 0.0
 	cancel_bow()
 	cancel_melee_charge()
+	if attacker != null:  # los golpes (no el veneno) los para la armadura, y la gastan
+		amount *= GearDB.damage_factor(float(player.gear["armor"]))
+		player.wear_armor()
 	health = maxf(0.0, health - amount)
 	invulnerable = 0.55
 	_poison = maxf(_poison, poison_seconds)
@@ -473,6 +473,7 @@ func _die() -> void:
 	var bag := DeathBackpack.new()
 	bag.contents = player.inventory.to_data().filter(func(s: Dictionary) -> bool: return not s.is_empty())
 	bag.equipment = player.equipment.duplicate(true)
+	bag.wear = player.gear_wear.duplicate()
 	bag.position = player.global_position + Vector3.UP * 0.15
 	player.get_parent().add_child(bag)
 	player.inventory.clear()

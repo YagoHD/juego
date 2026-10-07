@@ -11,12 +11,17 @@ const EQUIP_SLOTS := [
 	["belt", "Cinturón", "+2 huecos en la barra"],
 	["backpack", "Mochila", "+18 huecos de inventario"],
 	["offhand", "Escudo", "Bloquea con clic derecho; consume resistencia"],
+	["head", "Cabeza", "Casco o gorro"], ["chest", "Torso", "Coraza o chaleco"],
+	["legs", "Piernas", "Grebas o perneras"], ["feet", "Pies", "Botas"], ["hands", "Manos", "Guantes"],
+	["cloak", "Capa", "Capa"], ["ring", "Anillo", "Anillo"], ["necklace", "Colgante", "Colgante"],
+	["amulet", "Amuleto", "Amuleto"],
 ]
 
 var _player: Player
 var _screen: InventoryScreen
 var _equip_views := {}        # hueco -> Panel
 var _message: Label
+var _stats: Label
 
 
 func _init(player: Player, screen: InventoryScreen) -> void:
@@ -29,7 +34,7 @@ func _init(player: Player, screen: InventoryScreen) -> void:
 	title.add_theme_font_size_override("font_size", 18)
 	add_child(title)
 	var grid := GridContainer.new()
-	grid.columns = 2
+	grid.columns = 4
 	grid.add_theme_constant_override("h_separation", 10)
 	grid.add_theme_constant_override("v_separation", 6)
 	add_child(grid)
@@ -45,10 +50,17 @@ func _init(player: Player, screen: InventoryScreen) -> void:
 		var label := Label.new()
 		label.text = entry[1]
 		label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		label.custom_minimum_size = Vector2(SLOT + 24, 0)
+		label.custom_minimum_size = Vector2(SLOT + 14, 0)
 		label.add_theme_font_size_override("font_size", 11)
 		label.add_theme_color_override("font_color", Color(0.8, 0.76, 0.7))
 		column.add_child(label)
+
+	_stats = Label.new()
+	_stats.add_theme_font_size_override("font_size", 12)
+	_stats.add_theme_color_override("font_color", Color(0.9, 0.85, 0.7))
+	_stats.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_stats.custom_minimum_size = Vector2(240, 0)
+	add_child(_stats)
 
 	_message = Label.new()
 	_message.add_theme_font_size_override("font_size", 12)
@@ -94,23 +106,25 @@ func _on_equip_input(event: InputEvent, slot: String) -> void:
 	if held.is_empty():
 		if worn == "":
 			return
+		var taken := _player.worn_stack(slot)
 		if _player.unequip(slot) == "":
 			_message.text = "Vacía primero los huecos que da %s." % ItemDB.display_name(worn).to_lower()
 			return
-		_screen.set_cursor_stack({"id": worn, "count": 1})
+		_screen.set_cursor_stack(taken)
 	elif ItemDB.wear_slot(held["id"]) != slot:
 		_message.text = "Eso no va ahí."
 	elif worn == "":
-		_player.equip(slot, held["id"])
+		_player.equip(slot, held["id"], int(held.get("dur", -1)))
 		_screen.set_cursor_stack({})
 	else:
 		# Cambiar una prenda por otra del mismo hueco.
 		if not _player.can_unequip(slot):
 			_message.text = "Vacía primero los huecos que da %s." % ItemDB.display_name(worn).to_lower()
 			return
+		var taken := _player.worn_stack(slot)
 		_player.unequip(slot)
-		_player.equip(slot, held["id"])
-		_screen.set_cursor_stack({"id": worn, "count": 1})
+		_player.equip(slot, held["id"], int(held.get("dur", -1)))
+		_screen.set_cursor_stack(taken)
 	_refresh()
 
 
@@ -122,9 +136,18 @@ func _refresh() -> void:
 		if worn == "":
 			# Silueta gris de lo que va en ese hueco (la dibujada; si no, el icono apagado).
 			var outline := UiTheme.icon("slot_" + slot)
-			icon.texture = outline if outline != null else ItemDB.icon(slot)
+			icon.texture = outline if outline != null else ItemDB.icon(slot if not (slot in GearDB.SLOTS or slot == "offhand") else "silhouette_" + slot)
 			icon.modulate = Color(1, 1, 1, 0.75 if outline != null else 0.18)
 		else:
 			icon.texture = ItemDB.icon(worn)
 			icon.modulate = Color.WHITE
+	var gear: Dictionary = _player.gear
+	var burden := GearDB.burden(float(gear["weight"]))
+	var lines := "Protección %d (recibes el %d%% del daño) · Peso %.1f kg" % [
+		int(gear["armor"]), int(GearDB.damage_factor(float(gear["armor"])) * 100.0), float(gear["weight"])]
+	if burden > 0.0:
+		lines += "\nCargado: %d%% más lento y %d%% más cansado" % [int(burden * 50.0), int(burden * 100.0)]
+	for set_id in gear["sets"]:
+		lines += "\n%s: %d piezas" % [GearDB.SETS[set_id]["name"], gear["sets"][set_id]]
+	_stats.text = lines
 

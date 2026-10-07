@@ -107,6 +107,28 @@ Reply "OK" and wait.
 | `gold_coin.glb` | A single medieval gold coin with a simple stamped cross, seen at an angle. |
 | `death_backpack.glb` | A dropped makeshift backpack made of sail cloth and rope, lying on the ground, slightly open. |
 
+## Armaduras y accesorios (para verlas puestas y en el visor 3D)
+
+Pedir cada pieza **sola, sin cuerpo dentro**, de frente y ligeramente desde arriba. Luego habrá
+que ajustarla al cuerpo del personaje (avisaré antes de tocar nada del modelo).
+
+| Archivo | Prompt para ChatGPT |
+|---|---|
+| `hide_cap.glb` | A rough leather cap sewn with fiber rope. |
+| `hide_vest.glb` | A thick sleeveless leather vest made of two layers of hide, laced with rope. |
+| `hide_trousers.glb` | A pair of leather leg guards tied with straps. |
+| `hide_boots.glb` | A pair of soft leather boots with a double sole. |
+| `hide_gloves.glb` | A pair of leather gloves. |
+| `sail_cloak.glb` | A hooded cloak made of old cream sail cloth, slightly torn at the bottom. |
+| `bone_necklace.glb` | A carved bone pendant on a simple cord. |
+| `tusk_ring.glb` | A ring carved from a boar tusk. |
+| `shell_amulet.glb` | A seashell amulet on a cord. |
+| `ancient_helm.glb` | An ancient helm of pale silvery metal that never rusts, engraved with strange runes. |
+| `ancient_cuirass.glb` | An ancient cuirass of pale silvery metal with strange runes and an empty jewel socket in the chest. |
+| `ancient_greaves.glb` | Ancient greaves of pale silvery metal with strange runes. |
+| `ancient_boots.glb` | Ancient armored boots of pale silvery metal with strange runes. |
+| `ancient_gauntlets.glb` | Ancient gauntlets of pale silvery metal with strange runes. |
+
 ## Animales (modelos con huesos para animarlos)
 
 En Meshy, después del modelo, usar **Rigging/animación** si lo ofrece para cuadrúpedos. Mismo

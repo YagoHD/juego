@@ -145,7 +145,7 @@ static var _icons := {}
 
 
 static func exists(id: String) -> bool:
-	return BLOCK_ITEMS.has(id) or OTHER_ITEMS.has(id)
+	return BLOCK_ITEMS.has(id) or OTHER_ITEMS.has(id) or GearDB.is_gear(id)
 
 
 static func display_name(id: String) -> String:
@@ -153,6 +153,8 @@ static func display_name(id: String) -> String:
 		return Blocks.name_of(BLOCK_ITEMS[id])
 	if OTHER_ITEMS.has(id):
 		return OTHER_ITEMS[id]["name"]
+	if GearDB.is_gear(id):
+		return GearDB.GEAR[id]["name"]
 	return id
 
 
@@ -164,11 +166,15 @@ static func block_of(id: String) -> int:
 static func max_stack(id: String) -> int:
 	if OTHER_ITEMS.has(id):
 		return OTHER_ITEMS[id]["stack"]
+	if GearDB.is_gear(id):
+		return 1
 	return MAX_STACK
 
 
 ## Hueco de equipo donde se lleva ("shirt", "pants", "belt", "backpack"), o "" si no se lleva.
 static func wear_slot(id: String) -> String:
+	if GearDB.is_gear(id):
+		return GearDB.GEAR[id]["slot"]
 	return OTHER_ITEMS.get(id, {}).get("wear", "")
 
 

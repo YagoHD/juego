@@ -36,6 +36,7 @@ var _layout := "normal"
 var _press_pos := Vector2.ZERO           # dónde se pulsó en un hueco (para saber si se arrastra)
 ## Capa para paneles extra (botón Fabricar, recetario...) por encima de todo menos el cursor.
 var overlay: Control
+var inspector: ItemInspector              # visor 3D del objeto bajo el ratón (a la derecha)
 
 
 func _ready() -> void:
@@ -66,6 +67,8 @@ func _ready() -> void:
 	_box = VBoxContainer.new()
 	_box.add_theme_constant_override("separation", 10)
 	_row.add_child(_box)
+	inspector = ItemInspector.new()
+	_row.add_child(inspector)
 
 	overlay = Control.new()
 	overlay.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -120,6 +123,7 @@ func set_sections(sections: Array[Dictionary]) -> void:
 		for index in section["slots"]:
 			var view := _make_slot_visual(grid)
 			view.gui_input.connect(_on_slot_input.bind(s, int(index)))
+			view.mouse_entered.connect(_on_slot_hover.bind(s, int(index)))
 			_slot_views.append({"section": s, "index": int(index), "panel": view,
 				"icon": view.get_node("icon"), "count": view.get_node("count")})
 		var inv: Inventory = section["inventory"]
@@ -184,6 +188,15 @@ func _on_slot_input(event: InputEvent, section: int, index: int) -> void:
 	elif button.button_index == MOUSE_BUTTON_RIGHT:
 		_right_click(inv, index)
 	_refresh()
+
+
+## El ratón pasa por un hueco: el visor enseña lo que hay (si está vacío, sigue lo anterior).
+func _on_slot_hover(section: int, index: int) -> void:
+	if section >= _sections.size():
+		return
+	var stack: Dictionary = (_sections[section]["inventory"] as Inventory).get_slot(index)
+	if not stack.is_empty():
+		inspector.show_stack(stack)
 
 
 func _slot_event_position(event: InputEventMouseButton, section: int, index: int) -> Vector2:
@@ -428,6 +441,7 @@ func set_layout(mode: String) -> void:
 	_panel.self_modulate.a = 1.0 if mode == "normal" else 0.85  # algo transparente: se ve el mundo
 	if _side != null:
 		_side.visible = mode != "craft"
+	inspector.visible = mode == "normal"  # fabricando en el suelo, el mundo necesita el sitio
 
 
 func layout() -> String:

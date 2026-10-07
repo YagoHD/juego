@@ -104,7 +104,17 @@ static func paint(id: String) -> Image:
 		"leaf": _leaf(img)
 		"pine_needles": _pine_needles(img)
 		"bark": _bark(img)
-		_: img.fill(Color.MAGENTA)
+		_:
+			if GearDB.is_gear(id):
+				_gear(img, GearDB.GEAR[id]["slot"], GearDB.rarity_color(id))
+			elif id.begins_with("silhouette_"):  # hueco de equipo vacío: la forma en gris
+				var slot := id.trim_prefix("silhouette_")
+				if slot == "offhand":
+					paint_into(img, "wooden_shield")
+				else:
+					_gear(img, slot, Color(0.75, 0.75, 0.75))
+			else:
+				img.fill(Color.MAGENTA)
 	_outline(img)
 	return img
 
@@ -551,3 +561,50 @@ static func _bark(img: Image) -> void:
 		_rect(img, x0, y, x0 + 7, y, c)
 		for k in [x0 + 1, x0 + 4, x0 + 6]:
 			img.set_pixel(k, y, c.darkened(0.35) if (y + k) % 3 != 0 else c.lightened(0.15))
+
+
+## Dibuja el icono de otro objeto en esta imagen (para siluetas).
+static func paint_into(img: Image, id: String) -> void:
+	img.blit_rect(paint(id), Rect2i(0, 0, S, S), Vector2i.ZERO)
+
+
+## Icono provisional de una pieza de equipo: su forma según el hueco y el color de su rareza
+## (los dibujos de verdad los hará ChatGPT: docs/TEXTURAS.md).
+static func _gear(img: Image, slot: String, rarity: Color) -> void:
+	var c := rarity.darkened(0.25)
+	match slot:
+		"head":
+			_rect(img, 4, 4, 11, 9, c)
+			_rect(img, 3, 9, 12, 10, c.darkened(0.2))
+			_rect(img, 6, 7, 9, 8, Color(0.1, 0.1, 0.1))
+		"chest":
+			_rect(img, 4, 3, 11, 12, c)
+			_rect(img, 2, 3, 3, 7, c)
+			_rect(img, 12, 3, 13, 7, c)
+			_rect(img, 7, 4, 8, 11, c.lightened(0.25))
+		"legs":
+			_rect(img, 4, 2, 11, 5, c)
+			_rect(img, 4, 6, 6, 13, c)
+			_rect(img, 9, 6, 11, 13, c)
+		"feet":
+			_rect(img, 3, 6, 6, 12, c)
+			_rect(img, 3, 11, 8, 13, c)
+			_rect(img, 9, 6, 12, 12, c.darkened(0.1))
+			_rect(img, 9, 11, 14, 13, c.darkened(0.1))
+		"hands":
+			_rect(img, 4, 6, 11, 12, c)
+			_rect(img, 4, 2, 5, 6, c)
+			_rect(img, 6, 2, 7, 6, c)
+			_rect(img, 8, 2, 9, 6, c)
+			_rect(img, 12, 7, 13, 10, c)
+		"cloak":
+			_rect(img, 5, 2, 10, 4, c)
+			_rect(img, 3, 4, 12, 13, c.darkened(0.1))
+		"ring":
+			_rect(img, 4, 6, 11, 12, c)
+			_rect(img, 6, 8, 9, 10, Color(0, 0, 0, 0))
+			_rect(img, 6, 4, 9, 5, rarity.lightened(0.3))
+		"necklace", "amulet":
+			_line(img, Vector2i(3, 2), Vector2i(7, 9), c)
+			_line(img, Vector2i(12, 2), Vector2i(8, 9), c)
+			_rect(img, 6, 9, 9, 12, rarity.lightened(0.2))

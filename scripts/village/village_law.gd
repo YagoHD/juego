@@ -28,7 +28,11 @@ var murderer := false   # mató a alguien a la vista: no se perdona
 
 
 static func value_of(id: String) -> float:
-	return float(VALUES.get(id, 1.0))
+	if VALUES.has(id):
+		return float(VALUES[id])
+	if GearDB.is_gear(id):
+		return GearDB.value(id)  # el equipo vale según su rareza
+	return 1.0
 
 
 ## Los guardias deben atacar al jugador.

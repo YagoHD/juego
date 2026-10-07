@@ -86,7 +86,12 @@ var inventory := Inventory.new(36)
 var creative_inventory := Inventory.new(36)
 var creative := false
 ## Ropa y mochila puestas: id del objeto o "" (dan bolsillos e inventario, ver hotbar_size).
-var equipment := {"shirt": "", "pants": "", "belt": "", "backpack": "", "offhand": ""}
+var equipment := {"shirt": "", "pants": "", "belt": "", "backpack": "", "offhand": "",
+	"head": "", "chest": "", "legs": "", "feet": "", "hands": "", "cloak": "", "ring": "", "necklace": "", "amulet": ""}
+## Lo que le queda a cada pieza de armadura puesta (golpes que aguanta; ver GearDB).
+var gear_wear := {}
+## Suma de lo puesto: protección, peso y efectos (se recalcula al cambiar de equipo).
+var gear := GearDB.totals({}, {})
 const BASE_HOTBAR := 3    # huecos de la barra sin ropa con bolsillos
 const BASE_STORAGE := 9   # huecos de inventario sin mochila
 ## Recetas de fabricar en el suelo que conoce (se dibujan en el diario del capitán).
@@ -840,10 +845,12 @@ func unlocked_slots() -> Array:
 
 
 ## Ponerse una prenda (o la mochila). Devuelve false si no es para ese hueco o ya hay otra.
-func equip(slot: String, id: String) -> bool:
+func equip(slot: String, id: String, wear := -1) -> bool:
 	if ItemDB.wear_slot(id) != slot or equipment.get(slot, "x") != "":
 		return false
 	equipment[slot] = id
+	if GearDB.durability(id) > 0:
+		gear_wear[slot] = wear if wear >= 0 else GearDB.durability(id)  # nueva: entera
 	_on_equipment_changed()
 	return true
 
@@ -869,19 +876,57 @@ func unequip(slot: String) -> String:
 		return ""
 	var id: String = equipment[slot]
 	equipment[slot] = ""
+	gear_wear.erase(slot)
 	_on_equipment_changed()
 	return id
 
 
+## El montón que sale al quitarse una pieza (con lo que le queda de desgaste, si se gasta).
+func worn_stack(slot: String) -> Dictionary:
+	var id: String = equipment.get(slot, "")
+	if id == "":
+		return {}
+	var stack := {"id": id, "count": 1}
+	if gear_wear.has(slot):
+		stack["dur"] = int(gear_wear[slot])
+	return stack
+
+
+## Un golpe recibido gasta un poco cada pieza de armadura puesta (las que no son eternas).
+func wear_armor() -> void:
+	var broke := false
+	for slot in gear_wear.keys():
+		if int(gear_wear[slot]) > 0:
+			gear_wear[slot] = int(gear_wear[slot]) - 1
+			if int(gear_wear[slot]) == 0:
+				broke = true
+				notice.emit("Se ha roto: %s. Ya no protege (repárala en una fragua)." % ItemDB.display_name(equipment[slot]))
+	if broke:
+		_refresh_gear()
+
+
 ## Para cargar la partida: pone el equipo guardado (ignora lo que no encaje en su hueco).
-func set_equipment(data: Dictionary) -> void:
+func set_equipment(data: Dictionary, wear: Dictionary = {}) -> void:
+	gear_wear.clear()
 	for slot in equipment:
 		var id := str(data.get(slot, ""))
 		equipment[slot] = id if ItemDB.wear_slot(id) == slot else ""
+		if GearDB.durability(equipment[slot]) > 0:
+			gear_wear[slot] = clampi(int(wear.get(slot, GearDB.durability(equipment[slot]))), 0, GearDB.durability(equipment[slot]))
 	_on_equipment_changed()
 
 
+func _refresh_gear() -> void:
+	gear = GearDB.totals(equipment, gear_wear)
+
+
+## Un efecto del equipo puesto (0 si no lo hay).
+func gear_effect(key: String) -> float:
+	return float(gear["effects"].get(key, 0.0))
+
+
 func _on_equipment_changed() -> void:
+	_refresh_gear()
 	_select_slot(_hotbar_index)
 	update_appearance()
 	inventory_layout_changed.emit()

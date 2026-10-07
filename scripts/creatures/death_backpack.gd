@@ -6,6 +6,7 @@ signal recovered
 const LAYER := 16
 var contents: Array = []
 var equipment: Dictionary = {}
+var wear: Dictionary = {}       # desgaste de las piezas de armadura que se llevaban
 var _label: Label3D
 
 func _ready() -> void:
@@ -56,10 +57,13 @@ func recover(player: Player) -> bool:
 		var id := str(equipment[slot])
 		if id == "":
 			equipment.erase(slot)
-		elif str(player.equipment.get(slot, "")) == "" and player.equip(slot, id):
+		elif str(player.equipment.get(slot, "")) == "" and player.equip(slot, id, int(wear.get(slot, -1))):
 			equipment.erase(slot)
 		else:
-			contents.append({"id": id, "count": 1})
+			var stack := {"id": id, "count": 1}
+			if wear.has(slot):
+				stack["dur"] = int(wear[slot])
+			contents.append(stack)
 			equipment.erase(slot)
 	for stack in contents.duplicate():
 		if not stack is Dictionary or stack.is_empty():
@@ -78,7 +82,7 @@ func recover(player: Player) -> bool:
 	return empty
 
 func to_data() -> Dictionary:
-	return {"position": [global_position.x, global_position.y, global_position.z], "contents": contents.duplicate(true), "equipment": equipment.duplicate(true)}
+	return {"position": [global_position.x, global_position.y, global_position.z], "contents": contents.duplicate(true), "equipment": equipment.duplicate(true), "wear": wear.duplicate()}
 
 static func restore(parent: Node, data: Dictionary) -> DeathBackpack:
 	var bag := DeathBackpack.new()
@@ -89,6 +93,8 @@ static func restore(parent: Node, data: Dictionary) -> DeathBackpack:
 		var id := str(data["equipment"][slot])
 		if ItemDB.wear_slot(id) == slot:
 			bag.equipment[slot] = id
+	if data.get("wear") is Dictionary:
+		bag.wear = data["wear"].duplicate()
 	var p: Array = data.get("position", [0, 1, 0])
 	bag.position = Vector3(float(p[0]), float(p[1]), float(p[2]))
 	parent.add_child(bag)

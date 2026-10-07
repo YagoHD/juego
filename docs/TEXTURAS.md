@@ -138,6 +138,7 @@ Hojas hechas (`docs/concept/`):
 | Mochila perdida al morir (en el suelo) | ❌ | modelo en `PROMPTS_MESHY.md`; ahora es una caja marrón |
 | Barra de sueño (icono de la luna) | ❌ | hoja 14 (nº 6); ahora sale la palabra "Sueño" |
 | Pepita de oro, moneda de oro | ❌ | hoja 15 (nº 1-2) |
+| Armaduras y accesorios (iconos): conjunto de piel, capa, colgante, anillo, amuleto, armadura de los antiguos | ❌ | hoja 16; ahora, formas provisionales del color de su rareza |
 | Horno de piedra (icono y en el mundo) | ❌ | hoja 15 (nº 3); en el mundo, modelo en `PROMPTS_MESHY.md`; ahora es un bloque gris |
 
 ## Personaje
@@ -234,6 +235,20 @@ plain beige background, front view slightly tilted, centered, no ground shadows:
 1 a small raw gold nugget, rough and shiny
 2 a stack of three medieval gold coins with a simple stamped cross
 3 a small stone furnace made of stacked rocks and clay, with a dark mouth and a short chimney
+```
+
+## Hoja 16: armaduras y accesorios (iconos)
+
+```
+Same style as the item sheets. A clean 5x3 grid of 15 INVENTORY ICONS, numbered 1-15 under each,
+plain beige background, front view slightly tilted, centered, no ground shadows:
+1 a rough leather cap   2 a thick leather vest   3 leather leg guards   4 soft leather boots
+5 leather gloves   6 a cloak made of old sail cloth   7 a carved bone pendant on a cord
+8 a ring carved from a boar tusk   9 a seashell amulet on a cord
+10-14 an ancient legendary armor set made of a pale silvery metal that never rusts, engraved with
+strange runes: 10 helm, 11 cuirass with an empty jewel socket in the chest, 12 greaves,
+13 boots, 14 gauntlets
+15 (leave empty)
 ```
 
 ## Hoja 11: efectos y cielo

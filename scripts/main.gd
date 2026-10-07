@@ -597,6 +597,7 @@ func _save_player() -> void:
 		"inventory": _player.inventory.to_data(),
 		"creative": _player.creative,
 		"equipment": _player.equipment,
+		"gear_wear": _player.gear_wear,
 		"recipes": _player.known_recipes,
 		"journal": _player.has_journal,
 		"objectives": _objectives.to_data(),
@@ -629,7 +630,7 @@ func _load_player() -> void:
 	if d.get("inventory") is Array:
 		_player.inventory.from_data(d["inventory"])
 	if d.get("equipment") is Dictionary:
-		_player.set_equipment(d["equipment"])
+		_player.set_equipment(d["equipment"], d.get("gear_wear", {}) if d.get("gear_wear") is Dictionary else {})
 	_player.has_journal = bool(d.get("journal", false))
 	_last_drift_day = int(d.get("drift_day", 1))
 	if d.get("explored") is String:

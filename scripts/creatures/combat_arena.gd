@@ -289,7 +289,7 @@ func save() -> void:
 				"home": [actor.home.x, actor.home.y, actor.home.z], "alert_seconds": actor.alert_seconds,
 				"squad": squads.find(actor.squad), "squad_slot": actor.squad_slot})
 	var bags := get_tree().get_nodes_in_group("death_backpacks").filter(func(b: Node) -> bool: return not b.is_queued_for_deletion()).map(func(b: Node) -> Dictionary: return (b as DeathBackpack).to_data())
-	var data := {"inventory": player.inventory.to_data(), "equipment": player.equipment, "combat": player.combat.to_data(), "needs": player.needs.to_data(), "bags": bags, "creatures": creatures, "squads": squad_data, "hour": hour}
+	var data := {"inventory": player.inventory.to_data(), "equipment": player.equipment, "gear_wear": player.gear_wear, "combat": player.combat.to_data(), "needs": player.needs.to_data(), "bags": bags, "creatures": creatures, "squads": squad_data, "hour": hour}
 	var file := FileAccess.open(save_path, FileAccess.WRITE)
 	if file != null:
 		file.store_string(JSON.stringify(data, "\t"))
@@ -302,7 +302,7 @@ func _load() -> bool:
 		return false
 	var data: Dictionary = value
 	_loading = true
-	player.set_equipment(data.get("equipment", {}))
+	player.set_equipment(data.get("equipment", {}), data.get("gear_wear", {}))
 	player.inventory.from_data(data.get("inventory", []))
 	player.combat.from_data(data.get("combat", {}))
 	player.needs.from_data(data.get("needs", {}))

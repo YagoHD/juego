@@ -375,7 +375,7 @@ func _show_notice(message: String) -> void:
 func save() -> void:
 	if OS.get_cmdline_user_args().has("--village-no-save"):
 		return
-	var data := {"inventory": player.inventory.to_data(), "equipment": player.equipment, "combat": player.combat.to_data(),
+	var data := {"inventory": player.inventory.to_data(), "equipment": player.equipment, "gear_wear": player.gear_wear, "combat": player.combat.to_data(),
 		"hour": hour, "village": village.to_data()}
 	var file := FileAccess.open(save_path, FileAccess.WRITE)
 	if file != null:
@@ -389,7 +389,7 @@ func _load() -> bool:
 	if not value is Dictionary:
 		return false
 	var data: Dictionary = value
-	player.set_equipment(data.get("equipment", {}))
+	player.set_equipment(data.get("equipment", {}), data.get("gear_wear", {}))
 	player.inventory.from_data(data.get("inventory", []))
 	player.combat.from_data(data.get("combat", {}))
 	hour = float(data.get("hour", 8.0))
