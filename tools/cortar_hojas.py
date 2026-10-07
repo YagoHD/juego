@@ -201,9 +201,123 @@ def cut_plants():
     print("plantas: %d" % len(PLANTS))
 
 
+# Hojas de iconos (4x4, el nombre debajo de cada uno) -> id del objeto en el juego. Varios ids
+# pueden compartir dibujo (las notas). None: casilla vacía.
+ICON_SHEETS = {
+    "guia_40_iconos_1.png": ["rope", "fiber", "sticks", "rock", "flint", "sharp_rock", "resin", "seeds",
+                             "stone_knife", "stone_axe", "stone_pick", "spear", "torch", "board", "raw_fish",
+                             "cooked_fish"],
+    "iconos_2_herramientas.png": ["bow", "arrow", "wooden_shield", "campfire", "bedroll", "raft", "furnace",
+                                  "captain_journal", ["note_belt", "note_backpack", "note_pick"], "rough_backpack",
+                                  "backpack", "gold_nugget", "gold_coin", "green_ore", "shell", "leaf"],
+    "iconos_3_comida.png": ["berries", "roasted_berries", "mushroom", "roasted_mushroom", "insect", "roasted_insect",
+                            "roasted_seeds", "raw_crab", "cooked_crab", "wheat", "flatbread", "raw_meat",
+                            "cooked_meat", "raw_poultry", "cooked_poultry", "dawn_bean"],
+    "iconos_4_botin.png": ["hide", "bone", "tusk", "feather", "venom_gland", "iron_scrap", "arcane_dust",
+                           "enemy_orders", "anchor_shard", "pine_needles", "bark", "flower_red", "flower_yellow",
+                           "shirt", "pants", "belt"],
+    "iconos_5_equipo.png": ["hide_cap", "hide_vest", "hide_trousers", "hide_boots", "hide_gloves", "sail_cloak",
+                            "bone_necklace", "tusk_ring", "shell_amulet", "ancient_helm", "ancient_cuirass",
+                            "ancient_greaves", "ancient_boots", "ancient_gauntlets", None, None],
+}
+ICON_SIZE = 32
+ICONS_OLD = os.path.join(ROOT, "assets", "textures", "items_antiguos")
+
+
+def _icon(cell):
+    """Dibujo de una casilla de icono sin el fondo (ni su sombra), encuadrado y reducido."""
+    arr = np.asarray(cell.convert("RGB")).astype(int)
+    h, w = arr.shape[:2]
+    border = np.concatenate([arr[:4].reshape(-1, 3), arr[-4:].reshape(-1, 3), arr[:, :4].reshape(-1, 3),
+                             arr[:, -4:].reshape(-1, 3)])
+    bg = np.median(border, axis=0)
+    diff = arr - bg
+    dist = np.abs(diff).sum(2)
+    # Fondo: casi el color del fondo, o su sombra (más oscura pero del mismo tono y sin color propio).
+    chroma = np.abs((arr[..., 0] - arr[..., 1]) - (bg[0] - bg[1])) + np.abs((arr[..., 1] - arr[..., 2]) - (bg[1] - bg[2]))
+    like_bg = (dist < 45) | ((chroma < 20) & (arr.sum(2) > 3 * 125))
+    # Solo cuenta como fondo lo que está unido al borde (no se come lo claro de dentro del dibujo).
+    from collections import deque
+    bgmask = np.zeros((h, w), bool)
+    q = deque()
+    for x in range(w):
+        for y in (0, h - 1):
+            if like_bg[y, x] and not bgmask[y, x]:
+                bgmask[y, x] = True
+                q.append((y, x))
+    for y in range(h):
+        for x in (0, w - 1):
+            if like_bg[y, x] and not bgmask[y, x]:
+                bgmask[y, x] = True
+                q.append((y, x))
+    while q:
+        y, x = q.popleft()
+        for dy, dx in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+            ny, nx = y + dy, x + dx
+            if 0 <= ny < h and 0 <= nx < w and like_bg[ny, nx] and not bgmask[ny, nx]:
+                bgmask[ny, nx] = True
+                q.append((ny, nx))
+    ys, xs = np.where(~bgmask)
+    if len(xs) < 50:
+        return None
+    x0, x1, y0, y1 = xs.min(), xs.max() + 1, ys.min(), ys.max() + 1
+    side = int(max(x1 - x0, y1 - y0) * 1.04)
+    cx, cy = (x0 + x1) // 2, (y0 + y1) // 2
+    rgba = np.zeros((h, w, 4), np.uint8)
+    rgba[..., :3] = arr.clip(0, 255)
+    rgba[..., 3] = np.where(bgmask, 0, 255)
+    img = Image.fromarray(rgba, "RGBA").crop((cx - side // 2, cy - side // 2, cx - side // 2 + side, cy - side // 2 + side))
+    # Reducir: color medio de lo que no es fondo; transparente si la casilla es casi toda fondo.
+    big = np.asarray(img).astype(float)
+    out = np.zeros((ICON_SIZE, ICON_SIZE, 4), np.uint8)
+    step = side / ICON_SIZE
+    for j in range(ICON_SIZE):
+        for i in range(ICON_SIZE):
+            block = big[int(j * step):max(int((j + 1) * step), int(j * step) + 1),
+                        int(i * step):max(int((i + 1) * step), int(i * step) + 1)].reshape(-1, 4)
+            solid = block[block[:, 3] > 0]
+            if len(solid) >= len(block) * 0.45:
+                out[j, i, :3] = np.median(solid[:, :3], axis=0)
+                out[j, i, 3] = 255
+    return Image.fromarray(out, "RGBA")
+
+
+def cut_icons():
+    os.makedirs(ICONS, exist_ok=True)
+    os.makedirs(ICONS_OLD, exist_ok=True)
+    gdignore = os.path.join(ICONS_OLD, ".gdignore")
+    if not os.path.exists(gdignore):
+        open(gdignore, "w").close()
+    done = 0
+    for sheet, names in ICON_SHEETS.items():
+        img = Image.open(os.path.join(STYLE, sheet)).convert("RGB")
+        w, h = img.size
+        for k, name in enumerate(names):
+            if name is None:
+                continue
+            cx, cy = k % 4, k // 4
+            # Casilla sin el nombre de abajo (ni las rayas de la rejilla, si las hay).
+            cell = img.crop((int((cx + 0.03) * w / 4), int((cy + 0.02) * h / 4),
+                             int((cx + 0.97) * w / 4), int((cy + 0.78) * h / 4)))
+            icon = _icon(cell)
+            if icon is None:
+                print("  sin dibujo:", sheet, k)
+                continue
+            for id_ in (name if isinstance(name, list) else [name]):
+                path = os.path.join(ICONS, id_ + ".png")
+                old = os.path.join(ICONS_OLD, id_ + ".png")
+                if os.path.exists(path) and not os.path.exists(old):
+                    os.replace(path, old)  # el dibujo antiguo se guarda aparte
+                icon.save(path)
+                done += 1
+    print("iconos: %d" % done)
+
+
 if __name__ == "__main__":
     what = sys.argv[1] if len(sys.argv) > 1 else "todo"
     if what in ("bloques", "todo"):
         cut_blocks()
     if what in ("plantas", "todo"):
         cut_plants()
+    if what in ("iconos", "todo"):
+        cut_icons()

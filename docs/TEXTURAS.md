@@ -105,3 +105,16 @@ perspective, no shadows on the background, arm straight and hanging down, finger
 FRONT, BACK, OUTER SIDE, INNER SIDE. Below them, the same hand at a bigger scale: back of the hand,
 palm, and side view of a closed fist (as if holding a stick). Small labels under each view.
 ```
+
+## 10. Objetos en 3D (vistas para sacar su modelo de cubos) — `objetos_vistas_N.png`
+
+Propuesto a Yago (2026-10-07): los iconos ya salen de las hojas de iconos, pero para ver los objetos
+en 3D en la mano y en el suelo hace falta verlos de frente, de lado y desde arriba. Con esas tres
+vistas, Claude los convierte en modelos de cubitos (como los de Minecraft Dungeons). De 4 en 4:
+
+```
+Orthographic views sheet for 3D modelling, same style as the icon sheets (chunky blocky pixel-art
+objects, 16x16-style pixels). One ROW per object, and in each row exactly three views of that object,
+all at the same scale, perfectly flat, no perspective, no shadows, plain white background: FRONT,
+SIDE, TOP. Objects (one per row, name on the left): stone pickaxe, torch, raw fish, wild berries.
+```
