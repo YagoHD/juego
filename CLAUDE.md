@@ -9,11 +9,12 @@
   **commit por cada paso** y un resumen claro al volver. No borres su mundo guardado ni tomes
   decisiones de diseño grandes sin él: propónlas.
 - **Mecánicas clave (fabricación, combate, etc.) se diseñan con él**; no copiar Minecraft.
-- **Reparto**: ChatGPT y Meshy hacen el arte (hojas de concepto, texturas, modelos 3D); Claude el
-  código, los objetos y las mecánicas. Todo lo nuevo que necesite arte se apunta en
-  `docs/TEXTURAS.md` con su prompt (ChatGPT) o en `docs/PROMPTS_MESHY.md` (modelos 3D).
-- **Los modelos de Meshy se usan tal cual**, con su calidad: Yago no quiere que se les baje el
-  detalle. Si algo hay que adaptar (escala, agarre, trocear un modelo con varias piezas), avisa antes.
+- **Reparto**: ChatGPT hace el arte (hojas de la guía visual: texturas, iconos, hojas de vistas);
+  Claude el código, los modelos de cajas sacados de esas hojas, los objetos y las mecánicas. Todo lo
+  nuevo que necesite arte se apunta en `docs/TEXTURAS.md` con su prompt.
+- **Estilo**: Minecraft Dungeons en primera/tercera persona (`docs/ANALISIS_ESTILO.md`). **Meshy NO
+  se usa** (decidido por Yago, 2026-10-07): sus modelos lisos no encajan; todo se rehace con el
+  sistema nuevo (modelos de cajas con esqueleto desde hojas de vistas: `tools/modelo_desde_guia.py`).
 
 ## El proyecto
 - Godot **4.7.2 de Zylann con godot_voxel 1.7 integrado** (el Godot normal no sirve). Todo en

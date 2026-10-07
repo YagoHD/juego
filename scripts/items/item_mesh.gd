@@ -16,8 +16,17 @@ const MODEL_SCALE := {"stone_knife": 0.75, "stone_axe": 0.75, "stone_pick": 1.25
 static var _model_cache := {}
 
 
+## Los modelos de Meshy ya no se usan (no encajan con el estilo de cajas de la guía visual):
+## los objetos son su icono con grosor hasta que tengan su modelo de cubitos.
+const USE_MESHY := false
+## Iconos dibujados en diagonal (mango abajo a la izquierda, punta arriba a la derecha): en la mano
+## se giran 45° para que el mango quede recto dentro del puño.
+const DIAGONAL_ICONS := ["stone_knife", "stone_axe", "stone_pick", "spear", "torch", "hammer", "battle_axe",
+	"arrow", "bow", "sticks"]
+
+
 static func has_model(id: String) -> bool:
-	return ResourceLoader.exists(MODELS_DIR + id + ".res")
+	return USE_MESHY and ResourceLoader.exists(MODELS_DIR + id + ".res")
 
 
 ## El modelo con su medida mayor igual a "size" (las mallas vienen de medida 1).
@@ -57,7 +66,31 @@ static func _model(id: String, size: float, grip_fraction := -1.0) -> Mesh:
 
 
 static func make_held(id: String, length: float, grip_fraction: float) -> Mesh:
-	return _model(id, length, grip_fraction) if has_model(id) else make(id, length)
+	if has_model(id):
+		return _model(id, length, grip_fraction)
+	if id in DIAGONAL_ICONS and ItemDB.block_of(id) < 0:
+		return _diagonal_held(id, length, grip_fraction)
+	return make(id, length)
+
+
+## Icono en diagonal puesto de pie: girado 45° y con el punto de agarre (a "grip" del largo,
+## desde abajo) en el origen. "length" es el largo del objeto de punta a punta.
+static func _diagonal_held(id: String, length: float, grip: float) -> Mesh:
+	var size := length / 1.27  # la diagonal del dibujo mide ~1,27 veces su lado
+	var flat := _flat(id, size)
+	var arrays := flat.surface_get_arrays(0)
+	var rot := Basis(Vector3.BACK, PI / 4.0)
+	var shift := Vector3(0, -(-0.636 + 1.273 * grip) * size, 0)
+	var verts: PackedVector3Array = arrays[Mesh.ARRAY_VERTEX]
+	var normals: PackedVector3Array = arrays[Mesh.ARRAY_NORMAL]
+	for i in verts.size():
+		verts[i] = rot * verts[i] + shift
+		normals[i] = rot * normals[i]
+	arrays[Mesh.ARRAY_VERTEX] = verts
+	arrays[Mesh.ARRAY_NORMAL] = normals
+	var out := ArrayMesh.new()
+	out.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
+	return out
 
 
 static func make(id: String, size: float) -> Mesh:

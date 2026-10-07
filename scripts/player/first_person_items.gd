@@ -4,7 +4,7 @@ extends RefCounted
 const PROFILES := {
 	"stone_knife": {"length": 0.32, "grip": 0.17, "rotation": Vector3(-0.22, 0.0, -0.12), "pose": "handle"},
 	"stone_pick": {"length": 0.55, "grip": 0.20, "rotation": Vector3(-0.28, 0.1, -0.15), "pose": "handle"},
-	"stone_axe": {"length": 0.19, "grip": 0.23, "rotation": Vector3(-0.12, 0.3, -0.1), "pose": "cup"},
+	"stone_axe": {"length": 0.45, "grip": 0.2, "rotation": Vector3(-0.25, 0.0, -0.12), "pose": "handle"},
 	"spear": {"length": 1.05, "grip": 0.45, "rotation": Vector3(-0.55, 0.0, -0.16), "pose": "handle"},
 	"torch": {"length": 0.48, "grip": 0.20, "rotation": Vector3(-0.22, 0.0, -0.12), "pose": "handle"},
 	"rock": {"length": 0.13, "grip": 0.50, "rotation": Vector3(0.1, 0.4, 0.0), "pose": "cup", "offset": Vector3(0, 0.030, -0.02)},

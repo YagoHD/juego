@@ -279,6 +279,43 @@ def _icon(cell):
             if len(solid) >= len(block) * 0.45:
                 out[j, i, :3] = np.median(solid[:, :3], axis=0)
                 out[j, i, 3] = 255
+    # Borde: fuera los píxeles claros y sin color pegados a lo transparente (restos del fondo).
+    for _ in range(2):
+        a = out[..., 3] > 0
+        pad = np.pad(a, 1)
+        edge = a & ~(pad[:-2, 1:-1] & pad[2:, 1:-1] & pad[1:-1, :-2] & pad[1:-1, 2:])
+        c = out[..., :3].astype(int)
+        pale = (c.sum(2) > 560) & (np.abs(c[..., 0] - c[..., 2]) < 45)
+        out[edge & pale] = 0
+    # Trozos sueltos pequeños y claros (sombras del suelo, brillos): fuera. Se quedan el trozo
+    # más grande y los que tengan color propio (chispas, migas, semillas sueltas).
+    a = out[..., 3] > 0
+    label = np.zeros(a.shape, int)
+    sizes = [0]
+    for y0 in range(ICON_SIZE):
+        for x0 in range(ICON_SIZE):
+            if a[y0, x0] and not label[y0, x0]:
+                n = len(sizes)
+                label[y0, x0] = n
+                stack, count = [(y0, x0)], 0
+                while stack:
+                    y, x = stack.pop()
+                    count += 1
+                    for dy, dx in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+                        ny, nx = y + dy, x + dx
+                        if 0 <= ny < ICON_SIZE and 0 <= nx < ICON_SIZE and a[ny, nx] and not label[ny, nx]:
+                            label[ny, nx] = n
+                            stack.append((ny, nx))
+                sizes.append(count)
+    biggest = int(np.argmax(sizes))
+    c = out[..., :3].astype(int)
+    for n in range(1, len(sizes)):
+        if n == biggest:
+            continue
+        part = label == n
+        pale_part = ((c[part].sum(1) > 520) & (np.abs(c[part][:, 0] - c[part][:, 2]) < 70)).mean() > 0.5
+        if pale_part or sizes[n] < 3:
+            out[part] = 0
     return Image.fromarray(out, "RGBA")
 
 
