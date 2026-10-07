@@ -8,9 +8,10 @@
 ## ELEGIDO (2026-10-07): "bloques con luz de cine"
 
 Yago eligió la imagen que salió **solo con el texto común de la escena** (sin añadir estilo):
-`docs/estilo/escena_elegida.webp` (y su variante `escena_elegida_2.webp`). Hojas de estilo
-generadas con ella: `docs/estilo/biblia.webp` y `biblia_2.webp`. Descartado: el pintado liso
-(`descartado_pintado.webp`).
+`docs/estilo/escena_elegida.webp`: el estilo **sencillo, tipo Minecraft**, de bloques grandes y
+limpios. Hojas de estilo: `docs/estilo/biblia.webp` y `biblia_2.webp`. Descartados: el de muchos
+cubitos pequeños, más tipo Terraria (`descartado_mas_voxel.webp`), y el pintado liso
+(`descartado_pintado.webp`). **Regla: bloques grandes y formas simples; no llenar de cubitos.**
 
 **Cómo es:**
 - **Todo es de bloques y cubos**: el terreno, los árboles, el barco, los edificios.
