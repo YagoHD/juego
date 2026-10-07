@@ -87,3 +87,21 @@ In the same style, a sheet of effects with names: day sky gradient, sunset sky g
 sky with stars, blocky clouds, square sun, square moon, flames (3 frames), smoke puffs, sparks,
 water splash, falling leaves, violet corruption ash, rain drops, block breaking cracks (4 stages).
 ```
+
+## 9. Brazo en vistas (para el brazo de primera persona) — `guia_24_brazo_vistas.png`
+
+Pedido por Yago (2026-10-07): brazo limpio, sin ropa, para rehacer la mano y el brazo de cajas con
+sus huesos. En la misma conversación de la guía.
+
+```
+Character sheet of the castaway's RIGHT ARM ONLY, in exactly the same blocky style as the character
+turnaround (Minecraft Dungeons look, chunky boxes, pixel-art skin texture with 16x16-style pixels,
+same skin tone). Bare arm: NO sleeve, NO bracelets, NO clothes, from the shoulder to the fingertips.
+Built only from clean boxes: rounded shoulder made of stepped boxes, upper arm, elbow, forearm,
+wrist, a big chunky hand (bigger than the forearm), four fingers each made of 3 small boxes
+(3 phalanges) and a thumb made of 2 boxes, with visible knuckles and small gaps between fingers.
+Strictly orthographic views, all at the same scale, side by side on a plain light background, no
+perspective, no shadows on the background, arm straight and hanging down, fingers straight:
+FRONT, BACK, OUTER SIDE, INNER SIDE. Below them, the same hand at a bigger scale: back of the hand,
+palm, and side view of a closed fist (as if holding a stick). Small labels under each view.
+```
