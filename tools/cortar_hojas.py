@@ -221,13 +221,16 @@ ICON_SHEETS = {
                             "ancient_greaves", "ancient_boots", "ancient_gauntlets", None, None],
 }
 ICON_SIZE = 32
+PALE_ICONS = ("shirt", "sail_cloak", "bedroll", "enemy_orders", "note_belt", "note_backpack", "note_pick",
+              "bone", "bone_necklace", "tusk", "tusk_ring", "feather", "flatbread", "shell", "shell_amulet",
+              "raft", "fiber", "wheat", "rough_backpack")
 GRAY_ICONS = ("rock", "sharp_rock", "flint", "stone_knife", "stone_axe", "stone_pick", "spear", "arrow",
               "iron_scrap", "furnace", "campfire", "anchor_shard", "ancient_helm", "ancient_cuirass",
               "ancient_greaves", "ancient_boots", "ancient_gauntlets", "green_ore", "captain_journal")
 ICONS_OLD = os.path.join(ROOT, "assets", "textures", "items_antiguos")
 
 
-def _icon(cell, holes=False, gray=False):
+def _icon(cell, holes=False, gray=False, inner=True):
     """Dibujo de una casilla de icono sin el fondo (ni su sombra), encuadrado y reducido."""
     arr = np.asarray(cell.convert("RGB")).astype(int)
     h, w = arr.shape[:2]
@@ -265,8 +268,16 @@ def _icon(cell, holes=False, gray=False):
     # el mismo tono que el fondo. Lo claro del dibujo (hueso, papel, tela) es más cálido y se salva.
     rb = (arr[..., 0] - arr[..., 2]) - (bg[0] - bg[2])
     rg = (arr[..., 0] - arr[..., 1]) - (bg[0] - bg[1])
-    if holes:  # solo en los que tienen huecos (el arco): en los de tela clara se comería la tela
-        bgmask |= (np.abs(rb) < 14) & (np.abs(rg) < 9) & (arr.sum(2) > 3 * 130)
+    # Fondo encerrado entre las piezas (entre el mango y la cabeza, dentro del arco...): el color
+    # del fondo casi exacto, en cualquier sitio.
+    bgmask |= dist < (36 if inner else 18)
+    if holes:  # y su sombra gris, salvo en los de tela o papel claros (se comería la tela)
+        bgmask |= (np.abs(rb) < 18) & (np.abs(rg) < 14) & (arr.sum(2) > 3 * 150)
+    # Halo: el borde mezclado con el fondo (más claro y desvaído que el dibujo), 3 pasadas.
+    for _ in range(3):
+        pad = np.pad(bgmask, 1, constant_values=True)
+        touch = pad[:-2, 1:-1] | pad[2:, 1:-1] | pad[1:-1, :-2] | pad[1:-1, 2:]
+        bgmask |= touch & ~bgmask & (dist < (95 if inner else 45))
     ys, xs = np.where(~bgmask)
     if len(xs) < 50:
         return None
@@ -331,6 +342,33 @@ def _icon(cell, holes=False, gray=False):
     return Image.fromarray(out, "RGBA")
 
 
+def _blobs(mask, scale=4):
+    small = mask[::scale, ::scale]
+    h, w = small.shape
+    label = np.zeros((h, w), int)
+    out = []
+    for y0 in range(h):
+        for x0 in range(w):
+            if small[y0, x0] and not label[y0, x0]:
+                n = len(out) + 1
+                label[y0, x0] = n
+                stack, pts = [(y0, x0)], []
+                while stack:
+                    y, x = stack.pop()
+                    pts.append((y, x))
+                    for dy in (-1, 0, 1):
+                        for dx in (-1, 0, 1):
+                            ny, nx = y + dy, x + dx
+                            if 0 <= ny < h and 0 <= nx < w and small[ny, nx] and not label[ny, nx]:
+                                label[ny, nx] = n
+                                stack.append((ny, nx))
+                ys = [p[0] for p in pts]
+                xs = [p[1] for p in pts]
+                out.append({"box": (min(xs) * scale, min(ys) * scale, (max(xs) + 1) * scale, (max(ys) + 1) * scale),
+                            "n": len(pts)})
+    return out
+
+
 def cut_icons():
     os.makedirs(ICONS, exist_ok=True)
     os.makedirs(ICONS_OLD, exist_ok=True)
@@ -340,15 +378,39 @@ def cut_icons():
     done = 0
     for sheet, names in ICON_SHEETS.items():
         img = Image.open(os.path.join(STYLE, sheet)).convert("RGB")
-        w, h = img.size
-        for k, name in enumerate(names):
-            if name is None:
+        arr = np.asarray(img).astype(int)
+        h, w = arr.shape[:2]
+        bg = _background(arr)
+        mask = np.abs(arr - bg).sum(2) > 60
+        # Dibujos y nombres de la hoja, sin importar la rejilla: cada trozo va a la casilla de su
+        # centro. Los nombres (letras pequeñas, grises, en la parte baja de la casilla) se descartan.
+        cells = {}
+        for blob in _blobs(mask):
+            x0, y0, x1, y1 = blob["box"]
+            if blob["n"] < 6:
                 continue
-            cx, cy = k % 4, k // 4
-            # Casilla sin el nombre de abajo (ni las rayas de la rejilla, si las hay).
-            cell = img.crop((int((cx + 0.03) * w / 4), int((cy + 0.02) * h / 4),
-                             int((cx + 0.97) * w / 4), int((cy + 0.74) * h / 4)))
-            icon = _icon(cell, holes=name in ("bow", "pants", "hide_trousers", "ancient_greaves", "hide_boots", "ancient_boots"), gray=name in GRAY_ICONS)
+            cx, cy = (x0 + x1) / 2, (y0 + y1) / 2
+            col, row = int(cx / (w / 4)), int(cy / (h / 4))
+            frac = cy / (h / 4) - row
+            region = arr[y0:y1, x0:x1]
+            gray = np.abs(region[..., 0] - region[..., 2]).mean() < 45 and region.mean() < 175
+            if (y1 - y0) < h / 4 * 0.13 and ((frac > 0.68 and gray) or frac > 0.8):
+                continue  # letras del nombre
+            if (y1 - y0) < h / 4 * 0.06 and (x1 - x0) > w / 4 * 0.9:
+                continue  # rayas de la rejilla
+            if (x1 - x0) > w / 4 * 1.3 or (y1 - y0) > h / 4 * 1.3:
+                continue  # la rejilla entera (sus rayas unidas)
+            cells.setdefault((col, row), []).append((x0, y0, x1, y1))
+        for k, name in enumerate(names):
+            if name is None or (k % 4, k // 4) not in cells:
+                continue
+            boxes = cells[(k % 4, k // 4)]
+            x0 = max(min(b[0] for b in boxes) - 12, 0)
+            y0 = max(min(b[1] for b in boxes) - 12, 0)
+            x1 = min(max(b[2] for b in boxes) + 12, w)
+            y1 = min(max(b[3] for b in boxes) + 12, h)
+            icon = _icon(img.crop((x0, y0, x1, y1)), holes=name not in PALE_ICONS, gray=name in GRAY_ICONS,
+                         inner=name not in ("bone_necklace", "tusk_ring", "sail_cloak", "shell_amulet"))
             if icon is None:
                 print("  sin dibujo:", sheet, k)
                 continue

@@ -3,7 +3,7 @@ extends RefCounted
 ## Escala uniforme: nunca cambiar la proporción entre los ejes del objeto.
 const PROFILES := {
 	"stone_knife": {"length": 0.32, "grip": 0.17, "rotation": Vector3(-0.22, 0.0, -0.12), "pose": "handle"},
-	"stone_pick": {"length": 0.55, "grip": 0.20, "rotation": Vector3(-0.28, 0.1, -0.15), "pose": "handle"},
+	"stone_pick": {"length": 0.42, "grip": 0.20, "rotation": Vector3(-0.28, 0.1, -0.15), "pose": "handle"},
 	"stone_axe": {"length": 0.45, "grip": 0.2, "rotation": Vector3(-0.25, 0.0, -0.12), "pose": "handle"},
 	"spear": {"length": 1.05, "grip": 0.45, "rotation": Vector3(-0.55, 0.0, -0.16), "pose": "handle"},
 	"torch": {"length": 0.48, "grip": 0.20, "rotation": Vector3(-0.22, 0.0, -0.12), "pose": "handle"},
