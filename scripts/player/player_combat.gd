@@ -112,9 +112,8 @@ func _process(delta: float) -> void:
 	knockback = knockback.move_toward(Vector3.ZERO, delta * 10.0)
 	if not player.ui_open and not _dying:
 		if _regen_delay <= 0.0 and not blocking and not drawing_bow and _dodge_time <= 0.0:
-			var tired := player.needs != null and player.needs.fatigue >= Needs.EXHAUSTED
-			var regen := (9.0 if tired else 18.0) * (1.0 - GearDB.burden(float(player.gear["weight"])) * 0.5) * (1.0 + player.gear_effect("stamina_regen"))
-			stamina = minf(MAX_STAMINA, stamina + delta * regen)  # agotado, la mitad; el peso, menos
+			var regen := 18.0 * (1.0 - GearDB.burden(float(player.gear["weight"])) * 0.5) * (1.0 + player.gear_effect("stamina_regen"))
+			stamina = minf(MAX_STAMINA, stamina + delta * regen)  # el peso, menos
 		if health > 0.0 and player.needs != null and player.needs.hunger > 50.0 and player.needs.thirst > 40.0 and _poison <= 0.0:
 			health = minf(MAX_HEALTH, health + delta * 0.5)
 	if _poison > 0.0 and not player.creative and not _dying:

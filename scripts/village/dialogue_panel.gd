@@ -80,8 +80,9 @@ func _node(id: String) -> Dictionary:
 	if id == "root":
 		return _root()
 	if id == "daily":
-		var lines: Array = DialogueDB.DAILY.get(_villager.job, ["Bien, gracias."])
-		return {"text": lines[randi() % lines.size()], "choices": [["Cuéntame otra cosa.", "root"], ["Adiós.", ""]]}
+		# Charla que reacciona al momento y a ti (SmallTalk); no repite lo ya dicho hoy.
+		var text := SmallTalk.pick(_villager, SmallTalk.context(_villager, _village), _village.day)
+		return {"text": text, "choices": [["¿Algo más?", "daily"], ["Cuéntame otra cosa.", "root"], ["Adiós.", ""]]}
 	if id.begins_with("story:"):
 		var story: Dictionary = DialogueDB.STORIES.get(_villager.villager_name, {})
 		var node: Dictionary = story.get(id.trim_prefix("story:"), {})

@@ -95,8 +95,8 @@ const STORIES := {
 		"title": "¿Trabajaste en la mina de la montaña?",
 		"start": {"text": "¿La mina? Ja. Treinta años allí dentro. Oro, algo de hierro... y otras cosas que mejor no nombrar.", "choices": [
 			["¿Qué cosas?", "cosas"], ["¿Por qué la cerraron?", "cierre"], ["Mejor otro día.", ""]]},
-		"cosas": {"text": "Allá al fondo, donde ya no llegaba el aire, la roca brillaba. Un brillo morado, como de noche sin luna. Y zumbaba. Los que picaban cerca soñaban cosas... raras.", "choices": [
-			["¿Qué soñaban?", "suenos", {"set": "mina_brillo_morado"}], ["¿Por qué la cerraron?", "cierre"], ["Gracias, Bermudo.", ""]]},
+		"cosas": {"text": "Allá al fondo, donde ya no llegaba el aire, la roca brillaba. Un brillo morado, como de noche sin luna. Umbrita, la llamábamos los viejos. Y zumbaba. Los que picaban cerca soñaban cosas... raras.", "choices": [
+			["¿Qué soñaban?", "suenos", {"set": "mina_brillo_morado"}], ["¿Umbrita?", "cierre", {"set": "nombre_umbrita"}], ["Gracias, Bermudo.", ""]]},
 		"suenos": {"text": "Una torre. Muy alta, en medio del mar. Todos la misma. Yo también la soñé, ¿sabes? Y ahora dicen que ha salido una así en la isla... No me mires así, no estoy loco.", "choices": [
 			["Te creo. ¿Por qué la cerraron?", "cierre", {"set": "mina_suenos_torre"}], ["Adiós, Bermudo.", ""]]},
 		"cierre": {"text": "Un derrumbe. Seis compañeros se quedaron dentro. El señor de entonces mandó tapiar la entrada y prohibió subir. Dijeron que fue la montaña, que se cansó de nosotros.", "choices": [

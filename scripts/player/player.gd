@@ -646,6 +646,8 @@ func _edit_block(place: bool) -> void:
 	_avatar.swing()
 	if place and _read_note():
 		return
+	if place and _examine_clue():
+		return
 	var target := aim.target()
 	if target.has("raft"):
 		if place:
@@ -1159,6 +1161,16 @@ func get_camera() -> Camera3D:
 
 
 ## Altura (mundo) de los ojos, para colocar cámaras de escena.
+## Clic derecho mirando de cerca una pista del mundo (Clue): se examina y se apunta.
+func _examine_clue() -> bool:
+	var forward := -_head.global_transform.basis.z if _head != null else -global_transform.basis.z
+	var clue := Clue.looked_at(get_tree(), eye_position(), forward)
+	if clue == null:
+		return false
+	notice.emit(clue.examine())
+	return true
+
+
 func eye_position() -> Vector3:
 	return global_position + Vector3.UP * (EYE_HEIGHT - _crouch * BODY_HEIGHT * 0.35)
 

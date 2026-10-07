@@ -128,7 +128,7 @@ func _process(_delta: float) -> bool:
 			talk.choose_number(story_index)  # ¿Trabajaste en la mina?
 			talk.choose_number(1)            # ¿Qué cosas?
 			talk.choose_number(1)            # ¿Qué soñaban?
-			_check("La historia de la mina se apunta en lo descubierto", village.knowledge.has("mina_brillo_morado") and talk._text.text.contains("torre"))
+			_check("La historia de la mina se apunta en lo descubierto", (_scene._discoveries as Discoveries).knows("mina_brillo_morado") and talk._text.text.contains("torre"))
 			talk.close()
 			_check("Al acabar, el vecino sigue con lo suyo", miner.state != "talk" and not player.ui_open)
 			var smith := _named("Lope")

@@ -90,8 +90,8 @@ func _run() -> void:
 	guard.villager_name = "Guardia"
 	guard.job = "guard_day"
 	var law_tags := {"asesino": true, "manana": true}
-	_check(SmallTalk.pick(guard, law_tags, 1, rng).contains("Vete") or SmallTalk.pick(guard, law_tags, 1, rng).contains("Sé lo que"),
-		"si eres un asesino, te lo echan en cara")
+	var accused := SmallTalk.pick(guard, law_tags, 1, rng)
+	_check(accused.contains("Vete") or accused.contains("Sé lo que"), "si eres un asesino, te lo echan en cara (%s)" % accused)
 	farmer.free()
 	guard.free()
 	print("OK" if _fails == 0 else "FALLOS: %d" % _fails)

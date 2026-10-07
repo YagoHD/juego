@@ -210,10 +210,17 @@ func maybe_bark() -> void:
 	if _bark_cooldown > 0.0 or not can_talk() or state == "talk" or activity.begins_with("Durmiendo"):
 		return
 	_bark_cooldown = _rng.randf_range(25.0, 45.0)
-	var lines: Array = DialogueDB.BARKS.get(job, [])
-	if lines.is_empty() or _rng.randf() > 0.6:
+	if _rng.randf() > 0.6:
 		return
-	_bark = lines[_rng.randi() % lines.size()]
+	# Mitad de las veces, una frase de su oficio; si no, algo que reaccione al momento (SmallTalk).
+	var lines: Array = DialogueDB.BARKS.get(job, [])
+	if not lines.is_empty() and _rng.randf() < 0.5:
+		_bark = lines[_rng.randi() % lines.size()]
+	else:
+		var text := SmallTalk.pick(self, SmallTalk.context(self, village), village.day, _rng)
+		if SmallTalk.NOTHING_NEW.has(text):
+			return
+		_bark = text
 	_bark_left = 3.5
 	_update_label()
 

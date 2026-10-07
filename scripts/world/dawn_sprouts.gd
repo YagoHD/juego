@@ -46,7 +46,7 @@ func _physics_process(delta: float) -> void:
 		if distance < PICK_RADIUS and player.can_pick_up("dawn_bean"):
 			player.pick_up("dawn_bean", 1)
 			Sfx.play("recoger", null, -6.0, 0.15)
-			player.notice.emit("Has cogido un grano de alba: cómelo para quitarte el cansancio.")
+			player.notice.emit("Has cogido un grano de alba: brilla un poco y se puede comer.")
 			_points.remove_at(i)
 			_rebuild()
 			return

@@ -33,6 +33,8 @@ var _notice_time := 0.0
 var _save_timer := 15.0
 var _offer: OfferPanel         # pantalla de pago o de banco abierta
 var _dialogue: DialoguePanel
+var _discoveries: Discoveries
+var day := 1
 var _talking: Villager
 
 
@@ -196,7 +198,11 @@ func _build_ui() -> void:
 	canvas.add_child(_dialogue)
 	_dialogue.closed.connect(_on_dialogue_closed)
 	_dialogue.action_chosen.connect(_on_dialogue_action)
-	_dialogue.learned.connect(func(_flag: String) -> void: _show_notice("Lo apuntas en tu memoria (más adelante, en el cuaderno)."))
+	_discoveries = Discoveries.new()
+	add_child(_discoveries)
+	_dialogue.learned.connect(func(flag: String) -> void: _discoveries.learn(flag, "diálogo"))
+	_discoveries.learned.connect(func(_id: String, text: String) -> void: _show_notice("Apuntado: " + text))
+	_discoveries.deduced.connect(func(_id: String, text: String) -> void: _show_notice("Atas cabos: " + text))
 	var crosshair := Label.new()
 	crosshair.text = "+"
 	crosshair.set_anchors_and_offsets_preset(Control.PRESET_CENTER)
@@ -307,7 +313,7 @@ func _on_talk(villager: Node3D) -> void:
 		return
 	_talking = villager as Villager
 	_talking.start_talk()
-	_dialogue.knowledge = village.knowledge
+	_dialogue.knowledge = _discoveries.known
 	player.ui_open = true
 	player._set_captured(false)
 	_dialogue.open(_talking, village)
@@ -342,8 +348,12 @@ func _bind_hotbar() -> void:
 
 func _process(delta: float) -> void:
 	if time_running and not get_tree().paused:
-		hour = fmod(hour + delta / HOUR_SECONDS, 24.0)
+		var next := hour + delta / HOUR_SECONDS
+		if next >= 24.0:
+			day += 1
+		hour = fmod(next, 24.0)
 	village.hour = hour
+	village.day = day
 	_hotbar.select(player._hotbar_index)
 	var law := village.law
 	var status := "en paz"
@@ -376,7 +386,7 @@ func save() -> void:
 	if OS.get_cmdline_user_args().has("--village-no-save"):
 		return
 	var data := {"inventory": player.inventory.to_data(), "equipment": player.equipment, "gear_wear": player.gear_wear, "combat": player.combat.to_data(),
-		"hour": hour, "village": village.to_data()}
+		"hour": hour, "day": day, "village": village.to_data(), "discoveries": _discoveries.to_data()}
 	var file := FileAccess.open(save_path, FileAccess.WRITE)
 	if file != null:
 		file.store_string(JSON.stringify(data, "\t"))
@@ -393,8 +403,13 @@ func _load() -> bool:
 	player.inventory.from_data(data.get("inventory", []))
 	player.combat.from_data(data.get("combat", {}))
 	hour = float(data.get("hour", 8.0))
+	day = int(data.get("day", 1))
+	if data.get("discoveries") is Dictionary:
+		_discoveries.from_data(data["discoveries"])
 	if data.get("village") is Dictionary:
 		village.from_data(data["village"])
+		for flag: String in village.knowledge:  # partidas de antes: lo sabido estaba en el pueblo
+			_discoveries.learn(flag, "diálogo")
 	return true
 
 

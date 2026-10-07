@@ -61,6 +61,7 @@ const JOB_NAMES := {"farmer": "granjero", "fisher": "pescador", "merchant": "mer
 
 var player: Player
 var hour := 12.0
+var day := 1                  # día de la partida (la charla comenta los días de la torre)
 var center := Vector3.ZERO
 var radius := 35.0
 var places := {}              # nombre -> {"point": Vector3, "radius": float}
