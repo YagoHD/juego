@@ -5,6 +5,42 @@
 > cubitos gruesos, y brazo y personajes de Meshy lisos casi realistas. Hay que elegir **uno** y
 > rehacer el arte con él poco a poco. Decide Yago.
 
+## ELEGIDO (2026-10-07): "bloques con luz de cine"
+
+Yago eligió la imagen que salió **solo con el texto común de la escena** (sin añadir estilo):
+`docs/estilo/escena_elegida.webp` (y su variante `escena_elegida_2.webp`). Hojas de estilo
+generadas con ella: `docs/estilo/biblia.webp` y `biblia_2.webp`. Descartado: el pintado liso
+(`descartado_pintado.webp`).
+
+**Cómo es:**
+- **Todo es de bloques y cubos**: el terreno, los árboles, el barco, los edificios.
+- **Personajes de cubos**, de proporciones rechonchas (cabeza grande, como Minecraft pero con más
+  detalle): ropa, pelo rizado y armaduras pintados sobre los cubos.
+- **Herramientas y armas de cubitos gruesos** (como las de Meshy "voxel" que ya tenemos).
+- **Texturas de los bloques pintadas con detalle** (más que las de 16x16 píxeles de ahora).
+- **La luz manda**: atardecer cálido, sombras suaves, bruma, agua transparente turquesa. Es lo
+  que hace que unos bloques sencillos parezcan "de cine" (la opción Luz realista ya va por ahí).
+- Paleta: verde pradera, verde bosque, arena dorada, tierra marrón, piedra gris, nieve fría,
+  madera cálida, roca azulada, mar turquesa, cielo azul, naranja de atardecer y **púrpura
+  corrupción** (ver `biblia.webp`, sección 6).
+
+**Frase fija para todos los prompts nuevos** (subiendo antes `biblia.webp`):
+
+```
+Same art style, proportions, colors, lighting and level of detail as the attached style sheet:
+a blocky voxel world; characters, tools and props built from chunky cubes with hand-painted
+pixel detail; warm cinematic lighting.
+```
+
+**Lo que significa para el juego:**
+- Encaja con lo que ya hay: bloques, barco y restos de cubitos, herramientas de cubitos.
+- **No encajan** el brazo y los personajes lisos de Meshy: habría que volver a personajes de
+  cubos (el náufrago de cubos que hizo Claude antes se parece) y a un brazo de cubos con manga,
+  como en la sección 7 de la biblia. **Pendiente de que Yago lo confirme.**
+- **Ahorra mucho Meshy:** un personaje de cubos es una "piel" (una imagen) sobre unas cajas. La
+  ropa, las armaduras, las caras y los pelos son capas de imagen que ChatGPT puede dibujar en
+  hojas: el sistema de piezas tipo puzle sale casi gratis y sin perder estilo.
+
 ## Las tres direcciones posibles
 
 | | A. Todo de cubitos (micro-vóxel) | B. Pintado a mano estilizado | C. Realista pintado |
