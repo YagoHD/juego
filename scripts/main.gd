@@ -67,6 +67,8 @@ var _underwater: ColorRect
 var _day_night: DayNight
 const TowerScript = preload("res://scripts/world/tower_director.gd")
 var _tower: Node3D
+var _village: IslandVillage   # el pueblo principal (B4): vecinos, ley, diálogos
+var _lamps: Array[OmniLight3D] = []  # luces de los faros (de noche)
 var _inventory_screen: InventoryScreen
 var _screen_sections := Callable()  # rehace las secciones de la pantalla abierta
 var _chests := ChestStorage.new()
@@ -347,6 +349,8 @@ func _build_player() -> void:
 		_player.ui_open = false
 		_player._set_captured(true))
 	_player.ground = _ground
+	if not _showroom():
+		_build_places()
 	_load_player()  # después de crear hambre, cultivos... (la partida guardada los rellena)
 	_ground.load_from(_ground_save_path())
 	_player.notice.connect(_show_notice)
@@ -360,6 +364,46 @@ func _build_player() -> void:
 	_player.block_broken.connect(_on_block_broken)
 	_rebind_hotbar()
 	_player.inventory_layout_changed.connect(_on_layout_changed)
+
+
+# ------------------------------------------------------------------ lugares del mapa
+
+## Lo que no son bloques en los lugares del mapa (los bloques los estampa Structures): el pueblo
+## principal con sus vecinos, las pistas de la historia y las luces de los faros.
+func _build_places() -> void:
+	_village = IslandVillage.new()
+	_village.name = "IslandVillage"
+	add_child(_village)
+	_village.player = _player
+	_village.day_night = _day_night
+	_village.discoveries = _discoveries
+	_village.screen = _inventory_screen
+	_village.generator = _generator
+	_village.setup(_ui_layer)
+	_village.notice.connect(_show_notice)
+	for clue: Dictionary in Structures.clues():
+		var cell: Vector3i = clue["cell"]
+		var offset: Vector3 = CLUE_OFFSET.get(clue["kind"], Vector3(0.5, 0.1, 0.5))
+		var at := (Vector3(cell) + offset) * VOXEL_SIZE
+		add_child(ClueModels.make(clue["fact"], clue["kind"], at, clue["text"]))
+	# La grieta de la quilla del barco.
+	var ship := Structures.ship_voxel()
+	add_child(ClueModels.make("quilla_violeta", "glow_crack",
+		Vector3(ship.x + 0.5, Structures.micro_wreck().y + 1.2, ship.y + 0.5) * VOXEL_SIZE,
+		"En la quilla hay una grieta que brilla violeta, como si algo la hubiera quemado desde dentro."))
+	for cell: Vector3i in Structures.lights():
+		var lamp := OmniLight3D.new()
+		lamp.light_color = Color(1.0, 0.8, 0.45)
+		lamp.omni_range = 18.0
+		lamp.light_energy = 0.0
+		lamp.position = (Vector3(cell) + Vector3(0.5, 0.5, 0.5)) * VOXEL_SIZE
+		add_child(lamp)
+		_lamps.append(lamp)
+
+
+## Dónde va el dibujo de cada pista dentro de su celda (en voxels): el escudo pegado a la pared
+## del norte, el ojo por fuera del muro del sur, el joyero en el suelo.
+const CLUE_OFFSET := {"shield": Vector3(0.5, 0.5, 0.06), "eye_door": Vector3(0.5, 0.5, 1.03), "jewel_box": Vector3(0.5, 0.0, 0.5)}
 
 
 # ------------------------------------------------------------------ pantalla de carga
@@ -552,6 +596,8 @@ func _process(delta: float) -> void:
 	if _hud == null or _player == null:
 		return
 	_discoveries.day = _day_night.day
+	for lamp in _lamps:  # los faros se encienden de noche
+		lamp.light_energy = 2.5 if _day_night.is_night() else 0.0
 	_hotbar.select(_player.get_hotbar_index())
 	var reading := _journal != null and _journal.visible  # con el diario abierto, nada encima
 	var kneeling := _session != null and _session.active()  # de rodillas: el inventario ya enseña la barra
@@ -627,6 +673,7 @@ func _save_player() -> void:
 		"hour": _day_night.hour,
 		"day": _day_night.day,
 		"tower": _tower.to_data() if _tower != null else {},
+		"village": _village.to_data() if _village != null else {},
 	}
 	var file := FileAccess.open(_player_save_path(), FileAccess.WRITE)
 	if file != null:
@@ -670,6 +717,8 @@ func _load_player() -> void:
 		_player.set_spawn_point(Vector3(float(spawn[0]), float(spawn[1]), float(spawn[2])))
 	if d.get("objectives") is Dictionary:
 		_objectives.from_data(d["objectives"])
+	if d.get("village") is Dictionary and _village != null:
+		_village.from_data(d["village"])
 	if d.get("recipes") is Array:
 		for recipe_id in d["recipes"]:
 			_player.learn(str(recipe_id))
@@ -699,6 +748,9 @@ func _input(event: InputEvent) -> void:
 	elif key.keycode == KEY_F3:
 		Settings.show_fps = not Settings.show_fps
 		Settings.save_settings()
+		get_viewport().set_input_as_handled()
+	elif key.keycode == KEY_ESCAPE and _village != null and _village.dialogue_open():
+		_village.close_dialogue()
 		get_viewport().set_input_as_handled()
 	elif key.keycode == KEY_ESCAPE and not _inventory_screen.visible:
 		_player.ui_open = true

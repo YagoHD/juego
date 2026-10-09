@@ -31,10 +31,10 @@ static func posts_for(stage: int, director: Node) -> Array[Dictionary]:
 				posts.append(_patrol("s1_scouts%d" % i, director, i * PI + 0.4, 46.0, ["tracker", "tracker"], 4))
 		2:
 			posts.append(_watchtower("s2_tower0", director, 0.9, 30.0))
-			posts.append(_camp("s2_camp0", director, 2.6, 24.0, ["archer", "tracker", "tracker"], 2))
+			posts.append(_camp("s2_camp0", director, 2.6, 24.0, ["archer", "tracker", "tracker"], 2, 0))
 		3:
 			posts.append(_camp("s3_camp0", director, 4.2, 20.0,
-				["captain", "soldier", "soldier", "soldier", "soldier", "archer", "archer", "tracker", "tracker"], 4))
+				["captain", "soldier", "soldier", "soldier", "soldier", "archer", "archer", "tracker", "tracker"], 4, 1))
 			posts.append(_watchtower("s3_tower0", director, 3.3, 32.0))
 			posts.append(_watchtower("s3_tower1", director, 5.4, 32.0))
 			posts.append(_ritual("s3_ritual", director, 2, 0.0))
@@ -45,7 +45,7 @@ static func posts_for(stage: int, director: Node) -> Array[Dictionary]:
 				var angle := i * TAU / 7.0 + 0.3
 				var size := 10 + rng.randi_range(0, 3)
 				posts.append(_camp("s4_camp%d" % i, director, angle, rng.randf_range(30.0, 46.0),
-					MIX_CAMP.slice(0, size), 4 + rng.randi_range(0, 2)))
+					MIX_CAMP.slice(0, size), 4 + rng.randi_range(0, 2), 2 if i == 0 else -1))
 			for i in 5:
 				posts.append(_watchtower("s4_tower%d" % i, director, i * TAU / 5.0 + 0.6, rng.randf_range(38.0, 52.0)))
 			posts.append(_ritual("s4_ritual", director, 4, PI / 4.0))
@@ -85,8 +85,18 @@ static func _watchtower(id: String, director: Node, angle: float, radius: float)
 		"spots": [point + Vector3.UP * Garrison.WATCH_HEIGHT], "route": [], "roster": ["archer"]}
 
 
-static func _camp(id: String, director: Node, angle: float, radius: float, roster: Array, tents: int) -> Dictionary:
+## Campamentos del mapa beta1 (letra L, metros): los tres primeros campamentos van ahí si la isla
+## los tiene cerca de la torre; si no (otra isla, pruebas), alrededor de la torre como siempre.
+const MAP_CAMPS := [Vector2(48, -159), Vector2(77, -203), Vector2(159, -149)]
+
+
+static func _camp(id: String, director: Node, angle: float, radius: float, roster: Array, tents: int, site := -1) -> Dictionary:
 	var point: Vector3 = director.affected_point(angle, radius)
+	if site >= 0 and director.get("generator") != null:
+		var spot: Vector2 = MAP_CAMPS[site]
+		var candidate: Vector3 = director.ground_point(spot.x, spot.y)
+		if candidate.distance_to(director.center) < 110.0:
+			point = candidate
 	return {"id": id, "kind": "camp", "point": point, "facing": 0.0, "tents": tents,
 		"spots": _ring(point, maxi(roster.size(), 3), 2.4, director), "route": [], "roster": roster}
 

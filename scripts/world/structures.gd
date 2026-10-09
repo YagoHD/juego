@@ -20,6 +20,8 @@ static var _ship := Vector2i.ZERO  # centro del barco naufragado (voxels x, z)
 static var _ruins := Vector2i(-274, -345)
 static var _built := false
 static var _clear: Array = []    # [Vector2 centro, radio] (voxels): sin árboles ni rocas
+static var _clues: Array = []    # pistas de la historia: [{fact, cell (voxel), kind, text}] (main.gd pone los Clue)
+static var _lights: Array = []   # linternas de los faros (voxels)
 
 
 ## Coloca las estructuras usando las alturas del generador. Llamar una vez antes de generar.
@@ -33,6 +35,24 @@ static func build(gen: IslandGenerator) -> void:
 	_build_shipwreck(gen)
 	_build_ruins(gen)
 	_build_bridges(gen)
+	# Lugares del mapa beta1: el pueblo principal, el pesquero destruido, faros, atalayas,
+	# ruinas y minas. Sin árboles ni rocas encima.
+	_clear.append(VillageBuilder.clear_zone())
+	_clear.append([FishingVillageBuilder.CENTER * 2.0, 50.0])
+	_clear.append_array(PlacesBuilder.clear_zones())
+	VillageBuilder.build(gen, _put)
+	_clues = FishingVillageBuilder.build(gen, _put)
+	_lights = PlacesBuilder.build(gen, _put)
+
+
+## Pistas de la historia puestas en los lugares (las crea main.gd con ClueModels).
+static func clues() -> Array:
+	return _clues
+
+
+## Dónde van las luces de los faros (voxels).
+static func lights() -> Array:
+	return _lights
 
 
 ## ¿Hay que dejar esta columna sin árboles ni rocas? (junto al sitio de aparecer, los puentes...)

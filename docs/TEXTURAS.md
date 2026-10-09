@@ -118,3 +118,30 @@ objects, 16x16-style pixels). One ROW per object, and in each row exactly three 
 all at the same scale, perfectly flat, no perspective, no shadows, plain white background: FRONT,
 SIDE, TOP. Objects (one per row, name on the left): stone pickaxe, torch, raw fish, wild berries.
 ```
+
+## 11. Pueblos, minas y pistas (isla nueva) — `guia_bloques_pueblo.png` y `pistas_vistas.png`
+
+Pedido por Claude (2026-10-09) al migrar la isla al mapa beta1: los edificios ya se levantan con
+bloques que existen (tablones, troncos, piedra, madera de deriva para los tejados), pero quedarían
+mejor con unas texturas propias. Y las pistas de la historia llevan de momento un dibujo de cajas
+de colores (`scripts/story/clue_models.gd`).
+
+Texturas de bloque (16x16, mismo estilo que la hoja de bloques):
+
+```
+Same style as the block texture sheet (16x16 pixel-art tiles, Minecraft Dungeons palette, top
+light, no text). One tile each, in a row with its name below: red clay ROOF TILES (seen from
+above, rows of overlapping curved tiles), whitewashed WALL (lime plaster with a few cracks),
+CHARRED WOOD (burnt planks, black with orange embers in the cracks), UMBRITE ORE (dark rock with
+glowing violet crystal veins), BELL (bronze bell, front view, to use on a hanging block).
+```
+
+Pistas en vistas (para sacar su modelo de cubos con `tools/objetos_desde_vistas.py`):
+
+```
+Orthographic views sheet for 3D modelling, same style as the icon sheets (chunky blocky pixel-art
+objects, 16x16-style pixels). One ROW per object, three views each (FRONT, SIDE, TOP), same scale,
+no perspective, no shadows, plain white background: an open empty wooden jewel box with violet
+dust inside; a carved wooden family shield with a ship and a letter V; a closed eye painted in
+black on a burnt door plank; a smooth expressionless white mask.
+```

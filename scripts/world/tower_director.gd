@@ -280,6 +280,9 @@ func _build_geometry() -> void:
 	_box(center + Vector3(0, height * 0.5, -5), Vector3(10, height, 0.6), color)
 	for x in [-3.5, 3.5]:
 		_box(center + Vector3(x, height * 0.5, 5), Vector3(3, height, 0.6), color)
+	# Pista: la base de la torre brilla con el mismo morado que la piedra de la mina.
+	_geometry.add_child(ClueModels.make("torre_brillo", "glow_crack", center + Vector3(-2.2, 0.6, 5.35),
+		"La piedra de la base tiene grietas que brillan morado, igual que el polvo del joyero."))
 	for stage in range(1, phase + 1):
 		for post: Dictionary in Garrison.posts_for(stage, self):
 			_build_post(post)
@@ -316,6 +319,9 @@ func _build_post(post: Dictionary) -> void:
 				var a := i * TAU / tents + 0.4
 				var at := ground_point(p.x + cos(a) * 6.0, p.z + sin(a) * 6.0)
 				_box(at + Vector3(0, 1, 0), Vector3(2.4, 2, 0.3), Color(0.48, 0.3, 0.2))
+				if i == 0:  # pista: el ojo cerrado bordado en la lona
+					_geometry.add_child(ClueModels.make("emblema_ojo_campamento", "tent_eye", at + Vector3(0, 1.1, -0.17),
+						"En la lona hay bordado un ojo cerrado. El mismo que en la puerta del pueblo pesquero."))
 				_box(at + Vector3(0, 2, 0.8), Vector3(2.6, 0.25, 2), Color(0.55, 0.35, 0.24))
 		"ritual":
 			for spot: Vector3 in post["spots"]:
