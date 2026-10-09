@@ -35,7 +35,9 @@ func _process(_delta: float) -> bool:
 			_check("Luces de los faros (%d)" % (_main.get("_lamps") as Array).size(), (_main.get("_lamps") as Array).size() == 3)
 			# Al pueblo: desde arriba, y a esperar a que haya suelo.
 			var c := VillageLayout.ISLAND_CENTER
-			player.global_position = Vector3(c.x + 3.0, 90.0, c.y + 3.0)
+			var gen: IslandGenerator = _main.get("_generator")
+			var ground := gen.get_ground_height(roundi((c.x + 3.0) * 2.0), roundi((c.y + 3.0) * 2.0)) * 0.5
+			player.global_position = Vector3(c.x + 3.0, ground + 6.0, c.y + 3.0)  # el rayo del suelo mira 60 m hacia abajo
 			player.set("_waiting_for_ground", true)
 			_step = 1
 			_wait = 0

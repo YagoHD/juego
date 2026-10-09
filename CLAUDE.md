@@ -20,6 +20,8 @@
 - Godot **4.7.2 de Zylann con godot_voxel 1.7 integrado** (el Godot normal no sirve). Todo en
   GDScript.
 - Estado y arquitectura: `docs/STATUS.md`. Diseño: `docs/DESIGN.md`. Leerlos al empezar.
+- **Relevo pendiente**: `docs/CONTINUAR.md` dice por dónde seguir (trabajo de la nube en la rama
+  `master-3fa86p` y el encargo del personaje de "personaje beta"). Leerlo primero.
 - La isla y el naufragio son **solo la Beta** (tutorial hecho a mano). El juego final es un
   **mundo medieval grande, a poder ser procedural**: prioriza sistemas generales que sirvan ahí.
 
