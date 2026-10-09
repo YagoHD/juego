@@ -5,18 +5,10 @@
 
 ## 0. Antes de nada: traer el trabajo de la nube
 
-Todo lo de la nube está en la rama **`master-3fa86p`** de GitHub (YagoHD/juego), **no en `master`**.
-En el PC:
-
-```
-git fetch origin
-git status                        # que no haya cambios de Yago sin guardar; si los hay, commit primero
-git merge origin/master-3fa86p    # rama de la nube encima de master (sin rebase ni force)
-```
-
-Si hay conflictos en `assets/island/*.png`, quédate con los de `master-3fa86p` (son los mapas
-horneados de nuevo) o vuelve a hornear con `python tools/hornear_isla.py` (necesita numpy, Pillow
-y scipy). Después, en el editor, deja que Godot reimporte (o `godot --headless --path . --import`).
+Todo el trabajo de la nube ya está en **`master`** de GitHub (YagoHD/juego). En el PC: `git pull`
+(si Yago tiene cambios sin guardar, commit primero). Después deja que Godot reimporte (abrir el
+editor, o `godot --headless --path . --import`). Si los mapas de `assets/island/` dieran guerra, se
+pueden volver a hornear con `python tools/hornear_isla.py` (necesita numpy, Pillow y scipy).
 
 **Ojo**: los mapas y las estructuras han cambiado, así que al jugar se crea un **mundo nuevo**. El
 anterior no se borra: queda en `user://world/` con su huella antigua.
