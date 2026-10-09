@@ -19,6 +19,7 @@ static var _spawn_yaw := 0.0
 static var _ship := Vector2i.ZERO  # centro del barco naufragado (voxels x, z)
 static var _ruins := Vector2i(-274, -345)
 static var _built := false
+static var _clear: Array = []    # [Vector2 centro, radio] (voxels): sin árboles ni rocas
 
 
 ## Coloca las estructuras usando las alturas del generador. Llamar una vez antes de generar.
@@ -28,8 +29,19 @@ static func build(gen: IslandGenerator) -> void:
 	_built = true
 	_by_chunk.clear()
 	_chest_loot.clear()
+	_clear.clear()
 	_build_shipwreck(gen)
 	_build_ruins(gen)
+	_build_bridges(gen)
+
+
+## ¿Hay que dejar esta columna sin árboles ni rocas? (junto al sitio de aparecer, los puentes...)
+static func is_clear(wx: int, wz: int) -> bool:
+	var p := Vector2(wx, wz)
+	for zone: Array in _clear:
+		if p.distance_squared_to(zone[0]) < zone[1] * zone[1]:
+			return true
+	return false
 
 
 ## Escribe en el buffer los voxels de estructuras que caen dentro de este chunk.
@@ -167,8 +179,100 @@ static func _build_shipwreck(gen: IslandGenerator) -> void:
 	# El jugador aparece en la playa, unos metros tierra adentro, mirando al barco.
 	var spawn := shore - dir * 14.0
 	_spawn = Vector2i(int(spawn.x), int(spawn.y))
+	_clear.append([Vector2(_spawn), 12.0])
 	var look := center - spawn
 	_spawn_yaw = atan2(-look.x, -look.y)  # el jugador mira hacia su -Z
+
+
+# ------------------------------------------------------------------ puentes
+
+const PLACES_FILE := "res://assets/island/lugares.json"  # lo escribe tools/hornear_isla.py
+
+
+## Lugares que el horneador sacó del mapa (rutas por los caminos, puentes...).
+static func places() -> Dictionary:
+	if not FileAccess.file_exists(PLACES_FILE):
+		return {}
+	var value: Variant = JSON.parse_string(FileAccess.get_file_as_string(PLACES_FILE))
+	return value if value is Dictionary else {}
+
+
+## Puentes de madera donde los caminos cruzan los ríos: tablero de tablones de una orilla a la
+## otra, a la altura de la orilla más alta (con un escalón de media losa en la otra), barandilla de
+## postes y pasamanos, y pilares hasta el fondo del cauce.
+static func _build_bridges(gen: IslandGenerator) -> void:
+	for bridge: Dictionary in places().get("bridges", []):
+		var center := Vector2(float(bridge["x"]), float(bridge["z"])) * 2.0  # metros -> voxels
+		var river := Vector2(float(bridge["river"][0]), float(bridge["river"][1])).normalized()
+		var across := river.orthogonal()
+		var half := float(bridge["half_width"]) * 2.0 + 6.0  # el cauce y 3 m de orilla a cada lado
+		var a := center - across * half
+		var b := center + across * half
+		_clear.append([center, half + 10.0])
+		var water := gen.get_ground_height(int(center.x), int(center.y))
+		var deck := maxi(maxi(gen.get_ground_height(int(a.x), int(a.y)), gen.get_ground_height(int(b.x), int(b.y))), water + 2) - 1
+		# Todas las celdas cuyo centro cae en el rectángulo del tablero (2 m de ancho): así no
+		# quedan huecos aunque el puente vaya en diagonal.
+		var reach := int(ceil(half)) + 2
+		for cx in range(floori(center.x) - reach, floori(center.x) + reach + 1):
+			for cz in range(floori(center.y) - reach, floori(center.y) + reach + 1):
+				var rel := Vector2(cx + 0.5, cz + 0.5) - center
+				var along := rel.dot(across)
+				var side := rel.dot(river)
+				if absf(along) > half or absf(side) > 2.0:
+					continue
+				var cell := Vector3i(cx, deck, cz)
+				var ground := gen.get_ground_height(cx, cz)
+				if ground > deck + 1:
+					continue  # la orilla ya es más alta: ahí se entra caminando
+				_put(cell, IslandGenerator.PLANKS)
+				for up in range(1, 4):
+					_put(cell + Vector3i(0, up, 0), IslandGenerator.AIR)
+				var edge := absf(side) > 1.2
+				var on_water := absf(along) < half - 5.0
+				var post := absf(fposmod(along, 2.0) - 1.0) < 0.36  # un poste cada 2 m
+				if edge and on_water:
+					if post:
+						_put(cell + Vector3i.UP, IslandGenerator.WOOD)
+						_put(cell + Vector3i(0, 2, 0), IslandGenerator.WOOD)
+						var bed := _bed_height(gen, cx, cz)  # y su pilar hasta el fondo
+						for y in range(bed, deck):
+							_put(Vector3i(cx, y, cz), IslandGenerator.WOOD)
+					else:
+						_put(cell + Vector3i(0, 2, 0), IslandGenerator.SLAB_DOWN)  # pasamanos
+				# En la orilla, relleno de tierra bajo el tablero (que no quede colgando).
+				if not on_water:
+					for y in range(ground, deck):
+						_put(Vector3i(cx, y, cz), IslandGenerator.DIRT)
+		# Escaleras de bajada en la orilla más baja: un peldaño por bloque hasta el suelo.
+		for side_sign: float in [-1.0, 1.0]:
+			for k in range(1, 12):
+				var step := deck - k
+				var any := false
+				var mid := center + across * side_sign * (half + float(k))
+				for cx in range(floori(mid.x) - 3, floori(mid.x) + 4):
+					for cz in range(floori(mid.y) - 3, floori(mid.y) + 4):
+						var rel := Vector2(cx + 0.5, cz + 0.5) - center
+						var along := rel.dot(across) * side_sign
+						if along <= half + float(k) - 1.0 or along > half + float(k) or absf(rel.dot(river)) > 2.0:
+							continue
+						var ground := gen.get_ground_height(cx, cz)
+						if ground > step:
+							continue
+						any = true
+						var cell := Vector3i(cx, step, cz)
+						_put(cell, IslandGenerator.PLANKS)
+						for y in range(ground, step):
+							_put(Vector3i(cx, y, cz), IslandGenerator.DIRT)
+						for up in range(1, 4):
+							_put(cell + Vector3i(0, up, 0), IslandGenerator.AIR)
+				if not any:
+					break
+
+
+## Altura del fondo del cauce (el suelo, sin contar el agua) en coordenadas de voxel.
+static func _bed_height(gen: IslandGenerator, x: int, z: int) -> int:
+	return gen._height_at(x, z)
 
 
 static func _put(cell: Vector3i, id: int) -> void:

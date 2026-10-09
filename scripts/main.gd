@@ -112,6 +112,13 @@ func _ready() -> void:
 			var stored: Variant = JSON.parse_string(FileAccess.get_file_as_string(_player_save_path()))
 			if stored is Dictionary:
 				_tower.from_data(stored.get("tower", {}))
+		# Caminos del norte (sacados del mapa por tools/hornear_isla.py): el día 4 los patrullan.
+		var routes: Dictionary = Structures.places().get("routes", {})
+		for id: String in routes:
+			var road: Array[Vector3] = []
+			for p: Array in routes[id]:
+				road.append(_tower.ground_point(float(p[0]), float(p[1])))
+			_tower.register_road(id, road)
 		_tower.advance_to_day(_day_night.day)
 		_tower.set_physics_process(false)
 		_tower.phase_changed.connect(func(stage: int) -> void: _show_notice("La torre avanza a la fase %d." % stage))

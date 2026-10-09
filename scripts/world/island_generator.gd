@@ -295,8 +295,8 @@ func _prefab_at(wx: int, wz: int) -> int:
 	var h := _hash01(wx * 29 + 3, wz * 31 + 17)
 	if h > 0.009:
 		return -1  # descarte barato
-	if Vector2(wx, wz).distance_to(Vector2(Structures.spawn_voxel())) < 12.0:
-		return -1  # el sitio donde aparece el jugador, despejado
+	if Structures.is_clear(wx, wz):
+		return -1  # donde aparece el jugador, puentes, pueblos...: despejado
 	if _under_canopy(wx, wz):
 		return -1  # bajo la copa de un árbol: ni arbustos ni rocas montados en el tronco
 	var i := _index(wx, wz)
@@ -359,7 +359,7 @@ func _decor_at(wx: int, wz: int, top: int) -> int:
 # Tipos de árbol: 0 ninguno, 1 frondoso, 2 pino, 3 muerto.
 func _tree_kind(wx: int, wz: int) -> int:
 	var kind := _tree_candidate(wx, wz)
-	if kind == 0:
+	if kind == 0 or Structures.is_clear(wx, wz):
 		return 0
 	# Separación: si otro candidato a menos de TREE_SPACING columnas tiene la tirada más baja, nace
 	# ese y este no (antes podían nacer troncos montados uno sobre otro).

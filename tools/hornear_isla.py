@@ -9,6 +9,7 @@ lee el juego (scripts/world/island_generator.gd), en assets/island/:
   water.png   -> nivel del agua de ríos y lagos (misma codificación, 0 = sin agua)
   surface.png -> bloque de superficie (R), de subsuelo (G) y árbol (B = tipo * 64 + densidad en milésimas)
   biome.png / preview.png -> para mirar (el diario usa preview.png como mapa)
+  lugares.json -> rutas de patrulla por los caminos (puntos en metros) y puentes, para el juego
 El mapa cubre 512 x 512 m (1 píxel = 1 voxel = 0,5 m), con el norte arriba como el dibujo.
 
 Pasos: 1) se recorta el mapa y se clasifica cada píxel por su color (mar, arena, hierba, bosque,
@@ -18,6 +19,7 @@ donde el dibujo pinta roca junto al mar, una montaña de verdad (crestas, valles
 donde están la roca y la nieve del este, tierras altas con agujas en la zona corrupta, el lago en
 su meseta y el río bajando del lago al mar por su cauce; 3) superficie, árboles y vista previa.
 """
+import json
 import os
 import sys
 
@@ -95,6 +97,163 @@ def inpaint(arr, mask):
     return arr[tuple(idx)]
 
 
+def thin(mask):
+    """Zhang-Suen: reduce cada mancha a su línea central de 1 px."""
+    img = np.pad(mask.astype(np.uint8), 1)
+    changed = True
+    while changed:
+        changed = False
+        for step in (0, 1):
+            p = img
+            p2, p3, p4, p5 = p[:-2, 1:-1], p[:-2, 2:], p[1:-1, 2:], p[2:, 2:]
+            p6, p7, p8, p9 = p[2:, 1:-1], p[2:, :-2], p[1:-1, :-2], p[:-2, :-2]
+            ring = [p2, p3, p4, p5, p6, p7, p8, p9, p2]
+            b = sum(n.astype(np.int32) for n in ring[:8])
+            a = sum(((ring[k] == 0) & (ring[k + 1] == 1)).astype(np.int32) for k in range(8))
+            if step == 0:
+                c = (p2 * p4 * p6 == 0) & (p4 * p6 * p8 == 0)
+            else:
+                c = (p2 * p4 * p8 == 0) & (p2 * p6 * p8 == 0)
+            rm = (p[1:-1, 1:-1] == 1) & (b >= 2) & (b <= 6) & (a == 1) & c
+            if rm.any():
+                img[1:-1, 1:-1][rm] = 0
+                changed = True
+    return img[1:-1, 1:-1].astype(bool)
+
+
+def neighbours(line):
+    k = np.ones((3, 3), np.int32)
+    k[1, 1] = 0
+    return ndi.convolve(line.astype(np.int32), k, mode="constant") * line
+
+
+def find_roads(rgb, land, ocean, field, sand, corrupt):
+    """Caminos del dibujo como líneas de 1 px (su eje): tierra marrón clara en líneas finas, lejos de
+    la orilla (el borde de la arena es del mismo color) y de los campamentos de la zona corrupta.
+    Se adelgazan a su línea central, se quitan las ramitas de casas e iconos y se unen los cortes
+    pequeños (árboles o iconos que tapan el camino en el dibujo)."""
+    hh, ss, vv = hsv(rgb)
+    tan = land & (hh > 22) & (hh < 48) & (ss > 0.38) & (ss < 0.72) & (vv > 0.72) & ~field
+    tan = ndi.binary_closing(tan, iterations=1)
+    blobs = ndi.binary_opening(tan, iterations=4)  # manchas anchas: arena, tejados, explanadas
+    road = tan & ~ndi.binary_dilation(blobs, iterations=2)
+    road &= (ndi.distance_transform_edt(land) > 12) & ~ndi.binary_dilation(sand, iterations=4)
+    road &= ~ndi.binary_erosion(corrupt, iterations=6)
+    road = ndi.binary_closing(road, structure=np.ones((3, 3)), iterations=3)
+    line = thin(road)
+    for _ in range(8):  # ramitas cortas (puntas de menos de 8 px)
+        line &= ~(neighbours(line) == 1)
+    lab, n = ndi.label(line, structure=np.ones((3, 3)))
+    keep = [i for i, sl in enumerate(ndi.find_objects(lab), 1)
+            if max(sl[0].stop - sl[0].start, sl[1].stop - sl[1].start) >= 40]
+    line = np.isin(lab, keep)
+    # Unir cortes: cada punta se une al trozo de otro camino más cercano (hasta 22 px).
+    from PIL import ImageDraw
+    lab, n = ndi.label(line, structure=np.ones((3, 3)))
+    pts = np.argwhere(line)
+    canvas = Image.fromarray(line.astype(np.uint8) * 255)
+    draw = ImageDraw.Draw(canvas)
+    for y, x in np.argwhere(neighbours(line) == 1):
+        dist = np.hypot(pts[:, 0] - y, pts[:, 1] - x)
+        other = (lab[pts[:, 0], pts[:, 1]] != lab[y, x]) & (dist < 22)
+        if other.any():
+            ty, tx = pts[np.argmin(np.where(other, dist, 1e9))]
+            draw.line([(int(x), int(y)), (int(tx), int(ty))], fill=255, width=1)
+    return np.asarray(canvas) > 0
+
+
+# Rutas por los caminos del norte (píxeles del mapa de 1024): las patrullas de la torre las
+# recorren el día 4 (TowerDirector.register_road). Se buscan sobre la red de caminos del dibujo.
+ROUTES = {
+    "norte_oeste": [(690, 262), (560, 268), (470, 228), (418, 232)],   # torre -> puente de la cala del norte
+    "norte_lago": [(690, 262), (612, 302), (566, 362)],                # torre -> puente de la cascada
+    "norte_este": [(690, 262), (850, 285), (905, 315)],                # torre -> ruinas del noreste
+}
+
+
+def route(axis, waypoints):
+    """Recorrido más corto por los caminos (axis) pasando por los puntos dados. Donde el dibujo
+    corta el camino (un árbol, un icono) se puede saltar por fuera, pero cuesta mucho más."""
+    from heapq import heappush, heappop
+    near = ndi.binary_dilation(axis, iterations=2)
+    cost = np.where(axis, 1.0, np.where(near, 3.0, 40.0))
+    full = []
+    for (x0, y0), (x1, y1) in zip(waypoints, waypoints[1:]):
+        lo_x, hi_x = max(min(x0, x1) - 60, 0), min(max(x0, x1) + 60, N - 1)
+        lo_y, hi_y = max(min(y0, y1) - 60, 0), min(max(y0, y1) + 60, N - 1)
+        dist = {(y0, x0): 0.0}
+        prev = {}
+        heap = [(0.0, (y0, x0))]
+        while heap:
+            d, (y, x) = heappop(heap)
+            if (y, x) == (y1, x1):
+                break
+            if d > dist.get((y, x), 1e18):
+                continue
+            for dy in (-1, 0, 1):
+                for dx in (-1, 0, 1):
+                    ny, nx = y + dy, x + dx
+                    if (dy or dx) and lo_y <= ny <= hi_y and lo_x <= nx <= hi_x:
+                        nd = d + cost[ny, nx] * (1.414 if dy and dx else 1.0)
+                        if nd < dist.get((ny, nx), 1e18):
+                            dist[(ny, nx)] = nd
+                            prev[(ny, nx)] = (y, x)
+                            heappush(heap, (nd, (ny, nx)))
+        path = [(y1, x1)]
+        while path[-1] != (y0, x0):
+            path.append(prev[path[-1]])
+        pts = [(float(x), float(y)) for y, x in reversed(path)]
+        full += pts if not full else pts[1:]
+    return simplify(full, 1.5)
+
+
+def simplify(pts, eps):
+    if len(pts) < 3:
+        return pts
+    a, b = np.array(pts[0]), np.array(pts[-1])
+    ab = b - a
+    norm = np.hypot(*ab)
+    best, idx = 0.0, 0
+    for i in range(1, len(pts) - 1):
+        p = np.array(pts[i])
+        d = abs(ab[0] * (p - a)[1] - ab[1] * (p - a)[0]) / norm if norm > 0 else np.hypot(*(p - a))
+        if d > best:
+            best, idx = d, i
+    if best <= eps:
+        return [pts[0], pts[-1]]
+    return simplify(pts[:idx + 1], eps)[:-1] + simplify(pts[idx:], eps)
+
+
+def path_length(pts):
+    return sum(np.hypot(x1 - x0, y1 - y0) for (x0, y0), (x1, y1) in zip(pts, pts[1:]))
+
+
+# Puentes del mapa (letra F de beta1, en metros; MIGRACION_BETA.md): se colocan en el punto del
+# río más cercano, de través al cauce.
+BRIDGES = [(40, -85), (92, -50), (37, 42), (21, 119), (63, 155)]
+
+
+def bridges():
+    """Puentes: centro (m), dirección del río en ese punto (unitaria, x z) y medio ancho del cauce (m)."""
+    out = []
+    for bx, bz in BRIDGES:
+        px, py = (bx + 256.0) * 2.0, (bz + 256.0) * 2.0
+        best = None
+        for name, points in (("south", RIVER_SOUTH), ("west", RIVER_WEST)):
+            for (x0, y0), (x1, y1) in zip(points, points[1:]):
+                seg = np.array([x1 - x0, y1 - y0], np.float64)
+                t = np.clip(np.dot([px - x0, py - y0], seg) / np.dot(seg, seg), 0, 1)
+                q = np.array([x0, y0]) + seg * t
+                d = np.hypot(*(q - [px, py]))
+                if best is None or d < best[0]:
+                    best = (d, q, seg / np.hypot(*seg), name)
+        _, q, along, name = best
+        out.append({"x": round(q[0] / 2.0 - 256.0, 2), "z": round(q[1] / 2.0 - 256.0, 2),
+                    "river": [round(along[0], 3), round(along[1], 3)],
+                    "half_width": round(RIVER_WIDTH[name] / 2.0, 2)})
+    return out
+
+
 def classify(rgb):
     hide = labels_mask(rgb)
     rgb = inpaint(rgb, hide)
@@ -135,21 +294,17 @@ def classify(rgb):
     # Campos (dorado intenso) y caminos (tierra: marrón claro, líneas finas).
     golden = land & (h > 38) & (h < 58) & (s > 0.55) & (v > 0.55)
     field = ndi.binary_opening(golden, iterations=4)
-    # Caminos: tierra marrón clara en líneas de 5-8 px. Se quitan las manchas anchas (campos, arena)
-    # y los trocitos sueltos (paredes de casas, bordes de iconos).
-    raw_hsv = hsv(rgb)
-    tan = land & (raw_hsv[0] > 20) & (raw_hsv[0] < 50) & (raw_hsv[1] > 0.3) & (raw_hsv[1] < 0.72) & (raw_hsv[2] > 0.5) & ~field
-    tan = ndi.binary_closing(tan, iterations=1)
-    blobs = ndi.binary_opening(tan, iterations=5)
-    road = tan & ~ndi.binary_dilation(blobs, iterations=2)
-    lab, n = ndi.label(road)
-    sizes = ndi.sum(road, lab, range(1, n + 1))
-    road = np.isin(lab, [i + 1 for i, sz in enumerate(sizes) if sz > 150])
-    road = ndi.binary_closing(road, iterations=2)
     # Arena: amarillo claro junto al mar.
-    near_sea = ndi.distance_transform_edt(~ocean) < 40
-    sand = land & near_sea & (h > 30) & (h < 70) & (s > 0.12) & (s < 0.55) & (v > 0.68)
-    sand = ndi.binary_opening(sand, iterations=2)
+    # Las playas anchas (la del naufragio) entran mucho tierra adentro: vale cualquier mancha de
+    # arena que toque la orilla, aunque llegue lejos (hasta 110 px).
+    d_coast = ndi.distance_transform_edt(~ocean)
+    sand = land & (d_coast < 110) & (h > 30) & (h < 70) & (s > 0.12) & (s < 0.55) & (v > 0.68)
+    sand = ndi.binary_closing(ndi.binary_opening(sand, iterations=2), iterations=3) & land
+    lab, n = ndi.label(sand)
+    shore = np.unique(lab[sand & (d_coast < 12)])
+    sand = np.isin(lab, shore[shore > 0])
+    road_axis = find_roads(rgb, land, ocean, field, sand, corrupt)
+    road = ndi.binary_dilation(road_axis, iterations=2)  # unos 5 px: 2,5 m de ancho
     # Bosque: verde oscuro (copas); el resto de verde, pradera.
     green = land & (h > 70) & (h < 160)
     # Bosque por zonas: donde abundan las copas verde oscuro (el dibujo es casi todo bosque).
@@ -176,7 +331,7 @@ def classify(rgb):
         best[better] = votes[better]
     smooth[cls == ROAD] = ROAD
     return smooth, {"ocean": ocean, "fresh": fresh, "corrupt": corrupt, "snow": snow, "rock": rock,
-                    "road": road, "field": field, "sand": sand, "forest": forest, "rgb": rgb}
+                    "road": road, "road_axis": road_axis, "field": field, "sand": sand, "forest": forest, "rgb": rgb}
 
 
 def class_image(cls):
@@ -418,6 +573,9 @@ def surface(cls, masks, h, water):
     for (cx, cy), radius in VILLAGES:
         dens[np.hypot(xx - cx, yy - cy) < radius] = 0
     dens[road | field | beach | rock | snow | ocean | (water > 0)] = 0
+    for b in bridges():  # ni en las cabezas de los puentes
+        bx, by = (b["x"] + 256.0) * 2.0, (b["z"] + 256.0) * 2.0
+        dens[np.hypot(xx - bx, yy - by) < b["half_width"] * 2.0 + 22] = 0
     dens = np.clip(dens, 0, 63)
     trees = (kind * 64 + dens).astype(np.uint8)
     trees[dens == 0] = 0
@@ -464,6 +622,10 @@ def main():
         Image.fromarray(np.stack([top, sub, trees], -1)).save(os.path.join(OUT, "surface.png"))
         Image.fromarray(class_image(cls)).save(os.path.join(OUT, "biome.png"))
         Image.fromarray(preview(h, water, top, trees)).save(os.path.join(OUT, "preview.png"))
+        routes = {name: [[round(x / 2.0 - 256.0, 1), round(y / 2.0 - 256.0, 1)] for x, y in route(masks["road_axis"], pts)]
+                  for name, pts in ROUTES.items()}
+        with open(os.path.join(OUT, "lugares.json"), "w", encoding="utf-8") as f:
+            json.dump({"routes": routes, "bridges": bridges()}, f, ensure_ascii=False, indent=1)
         print("mapas guardados en", OUT)
     debug("preview", preview(h, water, top, trees))
     print("clases:", {k: int((cls == c).sum()) for k, c in
