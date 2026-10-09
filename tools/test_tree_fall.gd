@@ -92,6 +92,8 @@ func _find_tree(tool: WorldVoxels, me: Vector3i) -> bool:
 				var base := Vector3i(x, gen.tree_base(x, z), z)
 				if PrefabLibrary.prefab_of(tool.get_voxel(base + Vector3i.UP)) != name:
 					continue  # sin cargar, o lo tapa otro árbol
+				if not _trunk_on_flat(tool, base, prefab):
+					continue  # en cuesta: la tierra tapa parte del pie y caería con menos cortes
 				_base = base
 				_prefab = prefab
 				_trunk_above = 0
@@ -100,6 +102,15 @@ func _find_tree(tool: WorldVoxels, me: Vector3i) -> bool:
 						_trunk_above += 1
 				return true
 	return false
+
+
+## ¿Está entero el pie del tronco (todos los trozos de la base son madera en el mundo)?
+func _trunk_on_flat(tool: WorldVoxels, base: Vector3i, prefab: int) -> bool:
+	for piece in PrefabLibrary.pieces(prefab):
+		var c: Vector3i = piece[0]
+		if c.y == 0 and PrefabLibrary.kind(piece[1]) == "wood" and tool.get_voxel(base + c) != piece[1]:
+			return false
+	return true
 
 
 func _check(what: String, ok: bool) -> void:
